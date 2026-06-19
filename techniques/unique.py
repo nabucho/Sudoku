@@ -104,6 +104,7 @@ class UniqueRectangleType1(Technique):
 
         return moves
 
+
 class UniqueRectangleType2(Technique):
     name = "Unique Rectangle Type 2"
     difficulty = 7
@@ -161,6 +162,7 @@ class UniqueRectangleType2(Technique):
                         )
 
         return moves
+
 
 class UniqueRectangleType3(Technique):
     name = "Unique Rectangle Type 3"
@@ -254,6 +256,7 @@ class UniqueRectangleType3(Technique):
 
         return moves
 
+
 class UniqueRectangleType4(Technique):
     name = "Unique Rectangle Type 4"
     difficulty = 7
@@ -317,6 +320,7 @@ class UniqueRectangleType4(Technique):
                                 )
 
         return moves
+
 
 class AvoidableRectangle(Technique):
     name = "Avoidable Rectangle"
@@ -387,6 +391,7 @@ class AvoidableRectangle(Technique):
 
         return moves
 
+
 class BUGPlusOne(Technique):
     name = "BUG+1"
     difficulty = 7
@@ -432,6 +437,7 @@ class BUGPlusOne(Technique):
                 )
 
         return moves
+
 
 class Nishio(Technique):
     name = "Nishio"

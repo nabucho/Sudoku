@@ -109,6 +109,7 @@ class Fish(Technique):
 
         return moves
 
+
 class FinnedXWing(Technique):
     name = "Finned X-Wing"
     difficulty = 6
@@ -230,6 +231,7 @@ class FinnedXWing(Technique):
                         )
 
         return moves
+
 
 class FinnedSwordfish(Technique):
     def __init__(self, size: int = 3):
@@ -381,6 +383,7 @@ class FinnedSwordfish(Technique):
                     )
 
         return moves
+
 
 class FinnedJellyfish(FinnedSwordfish):
     def __init__(self):

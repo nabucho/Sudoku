@@ -48,6 +48,7 @@ class NakedSingle(Technique):
                 ]
         return []
 
+
 class HiddenSingle(Technique):
     name = "Hidden Single"
     difficulty = 1
@@ -68,6 +69,7 @@ class HiddenSingle(Technique):
                             )
                         ]
         return []
+
 
 class LockedCandidates(Technique):
     """
@@ -155,6 +157,7 @@ class LockedCandidates(Technique):
 
         return moves
 
+
 class NakedSubset(Technique):
     """
     Generic naked pair / triple / quad.
@@ -203,6 +206,7 @@ class NakedSubset(Technique):
                     )
 
         return moves
+
 
 class HiddenSubset(Technique):
     """

@@ -87,6 +87,7 @@ class XYWing(Technique):
 
         return moves
 
+
 class XYZWing(Technique):
     name = "XYZ-Wing"
     difficulty = 7
@@ -140,6 +141,7 @@ class XYZWing(Technique):
                             )
 
         return moves
+
 
 class XYChain(Technique):
     name = "XY-Chain"
@@ -246,6 +248,7 @@ class XYChain(Technique):
                 moves,
             )
 
+
 class WWing(Technique):
     name = "W-Wing"
     difficulty = 6
@@ -304,6 +307,7 @@ class WWing(Technique):
                             )
 
         return moves
+
 
 class RemotePairs(Technique):
     name = "Remote Pairs"

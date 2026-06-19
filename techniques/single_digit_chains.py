@@ -187,6 +187,7 @@ class Skyscraper(Technique):
 
         return moves
 
+
 class TwoStringKite(Technique):
     name = "Two-String Kite"
     difficulty = 6
@@ -246,6 +247,7 @@ class TwoStringKite(Technique):
                                 )
 
         return moves
+
 
 class EmptyRectangle(Technique):
     name = "Empty Rectangle"

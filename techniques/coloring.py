@@ -108,6 +108,7 @@ class SimpleColoring(Technique):
 
         return moves
 
+
 class MultiColoring(Technique):
     name = "Multi-Coloring"
     difficulty = 7
