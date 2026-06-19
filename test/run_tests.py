@@ -5,9 +5,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from sudoku import SudokuSolver
+from techniques.common import SudokuState
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PUZZLE_FILES = ["puzzle", "puzzle2", "puzzle3", "puzzle4"]
+PUZZLE_DIR = ROOT / "test" / "puzzles"
 STRATEGIES = ["human", "fewest-steps", "fastest", "balanced", "search-first"]
 STEP_STYLES = ["detailed", "grouped", "batched"]
 
@@ -79,12 +85,33 @@ def test_cli_validation() -> None:
     assert_failure_contains(["--file", str(Path("test") / "missing"), "--no-steps"], "Could not read puzzle file")
 
 
+def test_all_puzzle_fixtures() -> None:
+    fixtures = sorted(path for path in PUZZLE_DIR.iterdir() if path.is_file())
+    if len(fixtures) != 50:
+        raise AssertionError(f"Expected 50 puzzle fixtures in {PUZZLE_DIR}, got {len(fixtures)}")
+
+    solver = SudokuSolver(strategy="fastest")
+    for path in fixtures:
+        lines = path.read_text(encoding="utf-8").splitlines()
+        if len(lines) != 9 or any(len(line) != 9 for line in lines):
+            raise AssertionError(f"Expected 9x9 grid in {path}")
+        if any(ch not in ".123456789" for line in lines for ch in line):
+            raise AssertionError(f"Unexpected character in {path}")
+
+        state = SudokuState.from_board(path.read_text(encoding="utf-8"))
+        solver.reset_timing()
+        result, _ = solver.solve_with_search(state, explain=False)
+        if result is None:
+            raise AssertionError(f"Expected {path} to solve")
+
+
 def main() -> int:
     tests = [
         test_direct_strategies,
         test_human_logic_only,
         test_step_styles,
         test_cli_validation,
+        test_all_puzzle_fixtures,
     ]
 
     for test in tests:
