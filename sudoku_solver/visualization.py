@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import sys
 from typing import Iterable, List, Optional, Sequence, Tuple
 
-from techniques.common import (
+from .techniques.common import (
     Elimination,
     ExplanationStep,
     Move,

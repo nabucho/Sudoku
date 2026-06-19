@@ -49,6 +49,19 @@ python3 sudoku.py [PUZZLE] [--file PATH] [--strategy STRATEGY] [--step-style STY
                   [--logic-only] [--no-steps] [--no-progress] [--no-color] [--no-pause]
 ```
 
+## Library Usage
+
+Import `SudokuSolver` from the library module when using the solver from Python code:
+
+```python
+from sudoku_solver.solver import SudokuSolver
+from sudoku_solver.techniques.common import SudokuState
+
+state = SudokuState.from_board("..." * 27)
+solver = SudokuSolver(strategy="human")
+result, steps = solver.solve_with_search(state)
+```
+
 ## Parameters
 
 `PUZZLE`
@@ -208,18 +221,27 @@ Benchmark options:
 ## Project Layout
 
 `sudoku.py`
-: CLI entry point and solver orchestration.
+: Thin compatibility wrapper that keeps `python3 sudoku.py` working.
 
-`strategies.py`
+`cli.py`
+: Command-line parser, input handling, and terminal output orchestration.
+
+`sudoku_solver/solver.py`
+: Clean library API containing `SudokuSolver`.
+
+`sudoku_solver/strategies.py`
 : Strategy-to-technique ordering.
 
-`explanation.py`
+`sudoku_solver/explanation.py`
 : Replay logic that expands solver moves into explanation steps.
 
-`visualization.py`
+`sudoku_solver/visualization.py`
 : Text and colored progress rendering.
 
-`techniques/`
+`pyproject.toml`
+: Project metadata plus Black, Ruff, and pytest configuration.
+
+`sudoku_solver/techniques/`
 : Human-style solving technique implementations and shared model helpers.
 
 `test/run_tests.py`

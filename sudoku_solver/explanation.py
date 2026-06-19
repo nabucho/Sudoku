@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from collections import deque
 
-from techniques.common import (
+from .techniques.common import (
     Elimination,
     ExplanationStep,
     Move,

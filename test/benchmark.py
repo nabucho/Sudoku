@@ -10,8 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sudoku import SudokuSolver
-from techniques.common import SudokuState
+from sudoku_solver.solver import SudokuSolver
+from sudoku_solver.techniques.common import SudokuState
 
 
 ROOT = Path(__file__).resolve().parents[1]

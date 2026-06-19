@@ -6,7 +6,7 @@ through the `--strategy` CLI option.
 
 from __future__ import annotations
 
-from techniques import (
+from .techniques import (
     ALSXZ,
     ALSWing,
     AIC,
@@ -41,7 +41,7 @@ from techniques import (
     XYWing,
     XYZWing,
 )
-from techniques.common import Technique
+from .techniques.common import Technique
 
 
 def default_techniques() -> list[Technique]:

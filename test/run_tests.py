@@ -7,9 +7,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sudoku import SudokuSolver
-from techniques.basic import HiddenSingle, LockedCandidates, NakedSingle
-from techniques.common import ALL_DIGITS_MASK, ROW_UNITS, SudokuState, bit, cell_text, rc_to_i
+from sudoku_solver.solver import SudokuSolver
+from sudoku_solver.techniques.basic import HiddenSingle, LockedCandidates, NakedSingle
+from sudoku_solver.techniques.common import ALL_DIGITS_MASK, ROW_UNITS, SudokuState, bit, cell_text, rc_to_i
 
 
 ROOT = Path(__file__).resolve().parents[1]
