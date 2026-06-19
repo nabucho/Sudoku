@@ -45,6 +45,8 @@ class SudokuSolver:
             self.techniques = techniques
         elif strategy == "fastest":
             self.techniques = self.fast_techniques()
+        elif strategy == "balanced":
+            self.techniques = self.balanced_techniques()
         else:
             self.techniques = self.default_techniques()
 
@@ -92,6 +94,18 @@ class SudokuSolver:
             NakedSingle(),
             NakedSubset(2),
             LockedCandidates(),
+            HiddenSubset(2),
+        ]
+
+    @staticmethod
+    def balanced_techniques() -> List[Technique]:
+        return [
+            HiddenSingle(),
+            NakedSingle(),
+            NakedSubset(2),
+            LockedCandidates(),
+            XYWing(),
+            WWing(),
             HiddenSubset(2),
         ]
 
@@ -627,12 +641,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--strategy",
-        choices=("human", "fewest-steps", "fastest", "search-first"),
+        choices=("human", "fewest-steps", "fastest", "balanced", "search-first"),
         default="human",
         help=(
             "Choose how moves are selected. human uses easy techniques first, "
             "fewest-steps picks the largest-impact logical move, fastest uses cheap "
-            "logic before search, and search-first starts with MRV backtracking."
+            "logic before search, balanced adds a few cheap guess-reducing techniques, "
+            "and search-first starts with MRV backtracking."
         ),
     )
     return parser

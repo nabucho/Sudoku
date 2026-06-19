@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PUZZLE_FILES = ["puzzle", "puzzle2", "puzzle3", "puzzle4"]
-STRATEGIES = ["human", "fewest-steps", "fastest", "search-first"]
+STRATEGIES = ["human", "fewest-steps", "fastest", "balanced", "search-first"]
 STEP_STYLES = ["detailed", "grouped", "batched"]
 
 
