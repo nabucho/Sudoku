@@ -5,8 +5,8 @@ from typing import List, Tuple
 
 from .common import (
     ALL_UNITS,
-    CELLS,
-    DIGITS,
+    CELL_INDICES,
+    DIGIT_VALUES,
     Elimination,
     Move,
     PEERS,
@@ -31,7 +31,7 @@ class SimpleColoring(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for digit in DIGITS:
+        for digit in DIGIT_VALUES:
             graph = {}
             for a, b in strong_links_for_digit(state, digit):
                 graph.setdefault(a, set()).add(b)
@@ -88,7 +88,7 @@ class SimpleColoring(Technique):
                 color_zero = {cell for cell in component if color[cell] == 0}
                 color_one = {cell for cell in component if color[cell] == 1}
                 eliminations = []
-                for cell in CELLS:
+                for cell in CELL_INDICES:
                     if cell in component_set or not state.can_place(cell, digit):
                         continue
                     if (PEERS[cell] & color_zero) and (PEERS[cell] & color_one):
@@ -119,7 +119,7 @@ class MultiColoring(Technique):
         moves: List[Move] = []
         seen = set()
 
-        for digit in DIGITS:
+        for digit in DIGIT_VALUES:
             graph = {}
             for a, b in strong_links_for_digit(state, digit):
                 graph.setdefault(a, set()).add(b)
@@ -171,7 +171,7 @@ class MultiColoring(Technique):
                                 continue
 
                             eliminations = []
-                            for cell in CELLS:
+                            for cell in CELL_INDICES:
                                 if cell in left_set or cell in right_set or not state.can_place(cell, digit):
                                     continue
                                 if (PEERS[cell] & left_opposite) and (PEERS[cell] & right_opposite):

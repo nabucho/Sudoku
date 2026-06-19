@@ -12,7 +12,7 @@ from .common import (
     Technique,
     bit_count,
     cell_text,
-    common_peer_eliminations,
+    shared_peer_eliminations,
     digits_from_mask,
     is_single,
     unit_text,
@@ -136,7 +136,7 @@ class ALSXZ(Technique):
         if not digit_cells:
             return []
 
-        return common_peer_eliminations(state, digit_cells, digit, blocked=(*left_cells, *right_cells))
+        return shared_peer_eliminations(state, digit_cells, digit, blocked=(*left_cells, *right_cells))
 
 
 class ALSWing(ALSXZ):

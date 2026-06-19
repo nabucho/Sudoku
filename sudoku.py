@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from explanation import explanation_steps
 from strategies import techniques_for_strategy
 from techniques.common import (
-    CELLS,
+    CELL_INDICES,
     ExplanationStep,
     Move,
     Placement,
@@ -122,7 +122,7 @@ class SudokuSolver:
     def _has_unprocessed_singles(self, state: SudokuState) -> bool:
         return any(
             is_single(state.candidate_mask(cell)) and cell not in state.fixed_cells
-            for cell in CELLS
+            for cell in CELL_INDICES
         )
 
     def solve_logic(
@@ -174,13 +174,13 @@ class SudokuSolver:
         # MRV heuristic
         cell = min(unsolved, key=lambda c: bit_count(state.candidate_mask(c)))
 
-        for d in state.candidate_digits(cell):
+        for digit in state.candidate_digits(cell):
             child = state.clone()
             guess_move = Move(
                 technique="Guess",
                 difficulty=99,
-                reason=f"MRV guess: try {d} in {cell_text(cell)}.",
-                placements=[Placement(cell, d)],
+                reason=f"MRV guess: try {digit} in {cell_text(cell)}.",
+                placements=[Placement(cell, digit)],
             )
 
             before_guess = child.clone() if explain else None
@@ -223,13 +223,13 @@ class SudokuSolver:
 
         cell = min(unsolved, key=lambda c: bit_count(state.candidate_mask(c)))
 
-        for d in state.candidate_digits(cell):
+        for digit in state.candidate_digits(cell):
             child = state.clone()
             guess_move = Move(
                 technique="Guess",
                 difficulty=99,
-                reason=f"MRV guess: try {d} in {cell_text(cell)}.",
-                placements=[Placement(cell, d)],
+                reason=f"MRV guess: try {digit} in {cell_text(cell)}.",
+                placements=[Placement(cell, digit)],
             )
 
             before_guess = child.clone() if explain else None

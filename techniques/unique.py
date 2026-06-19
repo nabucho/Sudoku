@@ -8,10 +8,10 @@ from .common import (
     BOX_OF,
     BOX_UNITS,
     CELL_UNITS,
-    CELLS,
+    CELL_INDICES,
     COL_OF,
     COL_UNITS,
-    DIGITS,
+    DIGIT_VALUES,
     Elimination,
     Move,
     Placement,
@@ -21,7 +21,7 @@ from .common import (
     Technique,
     bit_count,
     cell_text,
-    common_peer_eliminations,
+    shared_peer_eliminations,
     digits_from_mask,
     is_single,
     placement_text,
@@ -144,7 +144,7 @@ class UniqueRectangleType2(Technique):
                         continue
 
                     extra_digit = single_digit(extra_masks[0])
-                    eliminations = common_peer_eliminations(
+                    eliminations = shared_peer_eliminations(
                         state,
                         (extra_cells[0], extra_cells[1]),
                         extra_digit,
@@ -347,7 +347,7 @@ class AvoidableRectangle(Technique):
                 if any(cell in state.given_cells for cell in cells):
                     continue
 
-                for digit_a, digit_b in combinations(DIGITS, 2):
+                for digit_a, digit_b in combinations(DIGIT_VALUES, 2):
                     patterns = [
                         [digit_a, digit_b, digit_b, digit_a],
                         [digit_b, digit_a, digit_a, digit_b],
@@ -450,7 +450,7 @@ class Nishio(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for cell in CELLS:
+        for cell in CELL_INDICES:
             if is_single(state.candidate_mask(cell)):
                 continue
 

@@ -8,7 +8,7 @@ from .common import (
     BOX_UNITS,
     COL_OF,
     COL_UNITS,
-    DIGITS,
+    DIGIT_VALUES,
     Elimination,
     Move,
     ROW_OF,
@@ -33,39 +33,39 @@ class Fish(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for d in DIGITS:
+        for digit in DIGIT_VALUES:
             # Row-based fish
             row_patterns = []
-            for r in range(9):
-                cols = [c for c in range(9) if state.can_place(rc_to_i(r, c), d)]
-                if 2 <= len(cols) <= self.size:
-                    row_patterns.append((r, tuple(cols)))
+            for row in range(9):
+                candidate_cols = [col for col in range(9) if state.can_place(rc_to_i(row, col), digit)]
+                if 2 <= len(candidate_cols) <= self.size:
+                    row_patterns.append((row, tuple(candidate_cols)))
 
             for combo in combinations(row_patterns, self.size):
-                rows = [r for r, _ in combo]
-                cols_union = sorted(set(c for _, cols in combo for c in cols))
-                if len(cols_union) != self.size:
+                fish_rows = [row for row, _ in combo]
+                fish_cols = sorted(set(col for _, cols in combo for col in cols))
+                if len(fish_cols) != self.size:
                     continue
 
                 eliminations = []
-                for c in cols_union:
-                    for r in range(9):
-                        if r not in rows:
-                            cell = rc_to_i(r, c)
-                            if state.can_place(cell, d):
-                                eliminations.append(Elimination(cell, d))
+                for col in fish_cols:
+                    for row in range(9):
+                        if row not in fish_rows:
+                            cell = rc_to_i(row, col)
+                            if state.can_place(cell, digit):
+                                eliminations.append(Elimination(cell, digit))
 
                 if eliminations:
                     cause_cells = [
-                        rc_to_i(r, c)
-                        for r, cols in combo
-                        for c in cols
+                        rc_to_i(row, col)
+                        for row, cols in combo
+                        for col in cols
                     ]
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
-                            reason=f"{self.name}: digit {d} forms a row-based fish on rows {[r+1 for r in rows]} and columns {[c+1 for c in cols_union]}.",
+                            reason=f"{self.name}: digit {digit} forms a row-based fish on rows {[row+1 for row in fish_rows]} and columns {[col+1 for col in fish_cols]}.",
                             eliminations=eliminations,
                             cause_cells=cause_cells,
                         )
@@ -73,36 +73,36 @@ class Fish(Technique):
 
             # Column-based fish
             col_patterns = []
-            for c in range(9):
-                rows = [r for r in range(9) if state.can_place(rc_to_i(r, c), d)]
-                if 2 <= len(rows) <= self.size:
-                    col_patterns.append((c, tuple(rows)))
+            for col in range(9):
+                candidate_rows = [row for row in range(9) if state.can_place(rc_to_i(row, col), digit)]
+                if 2 <= len(candidate_rows) <= self.size:
+                    col_patterns.append((col, tuple(candidate_rows)))
 
             for combo in combinations(col_patterns, self.size):
-                cols = [c for c, _ in combo]
-                rows_union = sorted(set(r for _, rows in combo for r in rows))
-                if len(rows_union) != self.size:
+                fish_cols = [col for col, _ in combo]
+                fish_rows = sorted(set(row for _, rows in combo for row in rows))
+                if len(fish_rows) != self.size:
                     continue
 
                 eliminations = []
-                for r in rows_union:
-                    for c in range(9):
-                        if c not in cols:
-                            cell = rc_to_i(r, c)
-                            if state.can_place(cell, d):
-                                eliminations.append(Elimination(cell, d))
+                for row in fish_rows:
+                    for col in range(9):
+                        if col not in fish_cols:
+                            cell = rc_to_i(row, col)
+                            if state.can_place(cell, digit):
+                                eliminations.append(Elimination(cell, digit))
 
                 if eliminations:
                     cause_cells = [
-                        rc_to_i(r, c)
-                        for c, rows in combo
-                        for r in rows
+                        rc_to_i(row, col)
+                        for col, rows in combo
+                        for row in rows
                     ]
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
-                            reason=f"{self.name}: digit {d} forms a column-based fish on columns {[c+1 for c in cols]} and rows {[r+1 for r in rows_union]}.",
+                            reason=f"{self.name}: digit {digit} forms a column-based fish on columns {[col+1 for col in fish_cols]} and rows {[row+1 for row in fish_rows]}.",
                             eliminations=eliminations,
                             cause_cells=cause_cells,
                         )
@@ -118,7 +118,7 @@ class FinnedXWing(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for d in DIGITS:
+        for d in DIGIT_VALUES:
             row_cols = {
                 row: [col for col in range(9) if state.can_place(rc_to_i(row, col), d)]
                 for row in range(9)
@@ -244,7 +244,7 @@ class FinnedSwordfish(Technique):
         moves: List[Move] = []
         seen = set()
 
-        for digit in DIGITS:
+        for digit in DIGIT_VALUES:
             row_patterns = [
                 (row, [col for col in range(9) if state.can_place(rc_to_i(row, col), digit)])
                 for row in range(9)

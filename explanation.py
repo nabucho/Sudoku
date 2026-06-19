@@ -209,12 +209,12 @@ class StepExpander:
         changed_cells: list[int] = []
 
         for elimination in eliminations:
-            dmask = bit(elimination.digit)
-            cur = self.replay.candidate_mask(elimination.cell)
-            if not (cur & dmask):
+            digit_mask = bit(elimination.digit)
+            current_mask = self.replay.candidate_mask(elimination.cell)
+            if not (current_mask & digit_mask):
                 continue
 
-            new_mask = cur & ~dmask
+            new_mask = current_mask & ~digit_mask
             if new_mask == 0:
                 return False
 

@@ -8,7 +8,7 @@ from .common import (
     BOX_UNITS,
     COL_OF,
     COL_UNITS,
-    DIGITS,
+    DIGIT_VALUES,
     Elimination,
     Move,
     PEERS,
@@ -16,9 +16,9 @@ from .common import (
     ROW_UNITS,
     SudokuState,
     Technique,
-    candidate_cells,
+    cells_with_candidate,
     cell_text,
-    common_peer_eliminations,
+    shared_peer_eliminations,
     rc_to_i,
 )
 
@@ -34,7 +34,7 @@ class TurbotFish(Technique):
         moves: List[Move] = []
         seen = set()
 
-        for digit in DIGITS:
+        for digit in DIGIT_VALUES:
             strong_links = strong_links_for_digit(state, digit)
             for link1, link2 in combinations(strong_links, 2):
                 if set(link1) & set(link2):
@@ -50,7 +50,7 @@ class TurbotFish(Technique):
                             continue
 
                         cause_cells = sorted({*link1, *link2})
-                        eliminations = common_peer_eliminations(state, (endpoint1, endpoint2), digit, blocked=cause_cells)
+                        eliminations = shared_peer_eliminations(state, (endpoint1, endpoint2), digit, blocked=cause_cells)
                         if not eliminations:
                             continue
 
@@ -91,11 +91,11 @@ class Skyscraper(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for d in DIGITS:
+        for digit in DIGIT_VALUES:
             # Row-based skyscraper
             row_pairs = []
             for r in range(9):
-                cols = [c for c in range(9) if state.can_place(rc_to_i(r, c), d)]
+                cols = [c for c in range(9) if state.can_place(rc_to_i(r, c), digit)]
                 if len(cols) == 2:
                     row_pairs.append((r, cols[0], cols[1]))
 
@@ -113,14 +113,14 @@ class Skyscraper(Technique):
                 cell1 = rc_to_i(r1, roof1)
                 cell2 = rc_to_i(r2, roof2)
 
-                eliminations = common_peer_eliminations(state, (cell1, cell2), d)
+                eliminations = shared_peer_eliminations(state, (cell1, cell2), digit)
                 if eliminations:
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
                             reason=(
-                                f"Skyscraper on digit {d}: rows {r1+1} and {r2+1} share base column "
+                                f"Skyscraper on digit {digit}: rows {r1+1} and {r2+1} share base column "
                                 f"{common_col+1}; roof cells are {cell_text(cell1)} and {cell_text(cell2)}."
                             ),
                             eliminations=eliminations,
@@ -136,7 +136,7 @@ class Skyscraper(Technique):
             # Column-based skyscraper
             col_pairs = []
             for c in range(9):
-                rows = [r for r in range(9) if state.can_place(rc_to_i(r, c), d)]
+                rows = [r for r in range(9) if state.can_place(rc_to_i(r, c), digit)]
                 if len(rows) == 2:
                     col_pairs.append((c, rows[0], rows[1]))
 
@@ -154,14 +154,14 @@ class Skyscraper(Technique):
                 cell1 = rc_to_i(roof1, c1)
                 cell2 = rc_to_i(roof2, c2)
 
-                eliminations = common_peer_eliminations(state, (cell1, cell2), d)
+                eliminations = shared_peer_eliminations(state, (cell1, cell2), digit)
                 if eliminations:
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
                             reason=(
-                                f"Skyscraper on digit {d}: columns {c1+1} and {c2+1} share base row "
+                                f"Skyscraper on digit {digit}: columns {c1+1} and {c2+1} share base row "
                                 f"{common_row+1}; roof cells are {cell_text(cell1)} and {cell_text(cell2)}."
                             ),
                             eliminations=eliminations,
@@ -184,17 +184,17 @@ class TwoStringKite(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for d in DIGITS:
+        for digit in DIGIT_VALUES:
             row_twos = []
             col_twos = []
 
             for r in range(9):
-                cells = [rc_to_i(r, c) for c in range(9) if state.can_place(rc_to_i(r, c), d)]
+                cells = [rc_to_i(r, c) for c in range(9) if state.can_place(rc_to_i(r, c), digit)]
                 if len(cells) == 2:
                     row_twos.append((r, cells))
 
             for c in range(9):
-                cells = [rc_to_i(r, c) for r in range(9) if state.can_place(rc_to_i(r, c), d)]
+                cells = [rc_to_i(r, c) for r in range(9) if state.can_place(rc_to_i(r, c), digit)]
                 if len(cells) == 2:
                     col_twos.append((c, cells))
 
@@ -213,16 +213,16 @@ class TwoStringKite(Technique):
                             col_other = col_cells[0] if col_cells[1] == col_cell else col_cells[1]
 
                             # Row-other and col-other are the kite tips.
-                            eliminations = common_peer_eliminations(state, (row_other, col_other), d)
+                            eliminations = shared_peer_eliminations(state, (row_other, col_other), digit)
                             if eliminations:
                                 moves.append(
                                     Move(
                                         technique=self.name,
                                         difficulty=self.difficulty,
                                         reason=(
-                                            f"Two-String Kite on digit {d}: row {r+1} and column {c+1} "
+                                            f"Two-String Kite on digit {digit}: row {r+1} and column {c+1} "
                                             f"are linked via same-box cells {cell_text(row_cell)} and {cell_text(col_cell)}; "
-                                            f"therefore digit {d} can be removed from cells seeing both "
+                                            f"therefore digit {digit} can be removed from cells seeing both "
                                             f"{cell_text(row_other)} and {cell_text(col_other)}."
                                         ),
                                         eliminations=eliminations,
@@ -240,9 +240,9 @@ class EmptyRectangle(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for d in DIGITS:
+        for digit in DIGIT_VALUES:
             for box_index, box in enumerate(BOX_UNITS):
-                box_candidates = candidate_cells(state, box, d)
+                box_candidates = cells_with_candidate(state, box, digit)
                 if len(box_candidates) < 2:
                     continue
 
@@ -252,7 +252,7 @@ class EmptyRectangle(Technique):
                 for eri_row in box_rows:
                     for eri_col in box_cols:
                         eri = rc_to_i(eri_row, eri_col)
-                        if state.can_place(eri, d):
+                        if state.can_place(eri, digit):
                             continue
                         if not all(ROW_OF[cell] == eri_row or COL_OF[cell] == eri_col for cell in box_candidates):
                             continue
@@ -264,7 +264,7 @@ class EmptyRectangle(Technique):
                         for strong_row in range(9):
                             if strong_row in box_rows:
                                 continue
-                            row_cells = candidate_cells(state, ROW_UNITS[strong_row], d)
+                            row_cells = cells_with_candidate(state, ROW_UNITS[strong_row], digit)
                             if len(row_cells) != 2:
                                 continue
                             near = [cell for cell in row_cells if COL_OF[cell] == eri_col]
@@ -272,18 +272,18 @@ class EmptyRectangle(Technique):
                                 continue
                             far = row_cells[0] if row_cells[1] == near[0] else row_cells[1]
                             target = rc_to_i(eri_row, COL_OF[far])
-                            if target in box or not state.can_place(target, d):
+                            if target in box or not state.can_place(target, digit):
                                 continue
                             moves.append(
                                 Move(
                                     technique=self.name,
                                     difficulty=self.difficulty,
                                     reason=(
-                                        f"Empty Rectangle on digit {d}: box {box_index+1} is covered by "
+                                        f"Empty Rectangle on digit {digit}: box {box_index+1} is covered by "
                                         f"row {eri_row+1} and column {eri_col+1}; strong row link "
-                                        f"{cell_text(near[0])}-{cell_text(far)} eliminates {d} from {cell_text(target)}."
+                                        f"{cell_text(near[0])}-{cell_text(far)} eliminates {digit} from {cell_text(target)}."
                                     ),
-                                    eliminations=[Elimination(target, d)],
+                                    eliminations=[Elimination(target, digit)],
                                     cause_cells=sorted({*box_candidates, *row_cells}),
                                 )
                             )
@@ -291,7 +291,7 @@ class EmptyRectangle(Technique):
                         for strong_col in range(9):
                             if strong_col in box_cols:
                                 continue
-                            col_cells = candidate_cells(state, COL_UNITS[strong_col], d)
+                            col_cells = cells_with_candidate(state, COL_UNITS[strong_col], digit)
                             if len(col_cells) != 2:
                                 continue
                             near = [cell for cell in col_cells if ROW_OF[cell] == eri_row]
@@ -299,18 +299,18 @@ class EmptyRectangle(Technique):
                                 continue
                             far = col_cells[0] if col_cells[1] == near[0] else col_cells[1]
                             target = rc_to_i(ROW_OF[far], eri_col)
-                            if target in box or not state.can_place(target, d):
+                            if target in box or not state.can_place(target, digit):
                                 continue
                             moves.append(
                                 Move(
                                     technique=self.name,
                                     difficulty=self.difficulty,
                                     reason=(
-                                        f"Empty Rectangle on digit {d}: box {box_index+1} is covered by "
+                                        f"Empty Rectangle on digit {digit}: box {box_index+1} is covered by "
                                         f"row {eri_row+1} and column {eri_col+1}; strong column link "
-                                        f"{cell_text(near[0])}-{cell_text(far)} eliminates {d} from {cell_text(target)}."
+                                        f"{cell_text(near[0])}-{cell_text(far)} eliminates {digit} from {cell_text(target)}."
                                     ),
-                                    eliminations=[Elimination(target, d)],
+                                    eliminations=[Elimination(target, digit)],
                                     cause_cells=sorted({*box_candidates, *col_cells}),
                                 )
                             )

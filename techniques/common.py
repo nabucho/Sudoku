@@ -9,20 +9,20 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 # ============================================================
 
 ALL_DIGITS_MASK = 0x1FF  # bits 0..8 => digits 1..9
-DIGITS = range(1, 10)
+DIGIT_VALUES = range(1, 10)
 
 
-def bit(d: int) -> int:
-    return 1 << (d - 1)
+def bit(digit: int) -> int:
+    return 1 << (digit - 1)
 
 
 def bits(mask: int) -> Iterable[int]:
-    d = 1
+    digit = 1
     while mask:
         if mask & 1:
-            yield d
+            yield digit
         mask >>= 1
-        d += 1
+        digit += 1
 
 
 def bit_count(mask: int) -> int:
@@ -50,17 +50,17 @@ def digits_from_mask(mask: int) -> List[int]:
 # Grid topology
 # ============================================================
 
-ROWS = range(9)
-COLS = range(9)
-CELLS = range(81)
+ROW_INDICES = range(9)
+COLUMN_INDICES = range(9)
+CELL_INDICES = range(81)
 
 
-def rc_to_i(r: int, c: int) -> int:
-    return r * 9 + c
+def rc_to_i(row: int, col: int) -> int:
+    return row * 9 + col
 
 
-def i_to_rc(i: int) -> Tuple[int, int]:
-    return divmod(i, 9)
+def i_to_rc(cell: int) -> Tuple[int, int]:
+    return divmod(cell, 9)
 
 
 def cell_text(cell: int) -> str:
@@ -76,13 +76,13 @@ def forced_cell_reason(cell: int, digit: int) -> str:
     return f"{cell_text(cell)} is forced to {digit}."
 
 
-ROW_UNITS = [[rc_to_i(r, c) for c in COLS] for r in ROWS]
-COL_UNITS = [[rc_to_i(r, c) for r in ROWS] for c in COLS]
+ROW_UNITS = [[rc_to_i(row, col) for col in COLUMN_INDICES] for row in ROW_INDICES]
+COL_UNITS = [[rc_to_i(row, col) for row in ROW_INDICES] for col in COLUMN_INDICES]
 BOX_UNITS = [
     [
-        rc_to_i(r, c)
-        for r in range(br * 3, br * 3 + 3)
-        for c in range(bc * 3, bc * 3 + 3)
+        rc_to_i(row, col)
+        for row in range(br * 3, br * 3 + 3)
+        for col in range(bc * 3, bc * 3 + 3)
     ]
     for br in range(3)
     for bc in range(3)
@@ -97,41 +97,41 @@ def unit_text(unit_index: int) -> str:
         return f"column {unit_index - 8}"
     return f"box {unit_index - 17}"
 
-CELL_UNITS: List[List[List[int]]] = [[] for _ in CELLS]
+CELL_UNITS: List[List[List[int]]] = [[] for _ in CELL_INDICES]
 for unit in ALL_UNITS:
     for cell in unit:
         CELL_UNITS[cell].append(unit)
 
 PEERS: List[set[int]] = []
-for i in CELLS:
-    s = set()
-    for unit in CELL_UNITS[i]:
-        s.update(unit)
-    s.discard(i)
-    PEERS.append(s)
+for cell in CELL_INDICES:
+    peers = set()
+    for unit in CELL_UNITS[cell]:
+        peers.update(unit)
+    peers.discard(cell)
+    PEERS.append(peers)
 
-ROW_OF = [i // 9 for i in CELLS]
-COL_OF = [i % 9 for i in CELLS]
-BOX_OF = [((i // 9) // 3) * 3 + ((i % 9) // 3) for i in CELLS]
+ROW_OF = [cell // 9 for cell in CELL_INDICES]
+COL_OF = [cell % 9 for cell in CELL_INDICES]
+BOX_OF = [((cell // 9) // 3) * 3 + ((cell % 9) // 3) for cell in CELL_INDICES]
 
 
-def candidate_cells(state: "SudokuState", unit: Sequence[int], digit: int) -> List[int]:
+def cells_with_candidate(state: "SudokuState", unit: Sequence[int], digit: int) -> List[int]:
     return [cell for cell in unit if state.can_place(cell, digit)]
 
 
-def bivalue_cells(state: "SudokuState") -> List[int]:
-    return [cell for cell in CELLS if state.is_bivalue(cell)]
+def bivalue_candidate_cells(state: "SudokuState") -> List[int]:
+    return [cell for cell in CELL_INDICES if state.is_bivalue(cell)]
 
 
-def trivalue_cells(state: "SudokuState") -> List[int]:
-    return [cell for cell in CELLS if state.is_trivalue(cell)]
+def trivalue_candidate_cells(state: "SudokuState") -> List[int]:
+    return [cell for cell in CELL_INDICES if state.is_trivalue(cell)]
 
 
 def unsolved_cells(state: "SudokuState") -> List[int]:
-    return [cell for cell in CELLS if not is_single(state.candidate_mask(cell))]
+    return [cell for cell in CELL_INDICES if not is_single(state.candidate_mask(cell))]
 
 
-def common_peers(cells: Iterable[int]) -> set[int]:
+def shared_peers(cells: Iterable[int]) -> set[int]:
     cells = list(cells)
     if not cells:
         return set()
@@ -141,7 +141,7 @@ def common_peers(cells: Iterable[int]) -> set[int]:
     return peers
 
 
-def common_peer_eliminations(
+def shared_peer_eliminations(
     state: "SudokuState",
     cells: Iterable[int],
     digit: int,
@@ -150,7 +150,7 @@ def common_peer_eliminations(
     blocked_cells = set(blocked)
     return [
         Elimination(cell, digit)
-        for cell in sorted(common_peers(cells) - blocked_cells)
+        for cell in sorted(shared_peers(cells) - blocked_cells)
         if state.can_place(cell, digit)
     ]
 
@@ -293,19 +293,19 @@ class SudokuState:
             chars = [ch for ch in board if ch in "1234567890."]
             if len(chars) != 81:
                 raise ValueError("String puzzle must contain exactly 81 digits / dots / zeros.")
-            for i, ch in enumerate(chars):
+            for cell, ch in enumerate(chars):
                 if ch in "123456789":
-                    givens.append((i, int(ch)))
+                    givens.append((cell, int(ch)))
         else:
             if len(board) != 9 or any(len(row) != 9 for row in board):
                 raise ValueError("Board must be 9x9.")
-            for r in range(9):
-                for c in range(9):
-                    v = board[r][c]
-                    if v:
-                        if not 1 <= v <= 9:
+            for row in range(9):
+                for col in range(9):
+                    value = board[row][col]
+                    if value:
+                        if not 1 <= value <= 9:
                             raise ValueError("Board values must be digits 1..9, 0, or falsey empties.")
-                        givens.append((rc_to_i(r, c), v))
+                        givens.append((rc_to_i(row, col), value))
 
         for cell, digit in givens:
             if state.candidates[cell] != ALL_DIGITS_MASK:
@@ -315,13 +315,13 @@ class SudokuState:
             state.given_cells.add(cell)
 
         for cell, digit in givens:
-            dmask = bit(digit)
+            digit_mask = bit(digit)
             for peer in PEERS[cell]:
                 peer_mask = state.candidates[peer]
-                if peer_mask == dmask:
+                if peer_mask == digit_mask:
                     raise ValueError("Invalid Sudoku givens.")
-                if peer_mask & dmask:
-                    state.candidates[peer] = peer_mask & ~dmask
+                if peer_mask & digit_mask:
+                    state.candidates[peer] = peer_mask & ~digit_mask
 
         if not state.consistency_ok():
             raise ValueError("Invalid Sudoku givens.")
@@ -336,23 +336,23 @@ class SudokuState:
 
     def board(self) -> List[List[int]]:
         out = [[0] * 9 for _ in range(9)]
-        for i, mask in enumerate(self.candidates):
+        for cell, mask in enumerate(self.candidates):
             if is_single(mask):
-                r, c = i_to_rc(i)
-                out[r][c] = single_digit(mask)
+                row, col = i_to_rc(cell)
+                out[row][col] = single_digit(mask)
         return out
 
     def pretty(self) -> str:
         lines = []
-        for r in range(9):
-            if r and r % 3 == 0:
+        for row in range(9):
+            if row and row % 3 == 0:
                 lines.append("-" * 21)
             row_parts = []
-            for c in range(9):
-                if c and c % 3 == 0:
+            for col in range(9):
+                if col and col % 3 == 0:
                     row_parts.append("|")
-                i = rc_to_i(r, c)
-                row_parts.append(str(single_digit(self.candidates[i])) if is_single(self.candidates[i]) else ".")
+                cell = rc_to_i(row, col)
+                row_parts.append(str(single_digit(self.candidates[cell])) if is_single(self.candidates[cell]) else ".")
             lines.append(" ".join(row_parts))
         return "\n".join(lines)
 
@@ -382,14 +382,14 @@ class SudokuState:
             for cell in unit:
                 mask = self.candidates[cell]
                 if is_single(mask):
-                    d = single_digit(mask)
-                    if d in seen_fixed:
+                    digit = single_digit(mask)
+                    if digit in seen_fixed:
                         return False
-                    seen_fixed.add(d)
+                    seen_fixed.add(digit)
 
-            for d in DIGITS:
-                dmask = bit(d)
-                if not any(self.candidates[cell] & dmask for cell in unit):
+            for digit in DIGIT_VALUES:
+                digit_mask = bit(digit)
+                if not any(self.candidates[cell] & digit_mask for cell in unit):
                     return False
 
         return True
@@ -399,13 +399,13 @@ class SudokuState:
         Remove one candidate from a cell.
         If the cell becomes single, propagate that single to peers.
         """
-        dmask = bit(digit)
-        cur = self.candidates[cell]
+        digit_mask = bit(digit)
+        current_mask = self.candidates[cell]
 
-        if not (cur & dmask):
+        if not (current_mask & digit_mask):
             return True  # already absent
 
-        new_mask = cur & ~dmask
+        new_mask = current_mask & ~digit_mask
         if new_mask == 0:
             return False
 
@@ -432,10 +432,10 @@ class SudokuState:
         if not self.can_place(cell, digit):
             return False
 
-        cur_digits = self.candidate_digits(cell)
-        for d in cur_digits:
-            if d != digit:
-                if not self.eliminate_digit(cell, d):
+        current_digits = self.candidate_digits(cell)
+        for candidate_digit in current_digits:
+            if candidate_digit != digit:
+                if not self.eliminate_digit(cell, candidate_digit):
                     return False
 
         # ensure peers do not contain the placed digit

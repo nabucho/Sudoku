@@ -7,10 +7,10 @@ from .common import (
     ALL_UNITS,
     BOX_OF,
     BOX_UNITS,
-    CELLS,
+    CELL_INDICES,
     COL_OF,
     COL_UNITS,
-    DIGITS,
+    DIGIT_VALUES,
     Elimination,
     Move,
     Placement,
@@ -21,7 +21,7 @@ from .common import (
     bit,
     bit_count,
     bits,
-    candidate_cells,
+    cells_with_candidate,
     cell_text,
     cells_text,
     digits_from_mask,
@@ -37,7 +37,7 @@ class NakedSingle(Technique):
     difficulty = 1
 
     def find_moves(self, state: SudokuState) -> List[Move]:
-        for cell in CELLS:
+        for cell in CELL_INDICES:
             mask = state.candidate_mask(cell)
             if is_single(mask) and cell not in state.fixed_cells:
                 digit = single_digit(mask)
@@ -58,8 +58,8 @@ class HiddenSingle(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         for unit_index, unit in enumerate(ALL_UNITS):
-            for d in DIGITS:
-                cells = candidate_cells(state, unit, d)
+            for digit in DIGIT_VALUES:
+                cells = cells_with_candidate(state, unit, digit)
                 if len(cells) == 1:
                     cell = cells[0]
                     if not is_single(state.candidate_mask(cell)):
@@ -67,8 +67,8 @@ class HiddenSingle(Technique):
                             Move(
                                 technique=self.name,
                                 difficulty=self.difficulty,
-                                reason=f"Digit {d} can only go in {cell_text(cell)} within {unit_text(unit_index)}.",
-                                placements=[Placement(cell, d)],
+                                reason=f"Digit {digit} can only go in {cell_text(cell)} within {unit_text(unit_index)}.",
+                                placements=[Placement(cell, digit)],
                             )
                         ]
         return []
@@ -86,8 +86,8 @@ class LockedCandidates(Technique):
 
         # Pointing: box -> row / column
         for box_index, box in enumerate(BOX_UNITS):
-            for d in DIGITS:
-                cells = candidate_cells(state, box, d)
+            for digit in DIGIT_VALUES:
+                cells = cells_with_candidate(state, box, digit)
                 if len(cells) < 2:
                     continue
 
@@ -97,16 +97,16 @@ class LockedCandidates(Technique):
                 if len(rows) == 1:
                     row = next(iter(rows))
                     eliminations = [
-                        Elimination(cell, d)
+                        Elimination(cell, digit)
                         for cell in ROW_UNITS[row]
-                        if cell not in box and state.can_place(cell, d)
+                        if cell not in box and state.can_place(cell, digit)
                     ]
                     if eliminations:
                         moves.append(
                             Move(
                                 technique=self.name,
                                 difficulty=self.difficulty,
-                                reason=f"Pointing: digit {d} in box {box_index+1} is confined to row {row+1}.",
+                                reason=f"Pointing: digit {digit} in box {box_index+1} is confined to row {row+1}.",
                                 eliminations=eliminations,
                                 cause_cells=cells,
                             )
@@ -115,16 +115,16 @@ class LockedCandidates(Technique):
                 if len(cols) == 1:
                     col = next(iter(cols))
                     eliminations = [
-                        Elimination(cell, d)
+                        Elimination(cell, digit)
                         for cell in COL_UNITS[col]
-                        if cell not in box and state.can_place(cell, d)
+                        if cell not in box and state.can_place(cell, digit)
                     ]
                     if eliminations:
                         moves.append(
                             Move(
                                 technique=self.name,
                                 difficulty=self.difficulty,
-                                reason=f"Pointing: digit {d} in box {box_index+1} is confined to column {col+1}.",
+                                reason=f"Pointing: digit {digit} in box {box_index+1} is confined to column {col+1}.",
                                 eliminations=eliminations,
                                 cause_cells=cells,
                             )
@@ -133,8 +133,8 @@ class LockedCandidates(Technique):
         # Claiming: row / column -> box
         for family_name, unit_list in (("row", ROW_UNITS), ("column", COL_UNITS)):
             for unit_index, unit in enumerate(unit_list):
-                for d in DIGITS:
-                    cells = candidate_cells(state, unit, d)
+                for digit in DIGIT_VALUES:
+                    cells = cells_with_candidate(state, unit, digit)
                     if len(cells) < 2:
                         continue
 
@@ -143,16 +143,16 @@ class LockedCandidates(Technique):
                         box_index = next(iter(boxes))
                         box = BOX_UNITS[box_index]
                         eliminations = [
-                            Elimination(cell, d)
+                            Elimination(cell, digit)
                             for cell in box
-                            if cell not in unit and state.can_place(cell, d)
+                            if cell not in unit and state.can_place(cell, digit)
                         ]
                         if eliminations:
                             moves.append(
                                 Move(
                                     technique=self.name,
                                     difficulty=self.difficulty,
-                                    reason=f"Claiming: digit {d} in {family_name} {unit_index+1} is confined to box {box_index+1}.",
+                                    reason=f"Claiming: digit {digit} in {family_name} {unit_index+1} is confined to box {box_index+1}.",
                                     eliminations=eliminations,
                                     cause_cells=cells,
                                 )
@@ -174,13 +174,13 @@ class NakedSubset(Technique):
         moves: List[Move] = []
 
         for unit in ALL_UNITS:
-            candidate_cells = [
+            subset_cells = [
                 cell
                 for cell in unit
                 if 2 <= bit_count(state.candidate_mask(cell)) <= self.size
             ]
 
-            for combo in combinations(candidate_cells, self.size):
+            for combo in combinations(subset_cells, self.size):
                 union_mask = 0
                 for cell in combo:
                     union_mask |= state.candidate_mask(cell)
@@ -192,9 +192,9 @@ class NakedSubset(Technique):
                 for other in unit:
                     if other in combo:
                         continue
-                    for d in bits(union_mask):
-                        if state.can_place(other, d):
-                            eliminations.append(Elimination(other, d))
+                    for digit in bits(union_mask):
+                        if state.can_place(other, digit):
+                            eliminations.append(Elimination(other, digit))
 
                 if eliminations:
                     digits_text = digits_from_mask(union_mask)
@@ -225,30 +225,30 @@ class HiddenSubset(Technique):
 
         for unit in ALL_UNITS:
             cells_by_digit = {
-                d: candidate_cells(state, unit, d)
-                for d in DIGITS
+                digit: cells_with_candidate(state, unit, digit)
+                for digit in DIGIT_VALUES
             }
 
-            for digits_combo in combinations(DIGITS, self.size):
+            for digits_combo in combinations(DIGIT_VALUES, self.size):
                 combo_mask = 0
                 cells_set = set()
-                for d in digits_combo:
-                    combo_mask |= bit(d)
-                    cells_set.update(cells_by_digit[d])
+                for digit in digits_combo:
+                    combo_mask |= bit(digit)
+                    cells_set.update(cells_by_digit[digit])
 
                 cells = [cell for cell in unit if cell in cells_set]
                 if len(cells) != self.size:
                     continue
 
                 # each digit must appear at least once in those cells
-                if any(not cells_by_digit[d] for d in digits_combo):
+                if any(not cells_by_digit[digit] for digit in digits_combo):
                     continue
 
                 eliminations: List[Elimination] = []
                 for cell in cells:
-                    for d in state.candidate_digits(cell):
-                        if d not in digits_combo:
-                            eliminations.append(Elimination(cell, d))
+                    for digit in state.candidate_digits(cell):
+                        if digit not in digits_combo:
+                            eliminations.append(Elimination(cell, digit))
 
                 if eliminations:
                     moves.append(
