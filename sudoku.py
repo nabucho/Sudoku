@@ -88,10 +88,10 @@ class SudokuSolver:
     @staticmethod
     def fast_techniques() -> List[Technique]:
         return [
-            NakedSingle(),
             HiddenSingle(),
-            LockedCandidates(),
+            NakedSingle(),
             NakedSubset(2),
+            LockedCandidates(),
             HiddenSubset(2),
         ]
 
