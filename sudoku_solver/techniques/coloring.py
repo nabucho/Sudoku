@@ -7,9 +7,9 @@ from .common import (
     ALL_UNITS,
     CELL_INDICES,
     DIGIT_VALUES,
+    PEERS,
     Elimination,
     Move,
-    PEERS,
     SudokuState,
     Technique,
     cell_text,
@@ -18,11 +18,12 @@ from .common import (
 
 def strong_links_for_digit(state: SudokuState, digit: int) -> List[Tuple[int, int]]:
     """Return conjugate-pair strong links for one candidate digit."""
-    links = set()
+    links: set[tuple[int, int]] = set()
     for unit in ALL_UNITS:
         cells = [cell for cell in unit if state.can_place(cell, digit)]
         if len(cells) == 2:
-            links.add(tuple(sorted(cells)))
+            first_cell, second_cell = sorted(cells)
+            links.add((first_cell, second_cell))
     return sorted(links)
 
 class SimpleColoring(Technique):
@@ -38,7 +39,7 @@ class SimpleColoring(Technique):
         moves: List[Move] = []
 
         for digit in DIGIT_VALUES:
-            graph = {}
+            graph: dict[int, set[int]] = {}
             for a, b in strong_links_for_digit(state, digit):
                 graph.setdefault(a, set()).add(b)
                 graph.setdefault(b, set()).add(a)
@@ -131,7 +132,7 @@ class MultiColoring(Technique):
         seen = set()
 
         for digit in DIGIT_VALUES:
-            graph = {}
+            graph: dict[int, set[int]] = {}
             for a, b in strong_links_for_digit(state, digit):
                 graph.setdefault(a, set()).add(b)
                 graph.setdefault(b, set()).add(a)

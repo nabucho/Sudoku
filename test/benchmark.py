@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sudoku_solver.solver import SudokuSolver
 from sudoku_solver.techniques.common import SudokuState
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STRATEGIES = ["human", "balanced", "fastest", "search-first"]
 ORIGINAL_FIXTURES = ["puzzle", "puzzle2", "puzzle3", "puzzle4"]

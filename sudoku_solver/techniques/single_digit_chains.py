@@ -3,27 +3,25 @@ from __future__ import annotations
 from itertools import combinations
 from typing import List
 
+from .coloring import strong_links_for_digit
 from .common import (
     BOX_OF,
     BOX_UNITS,
     COL_OF,
     COL_UNITS,
     DIGIT_VALUES,
-    Elimination,
-    Move,
     PEERS,
     ROW_OF,
     ROW_UNITS,
+    Elimination,
+    Move,
     SudokuState,
     Technique,
-    cells_with_candidate,
     cell_text,
-    shared_peer_eliminations,
+    cells_with_candidate,
     rc_to_i,
+    shared_peer_eliminations,
 )
-
-
-from .coloring import strong_links_for_digit
 
 
 class TurbotFish(Technique):

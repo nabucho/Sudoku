@@ -11,7 +11,6 @@ from sudoku_solver.solver import SudokuSolver
 from sudoku_solver.techniques.basic import HiddenSingle, LockedCandidates, NakedSingle
 from sudoku_solver.techniques.common import ALL_DIGITS_MASK, ROW_UNITS, SudokuState, bit, cell_text, rc_to_i
 
-
 ROOT = Path(__file__).resolve().parents[1]
 PUZZLE_FILES = ["puzzle", "puzzle2", "puzzle3", "puzzle4"]
 PUZZLE_DIR = ROOT / "test" / "puzzles"

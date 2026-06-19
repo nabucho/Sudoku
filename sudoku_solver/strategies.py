@@ -7,9 +7,9 @@ through the `--strategy` CLI option.
 from __future__ import annotations
 
 from .techniques import (
+    AIC,
     ALSXZ,
     ALSWing,
-    AIC,
     AvoidableRectangle,
     BUGPlusOne,
     EmptyRectangle,

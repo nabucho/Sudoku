@@ -7,28 +7,28 @@ from .common import (
     ALL_UNITS,
     BOX_OF,
     BOX_UNITS,
-    CELL_UNITS,
     CELL_INDICES,
+    CELL_UNITS,
     COL_OF,
     COL_UNITS,
     DIGIT_VALUES,
+    ROW_OF,
+    ROW_UNITS,
     Elimination,
     Move,
     Placement,
-    ROW_OF,
-    ROW_UNITS,
     SudokuState,
     Technique,
     bit_count,
     cell_text,
-    shared_peer_eliminations,
     digits_from_mask,
     is_single,
     placement_text,
     rc_to_i,
+    shared_peer_eliminations,
     single_digit,
-    unsolved_cells,
     unit_text,
+    unsolved_cells,
 )
 
 
@@ -63,7 +63,7 @@ class UniqueRectangleType1(Technique):
                 if len(bivalue_masks) < 3:
                     continue
 
-                counts = {}
+                counts: dict[int, int] = {}
                 for m in bivalue_masks:
                     counts[m] = counts.get(m, 0) + 1
 

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import sys
+from dataclasses import dataclass
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 from .techniques.common import (
@@ -380,7 +380,7 @@ def render_progress_grid(
         if r and r % 3 == 0:
             lines.append("-" * 101)
 
-        row_lines = [[], [], []]
+        row_lines: list[list[str]] = [[], [], []]
         for c in range(9):
             if c and c % 3 == 0:
                 for line_parts in row_lines:

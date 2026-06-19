@@ -7,17 +7,17 @@ from .common import (
     ALL_UNITS,
     CELL_INDICES,
     DIGIT_VALUES,
-    Move,
     PEERS,
+    Move,
     SudokuState,
     Technique,
     bit,
     bit_count,
     bivalue_candidate_cells,
-    cells_with_candidate,
     cell_text,
-    shared_peer_eliminations,
+    cells_with_candidate,
     digits_from_mask,
+    shared_peer_eliminations,
     single_digit,
     trivalue_candidate_cells,
 )
@@ -162,7 +162,7 @@ class XYChain(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen = set()
+        seen: set[tuple[int, int, tuple[int, ...], tuple[tuple[int, int], ...]]] = set()
         bivalue = bivalue_candidate_cells(state)
         bivalue_set = set(bivalue)
 
@@ -265,7 +265,7 @@ class WWing(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        bivalue_by_mask = {}
+        bivalue_by_mask: dict[int, list[int]] = {}
         strong_links_by_digit = {
             digit: [
                 tuple(cells)
@@ -331,7 +331,7 @@ class RemotePairs(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        cells_by_mask = {}
+        cells_by_mask: dict[int, list[int]] = {}
 
         for cell in CELL_INDICES:
             if state.is_bivalue(cell):
@@ -343,7 +343,7 @@ class RemotePairs(Technique):
 
             cell_set = set(cells)
             graph = {cell: sorted(PEERS[cell] & cell_set) for cell in cells}
-            color = {}
+            color: dict[int, int] = {}
 
             for start in cells:
                 if start in color:

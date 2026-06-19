@@ -10,7 +10,6 @@ from sudoku_solver.solver import SudokuSolver
 from sudoku_solver.techniques.common import SudokuState, rc_to_i
 from sudoku_solver.visualization import format_steps, print_progress_steps, print_timing_summary
 
-
 DEFAULT_PUZZLE = (
     "...8....3"
     "..8.61..."
@@ -160,11 +159,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(original_puzzle)
     print()
 
+    result: SudokuState | None
     if args.strategy == "search-first":
         result, steps = solver.solve_search_first(state, explain=explain, detailed_steps=detailed_steps)
     elif args.logic_only:
         solved, steps = solver.solve_logic(state, explain=explain, detailed_steps=detailed_steps)
-        result: SudokuState | None = state if solved else None
+        result = state if solved else None
     else:
         result, steps = solver.solve_with_search(state, explain=explain, detailed_steps=detailed_steps)
 

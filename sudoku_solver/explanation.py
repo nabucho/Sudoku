@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
 from collections import deque
+from collections.abc import Iterable, Sequence
 
 from .techniques.common import (
+    PEERS,
     Elimination,
     ExplanationStep,
     Move,
-    PEERS,
     Placement,
     SudokuState,
     bit,

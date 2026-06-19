@@ -9,15 +9,15 @@ from .common import (
     CELL_INDICES,
     COL_OF,
     DIGIT_VALUES,
+    ROW_OF,
     Elimination,
     Move,
-    ROW_OF,
     SudokuState,
     Technique,
-    cells_with_candidate,
     cell_text,
-    shared_peer_eliminations,
+    cells_with_candidate,
     is_single,
+    shared_peer_eliminations,
 )
 
 CandidateNode = tuple[int, int]
@@ -30,7 +30,11 @@ def _add_link(links: dict, left, right) -> None:
     links.setdefault(right, set()).add(left)
 
 
-def _is_duplicate_elimination(seen: set, path: list, eliminations: List[Elimination]) -> bool:
+def _is_duplicate_elimination(
+    seen: set[tuple[tuple, tuple[tuple[int, int], ...]]],
+    path: list,
+    eliminations: List[Elimination],
+) -> bool:
     elimination_key = tuple((elimination.cell, elimination.digit) for elimination in eliminations)
     path_key = tuple(path)
     reverse_path_key = tuple(reversed(path))
@@ -80,7 +84,7 @@ class AIC(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         strong_links, weak_links = self._build_links(state)
         moves: List[Move] = []
-        seen = set()
+        seen: set[tuple[tuple[CandidateNode, ...], tuple[tuple[int, int], ...]]] = set()
 
         for start in sorted(strong_links):
             self._extend_chain(
@@ -297,7 +301,7 @@ class GroupedAIC(Technique):
     def _find_grouped_moves(self, state: SudokuState, *, include_cell_links: bool) -> List[Move]:
         strong_links, weak_links = self._build_links(state, include_cell_links=include_cell_links)
         moves: List[Move] = []
-        seen = set()
+        seen: set[tuple[tuple[GroupedNode, ...], tuple[tuple[int, int], ...]]] = set()
 
         for start in sorted(strong_links):
             if len(moves) >= self.max_moves:

@@ -5,16 +5,16 @@ from typing import List
 
 from .common import (
     ALL_UNITS,
+    PEERS,
     Elimination,
     Move,
-    PEERS,
     SudokuState,
     Technique,
     bit_count,
     cell_text,
-    shared_peer_eliminations,
     digits_from_mask,
     is_single,
+    shared_peer_eliminations,
     unit_text,
 )
 
