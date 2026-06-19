@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import itertools
 import subprocess
 import sys
@@ -7,9 +9,32 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from cli import main as cli_main, pretty_puzzle, read_puzzle_argument
 from sudoku_solver.solver import SudokuSolver
 from sudoku_solver.techniques.basic import HiddenSingle, LockedCandidates, NakedSingle
-from sudoku_solver.techniques.common import ALL_DIGITS_MASK, ROW_UNITS, SudokuState, bit, cell_text, rc_to_i
+from sudoku_solver.techniques.common import (
+    ALL_DIGITS_MASK,
+    ROW_UNITS,
+    Elimination,
+    ExplanationStep,
+    Move,
+    Placement,
+    SudokuState,
+    TechniqueTiming,
+    bit,
+    cell_text,
+    rc_to_i,
+)
+from sudoku_solver.visualization import (
+    ansi_text,
+    format_steps,
+    print_progress_steps,
+    print_timing_summary,
+    render_progress_grid,
+    steps_for_progress,
+    steps_for_style,
+    wait_for_keypress,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 PUZZLE_FILES = ["puzzle", "puzzle2", "puzzle3", "puzzle4"]
@@ -102,6 +127,48 @@ def test_cli_validation() -> None:
     assert_failure_contains(["--file", str(Path("test") / "missing"), "--no-steps"], "Could not read puzzle file")
 
 
+def test_cli_helpers_in_process() -> None:
+    if read_puzzle_argument("0" * 81, None) != "0" * 81:
+        raise AssertionError("Expected inline puzzle argument to be returned")
+
+    try:
+        read_puzzle_argument("0" * 81, str(ROOT / "test" / "puzzle"))
+    except ValueError as exc:
+        if "Use either" not in str(exc):
+            raise AssertionError(f"Unexpected read_puzzle_argument error: {exc}")
+    else:
+        raise AssertionError("Expected read_puzzle_argument to reject puzzle plus file")
+
+    pretty = pretty_puzzle("." * 81)
+    if pretty.count(".") != 81 or "---------------------" not in pretty:
+        raise AssertionError(f"Unexpected pretty puzzle output: {pretty}")
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        exit_code = cli_main(["--file", str(ROOT / "test" / "puzzle"), "--no-steps"])
+    if exit_code != 0:
+        raise AssertionError(f"Expected in-process CLI success, got {exit_code}: {stderr.getvalue()}")
+    if "Original puzzle:" not in stdout.getvalue() or "Solved board:" not in stdout.getvalue():
+        raise AssertionError(f"Unexpected in-process CLI output: {stdout.getvalue()}")
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        exit_code = cli_main(
+            [
+                "--file",
+                str(ROOT / "test" / "puzzle4"),
+                "--strategy",
+                "human",
+                "--logic-only",
+                "--no-steps",
+            ]
+        )
+    if exit_code != 1 or "No solution found." not in stderr.getvalue():
+        raise AssertionError(f"Expected logic-only failure, got {exit_code}: {stderr.getvalue()}")
+
+
 def test_basic_techniques_directly() -> None:
     naked_state = state_with_candidates({rc_to_i(0, 0): bit(5)})
     naked_moves = NakedSingle().find_moves(naked_state)
@@ -157,6 +224,79 @@ def test_timing_measurements() -> None:
         raise AssertionError(f"Invalid success percent: {hidden_stats.success_percent}")
 
 
+def test_visualization_directly() -> None:
+    placement_move = Move(
+        technique="Naked Single",
+        difficulty=1,
+        reason="r1c1 is forced to 5.",
+        placements=[Placement(rc_to_i(0, 0), 5)],
+    )
+    placement_move.timing_ms = 1.25
+    placement_step = ExplanationStep(placement_move, [ALL_DIGITS_MASK] * 81, [rc_to_i(0, 0)])
+
+    elimination_move = Move(
+        technique="Propagation",
+        difficulty=1,
+        reason="r1c1=5 removes 5 from peers.",
+        eliminations=[Elimination(rc_to_i(0, 1), 5)],
+    )
+    elimination_move.cause_cells = [rc_to_i(0, 0)]
+    elimination_step = ExplanationStep(elimination_move, [ALL_DIGITS_MASK] * 81, [rc_to_i(0, 1)])
+
+    steps = [placement_step, elimination_step]
+    detailed = format_steps(steps, "detailed")
+    if "Naked Single" not in detailed[0] or "1.25 ms" not in detailed[0]:
+        raise AssertionError(f"Unexpected detailed formatting: {detailed}")
+
+    grouped = steps_for_style([placement_step, placement_step], "grouped")
+    if len(grouped) != 1 or grouped[0].technique != "Naked Singles":
+        raise AssertionError(f"Expected grouped naked singles, got {grouped}")
+
+    batched = steps_for_style([elimination_step, elimination_step], "batched")
+    if len(batched) != 1 or batched[0].technique != "Propagations":
+        raise AssertionError(f"Expected batched propagations, got {batched}")
+
+    progress_steps = steps_for_progress([elimination_step, elimination_step], "detailed")
+    if len(progress_steps) != 1 or progress_steps[0].technique != "Propagations":
+        raise AssertionError(f"Expected grouped progress propagations, got {progress_steps}")
+
+    candidates = [ALL_DIGITS_MASK] * 81
+    candidates[rc_to_i(0, 0)] = bit(5)
+    grid = render_progress_grid(
+        candidates,
+        given_cells={rc_to_i(0, 8)},
+        solved_cells=set(),
+        selected_cells=[rc_to_i(0, 0)],
+        candidate_eliminations=[Elimination(rc_to_i(0, 1), 5)],
+        cause_cells=[rc_to_i(0, 2)],
+        use_color=False,
+    )
+    if "5" not in grid or "|" not in grid or "1 2 3" not in grid:
+        raise AssertionError(f"Unexpected progress grid output: {grid}")
+
+    if ansi_text("x", fg=31, bold=True, enabled=False) != "x":
+        raise AssertionError("Expected disabled ANSI output to return plain text")
+    if "\033[" not in ansi_text("x", fg=31, bold=True, enabled=True):
+        raise AssertionError("Expected enabled ANSI output to include escape sequence")
+    if not wait_for_keypress(False):
+        raise AssertionError("Expected disabled keypress wait to continue")
+
+    timing = TechniqueTiming()
+    timing.record_run(2.0, True)
+    timing.record_use()
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+        print_timing_summary({"Naked Single": timing})
+    if "Technique timing summary" not in stdout.getvalue():
+        raise AssertionError(f"Unexpected timing summary: {stdout.getvalue()}")
+
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+        print_progress_steps(steps, set(), [ALL_DIGITS_MASK] * 81, "detailed", False, False)
+    if "Legend:" not in stdout.getvalue() or "Before step 1" not in stdout.getvalue():
+        raise AssertionError(f"Unexpected progress steps output: {stdout.getvalue()}")
+
+
 def test_benchmark_profile_output() -> None:
     result = run_benchmark_command(["--only-original", "--strategy", "fastest", "--profile-slowest", "3"])
     if result.returncode != 0:
@@ -193,8 +333,10 @@ def main() -> int:
         test_human_logic_only,
         test_step_styles,
         test_cli_validation,
+        test_cli_helpers_in_process,
         test_basic_techniques_directly,
         test_timing_measurements,
+        test_visualization_directly,
         test_benchmark_profile_output,
         test_all_puzzle_fixtures,
     ]
