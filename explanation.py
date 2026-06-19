@@ -5,6 +5,7 @@ from typing import Iterable, List, Optional, Sequence
 
 from techniques.common import (
     Elimination,
+    ExplanationStep,
     Move,
     PEERS,
     Placement,
@@ -23,13 +24,13 @@ def explanation_steps(
     after: SudokuState,
     move: Move,
     detailed_steps: bool,
-) -> List[Move]:
+) -> List[ExplanationStep]:
     if detailed_steps:
         return StepExpander(before, after, move).expanded_steps()
     return coarse_expanded_steps(before, after, move)
 
 
-def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -> List[Move]:
+def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -> List[ExplanationStep]:
     changed_cells = {
         cell
         for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates))
@@ -55,9 +56,7 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
                 full_move.eliminations.append(Elimination(cell, digit))
                 known_eliminations.add(key)
 
-    full_move.after_candidates = after.candidates[:]
-    full_move.changed_cells = sorted(changed_cells)
-    steps = [full_move]
+    steps = [ExplanationStep(full_move, after.candidates[:], sorted(changed_cells))]
     placed_cells = {placement.cell for placement in full_move.placements}
 
     for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates)):
@@ -72,10 +71,8 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
                 reason=f"r{r+1}c{c+1} is forced to {digit}.",
                 placements=[Placement(cell, digit)],
             )
-            implied_move.after_candidates = after.candidates[:]
-            implied_move.changed_cells = [cell]
             implied_move.timing_ms = 0.0
-            steps.append(implied_move)
+            steps.append(ExplanationStep(implied_move, after.candidates[:], [cell]))
 
     return steps
 
@@ -86,11 +83,11 @@ class StepExpander:
         self.after = after
         self.move = move
         self.replay = before.clone()
-        self.steps: List[Move] = []
+        self.steps: List[ExplanationStep] = []
         self.forced_queue = deque[tuple[int, int]]()
         self.queued_forced: set[int] = set()
 
-    def expanded_steps(self) -> List[Move]:
+    def expanded_steps(self) -> List[ExplanationStep]:
         for placement in self.move.placements:
             cell = placement.cell
             digit = placement.digit
@@ -118,13 +115,11 @@ class StepExpander:
 
         return self.steps
 
-    def fallback(self) -> List[Move]:
+    def fallback(self) -> List[ExplanationStep]:
         return coarse_expanded_steps(self.before, self.after, self.move)
 
-    def append_step(self, step: Move, changed_cells: Iterable[int]) -> None:
-        step.after_candidates = self.replay.candidates[:]
-        step.changed_cells = sorted(set(changed_cells))
-        self.steps.append(step)
+    def append_step(self, move: Move, changed_cells: Iterable[int]) -> None:
+        self.steps.append(ExplanationStep(move, self.replay.candidates[:], sorted(set(changed_cells))))
 
     def queue_forced_single(self, cell: int, difficulty: int) -> None:
         if (

@@ -163,8 +163,6 @@ class Move:
     placements: List[Placement] = field(default_factory=list)
     eliminations: List[Elimination] = field(default_factory=list)
     difficulty: int = 0
-    after_candidates: Optional[List[int]] = field(default=None, repr=False)
-    changed_cells: List[int] = field(default_factory=list, repr=False)
     cause_cells: List[int] = field(default_factory=list, repr=False)
     timing_ms: float = field(default=0.0, repr=False)
 
@@ -172,6 +170,44 @@ class Move:
         if self.reason.startswith(f"{self.technique}:"):
             return self.reason
         return f"{self.technique}: {self.reason}"
+
+
+@dataclass
+class ExplanationStep:
+    move: Move
+    after_candidates: Optional[List[int]] = field(default=None, repr=False)
+    changed_cells: List[int] = field(default_factory=list, repr=False)
+
+    @property
+    def technique(self) -> str:
+        return self.move.technique
+
+    @property
+    def reason(self) -> str:
+        return self.move.reason
+
+    @property
+    def placements(self) -> List[Placement]:
+        return self.move.placements
+
+    @property
+    def eliminations(self) -> List[Elimination]:
+        return self.move.eliminations
+
+    @property
+    def difficulty(self) -> int:
+        return self.move.difficulty
+
+    @property
+    def cause_cells(self) -> List[int]:
+        return self.move.cause_cells
+
+    @property
+    def timing_ms(self) -> float:
+        return self.move.timing_ms
+
+    def summary(self) -> str:
+        return self.move.summary()
 
 
 # ============================================================

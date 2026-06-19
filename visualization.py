@@ -5,6 +5,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 
 from techniques.common import (
     Elimination,
+    ExplanationStep,
     Move,
     TechniqueTiming,
     digits_from_mask,
@@ -16,24 +17,24 @@ from techniques.common import (
 )
 
 
-def move_change_details(move: Move) -> List[str]:
+def move_change_details(move: Move | ExplanationStep) -> List[str]:
     details = [placement_text(placement) for placement in move.placements]
     details.extend(elimination_text(elimination) for elimination in move.eliminations)
     return details
 
 
-def timing_text(move: Move) -> str:
+def timing_text(move: Move | ExplanationStep) -> str:
     return f"{move.timing_ms:.2f} ms"
 
 
-def compact_move_text(move: Move) -> str:
+def compact_move_text(move: Move | ExplanationStep) -> str:
     details = move_change_details(move)
     if details:
         return f"{move.technique} [{timing_text(move)}]: {', '.join(details)}"
     return f"{move.summary()} [{timing_text(move)}]"
 
 
-def detailed_move_text(move: Move) -> str:
+def detailed_move_text(move: Move | ExplanationStep) -> str:
     details = move_change_details(move)
     if details:
         return f"{move.summary()} [{timing_text(move)}] Changes: {', '.join(details)}"
@@ -50,7 +51,7 @@ def plural_technique_name(technique: str) -> str:
     return f"{technique}s"
 
 
-def combine_step_group(technique: str, moves: Sequence[Move]) -> Move:
+def combine_step_group(technique: str, moves: Sequence[ExplanationStep]) -> ExplanationStep:
     placements = [
         placement
         for move in moves
@@ -76,25 +77,24 @@ def combine_step_group(technique: str, moves: Sequence[Move]) -> Move:
     change_count = len(details)
     noun = "change" if change_count == 1 else "changes"
 
-    combined = Move(
+    combined_move = Move(
         technique=technique,
         difficulty=max(move.difficulty for move in moves),
         reason=f"{change_count} {noun}.",
         placements=placements,
         eliminations=eliminations,
     )
-    combined.after_candidates = moves[-1].after_candidates[:] if moves[-1].after_candidates is not None else None
-    combined.changed_cells = sorted(changed_cells)
-    combined.cause_cells = sorted(cause_cells)
-    combined.timing_ms = sum(move.timing_ms for move in moves)
-    return combined
+    combined_move.cause_cells = sorted(cause_cells)
+    combined_move.timing_ms = sum(move.timing_ms for move in moves)
+    after_candidates = moves[-1].after_candidates[:] if moves[-1].after_candidates is not None else None
+    return ExplanationStep(combined_move, after_candidates, sorted(changed_cells))
 
 
-def steps_for_style(steps: Sequence[Move], style: str) -> List[Move]:
+def steps_for_style(steps: Sequence[ExplanationStep], style: str) -> List[ExplanationStep]:
     if style == "detailed":
         return list(steps)
 
-    formatted: List[Move] = []
+    formatted: List[ExplanationStep] = []
     i = 0
     while i < len(steps):
         current = steps[i]
@@ -124,8 +124,8 @@ def steps_for_style(steps: Sequence[Move], style: str) -> List[Move]:
     return formatted
 
 
-def group_progress_propagations(steps: Sequence[Move]) -> List[Move]:
-    grouped: List[Move] = []
+def group_progress_propagations(steps: Sequence[ExplanationStep]) -> List[ExplanationStep]:
+    grouped: List[ExplanationStep] = []
     i = 0
     while i < len(steps):
         current = steps[i]
@@ -146,11 +146,11 @@ def group_progress_propagations(steps: Sequence[Move]) -> List[Move]:
     return grouped
 
 
-def steps_for_progress(steps: Sequence[Move], style: str) -> List[Move]:
+def steps_for_progress(steps: Sequence[ExplanationStep], style: str) -> List[ExplanationStep]:
     return group_progress_propagations(steps_for_style(steps, style))
 
 
-def format_steps(steps: Sequence[Move], style: str) -> List[str]:
+def format_steps(steps: Sequence[ExplanationStep], style: str) -> List[str]:
     styled_steps = steps_for_style(steps, style)
     if style == "detailed":
         return [detailed_move_text(step) for step in styled_steps]
@@ -387,7 +387,7 @@ def wait_for_keypress(enabled: bool) -> bool:
 
 
 def print_progress_steps(
-    steps: Sequence[Move],
+    steps: Sequence[ExplanationStep],
     given_cells: set[int],
     initial_candidates: Sequence[int],
     style: str,

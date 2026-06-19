@@ -8,6 +8,7 @@ from typing import List, Optional, Sequence, Tuple
 from explanation import explanation_steps
 from strategies import techniques_for_strategy
 from techniques.common import (
+    ExplanationStep,
     Move,
     Placement,
     SudokuState,
@@ -127,8 +128,8 @@ class SudokuSolver:
         state: SudokuState,
         explain: bool = True,
         detailed_steps: bool = True,
-    ) -> Tuple[bool, List[Move]]:
-        steps: List[Move] = []
+    ) -> Tuple[bool, List[ExplanationStep]]:
+        steps: List[ExplanationStep] = []
 
         while not state.solved() or (explain and self._has_unprocessed_singles(state)):
             move = self.next_move(state)
@@ -149,11 +150,11 @@ class SudokuSolver:
         state: SudokuState,
         explain: bool = True,
         detailed_steps: bool = True,
-    ) -> Tuple[Optional[SudokuState], List[Move]]:
+    ) -> Tuple[Optional[SudokuState], List[ExplanationStep]]:
         """
         Logic first; if stuck, use MRV backtracking.
         """
-        all_steps: List[Move] = []
+        all_steps: List[ExplanationStep] = []
 
         solved_logically, logic_steps = self.solve_logic(state, explain=explain, detailed_steps=detailed_steps)
         all_steps.extend(logic_steps)
@@ -195,7 +196,7 @@ class SudokuSolver:
                     guess_steps = (
                         explanation_steps(before_guess, after_guess, guess_move, detailed_steps)
                         if before_guess and after_guess
-                        else [guess_move]
+                        else [ExplanationStep(guess_move)]
                     )
                     return result, all_steps + guess_steps + child_steps
                 return result, all_steps
@@ -207,7 +208,7 @@ class SudokuSolver:
         state: SudokuState,
         explain: bool = True,
         detailed_steps: bool = True,
-    ) -> Tuple[Optional[SudokuState], List[Move]]:
+    ) -> Tuple[Optional[SudokuState], List[ExplanationStep]]:
         if state.solved():
             return state, []
 
@@ -244,7 +245,7 @@ class SudokuSolver:
                     guess_steps = (
                         explanation_steps(before_guess, after_guess, guess_move, detailed_steps)
                         if before_guess and after_guess
-                        else [guess_move]
+                        else [ExplanationStep(guess_move)]
                     )
                     return result, guess_steps + child_steps
                 return result, []
