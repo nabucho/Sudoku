@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 from techniques import (
     ALSXZ,
     ALSWing,
@@ -40,7 +38,7 @@ from techniques import (
 from techniques.common import Technique
 
 
-def default_techniques() -> List[Technique]:
+def default_techniques() -> list[Technique]:
     return [
         NakedSingle(),
         HiddenSingle(),
@@ -84,7 +82,7 @@ def default_techniques() -> List[Technique]:
     ]
 
 
-def fast_techniques() -> List[Technique]:
+def fast_techniques() -> list[Technique]:
     return [
         HiddenSingle(),
         NakedSingle(),
@@ -94,7 +92,7 @@ def fast_techniques() -> List[Technique]:
     ]
 
 
-def balanced_techniques() -> List[Technique]:
+def balanced_techniques() -> list[Technique]:
     return [
         HiddenSingle(),
         NakedSingle(),
@@ -106,7 +104,7 @@ def balanced_techniques() -> List[Technique]:
     ]
 
 
-def techniques_for_strategy(strategy: str) -> List[Technique]:
+def techniques_for_strategy(strategy: str) -> list[Technique]:
     if strategy == "fastest":
         return fast_techniques()
     if strategy == "balanced":

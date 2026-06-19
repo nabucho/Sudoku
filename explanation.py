@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from collections import deque
-from typing import Iterable, List, Optional, Sequence
 
 from techniques.common import (
     Elimination,
@@ -24,13 +24,13 @@ def explanation_steps(
     after: SudokuState,
     move: Move,
     detailed_steps: bool,
-) -> List[ExplanationStep]:
+) -> list[ExplanationStep]:
     if detailed_steps:
         return StepExpander(before, after, move).expanded_steps()
     return coarse_expanded_steps(before, after, move)
 
 
-def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -> List[ExplanationStep]:
+def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -> list[ExplanationStep]:
     changed_cells = {
         cell
         for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates))
@@ -82,11 +82,11 @@ class StepExpander:
         self.after = after
         self.move = move
         self.replay = before.clone()
-        self.steps: List[ExplanationStep] = []
+        self.steps: list[ExplanationStep] = []
         self.forced_queue = deque[tuple[int, int]]()
         self.queued_forced: set[int] = set()
 
-    def expanded_steps(self) -> List[ExplanationStep]:
+    def expanded_steps(self) -> list[ExplanationStep]:
         for placement in self.move.placements:
             cell = placement.cell
             digit = placement.digit
@@ -114,7 +114,7 @@ class StepExpander:
 
         return self.steps
 
-    def fallback(self) -> List[ExplanationStep]:
+    def fallback(self) -> list[ExplanationStep]:
         return coarse_expanded_steps(self.before, self.after, self.move)
 
     def append_step(self, move: Move, changed_cells: Iterable[int]) -> None:
@@ -140,7 +140,7 @@ class StepExpander:
         return True
 
     def propagate_digit(self, source_cell: int, digit: int, difficulty: int) -> bool:
-        eliminations: List[Elimination] = []
+        eliminations: list[Elimination] = []
         for peer in sorted(PEERS[source_cell]):
             if not self.replay.can_place(peer, digit):
                 continue
@@ -203,10 +203,10 @@ class StepExpander:
         technique: str,
         reason: str,
         difficulty: int,
-        cause_cells: Optional[Iterable[int]] = None,
+        cause_cells: Iterable[int] | None = None,
     ) -> bool:
-        applied: List[Elimination] = []
-        changed_cells: List[int] = []
+        applied: list[Elimination] = []
+        changed_cells: list[int] = []
 
         for elimination in eliminations:
             dmask = bit(elimination.digit)

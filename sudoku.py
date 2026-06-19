@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from typing import List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 from explanation import explanation_steps
 from strategies import techniques_for_strategy
@@ -23,7 +23,7 @@ from visualization import format_steps, print_progress_steps, print_timing_summa
 
 
 class SudokuSolver:
-    def __init__(self, techniques: Optional[List[Technique]] = None, strategy: str = "human"):
+    def __init__(self, techniques: list[Technique] | None = None, strategy: str = "human"):
         self.strategy = strategy
         self.timing_stats: dict[str, TechniqueTiming] = {}
         if techniques is not None:
@@ -39,7 +39,7 @@ class SudokuSolver:
             self.timing_stats[technique_name] = TechniqueTiming()
         return self.timing_stats[technique_name]
 
-    def _find_moves_timed(self, technique: Technique, state: SudokuState) -> List[Move]:
+    def _find_moves_timed(self, technique: Technique, state: SudokuState) -> list[Move]:
         start = time.perf_counter()
         moves = technique.find_moves(state)
         elapsed_ms = (time.perf_counter() - start) * 1000.0
@@ -61,7 +61,7 @@ class SudokuSolver:
         if successful:
             timing.record_use()
 
-    def next_move(self, state: SudokuState) -> Optional[Move]:
+    def next_move(self, state: SudokuState) -> Move | None:
         """
         Pick the first valid move according to technique order.
         """
@@ -74,7 +74,7 @@ class SudokuSolver:
                 return self._record_move_use(self._best_move(moves))
         return None
 
-    def _best_move(self, moves: List[Move]) -> Move:
+    def _best_move(self, moves: list[Move]) -> Move:
         """
         Simple heuristic:
           - more eliminations / placements first
@@ -89,9 +89,9 @@ class SudokuSolver:
             )
         )
 
-    def _highest_impact_move(self, state: SudokuState) -> Optional[Move]:
-        best_move: Optional[Move] = None
-        best_score: Optional[Tuple[int, int, int, int]] = None
+    def _highest_impact_move(self, state: SudokuState) -> Move | None:
+        best_move: Move | None = None
+        best_score: tuple[int, int, int, int] | None = None
 
         before_solved = sum(1 for mask in state.candidates if is_single(mask))
         before_candidates = sum(bit_count(mask) for mask in state.candidates)
@@ -128,8 +128,8 @@ class SudokuSolver:
         state: SudokuState,
         explain: bool = True,
         detailed_steps: bool = True,
-    ) -> Tuple[bool, List[ExplanationStep]]:
-        steps: List[ExplanationStep] = []
+    ) -> tuple[bool, list[ExplanationStep]]:
+        steps: list[ExplanationStep] = []
 
         while not state.solved() or (explain and self._has_unprocessed_singles(state)):
             move = self.next_move(state)
@@ -150,11 +150,11 @@ class SudokuSolver:
         state: SudokuState,
         explain: bool = True,
         detailed_steps: bool = True,
-    ) -> Tuple[Optional[SudokuState], List[ExplanationStep]]:
+    ) -> tuple[SudokuState | None, list[ExplanationStep]]:
         """
         Logic first; if stuck, use MRV backtracking.
         """
-        all_steps: List[ExplanationStep] = []
+        all_steps: list[ExplanationStep] = []
 
         solved_logically, logic_steps = self.solve_logic(state, explain=explain, detailed_steps=detailed_steps)
         all_steps.extend(logic_steps)
@@ -208,7 +208,7 @@ class SudokuSolver:
         state: SudokuState,
         explain: bool = True,
         detailed_steps: bool = True,
-    ) -> Tuple[Optional[SudokuState], List[ExplanationStep]]:
+    ) -> tuple[SudokuState | None, list[ExplanationStep]]:
         if state.solved():
             return state, []
 
@@ -270,7 +270,7 @@ DEFAULT_PUZZLE = (
 )
 
 
-def read_puzzle_argument(puzzle: Optional[str], puzzle_file: Optional[str]) -> str:
+def read_puzzle_argument(puzzle: str | None, puzzle_file: str | None) -> str:
     if puzzle and puzzle_file:
         raise ValueError("Use either a puzzle argument or --file, not both.")
 
@@ -366,7 +366,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
@@ -396,7 +396,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         result, steps = solver.solve_search_first(state, explain=explain, detailed_steps=detailed_steps)
     elif args.logic_only:
         solved, steps = solver.solve_logic(state, explain=explain, detailed_steps=detailed_steps)
-        result: Optional[SudokuState] = state if solved else None
+        result: SudokuState | None = state if solved else None
     else:
         result, steps = solver.solve_with_search(state, explain=explain, detailed_steps=detailed_steps)
 
