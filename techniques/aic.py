@@ -9,6 +9,58 @@ CandidateNode = tuple[int, int]
 GroupedNode = tuple[int, tuple[int, ...]]
 
 
+def _add_link(links: dict, left, right) -> None:
+    links.setdefault(left, set()).add(right)
+    links.setdefault(right, set()).add(left)
+
+
+def _is_duplicate_elimination(seen: set, path: list, eliminations: List[Elimination]) -> bool:
+    elimination_key = tuple((elimination.cell, elimination.digit) for elimination in eliminations)
+    path_key = tuple(path)
+    reverse_path_key = tuple(reversed(path))
+    key = (path_key, elimination_key)
+    reverse_key = (reverse_path_key, elimination_key)
+    if key in seen or reverse_key in seen:
+        return True
+    seen.add(key)
+    return False
+
+
+def _candidate_common_peer_eliminations(
+    state: SudokuState,
+    start_cell: int,
+    end_cell: int,
+    digit: int,
+) -> List[Elimination]:
+    common_peers = PEERS[start_cell] & PEERS[end_cell]
+    return [
+        Elimination(cell, digit)
+        for cell in sorted(common_peers)
+        if cell not in (start_cell, end_cell) and state.can_place(cell, digit)
+    ]
+
+
+def _grouped_common_peer_eliminations(
+    state: SudokuState,
+    start_cells: tuple[int, ...],
+    end_cells: tuple[int, ...],
+    digit: int,
+) -> List[Elimination]:
+    common_peers = set(range(81))
+    for cell in (*start_cells, *end_cells):
+        common_peers &= PEERS[cell]
+    blocked = set(start_cells) | set(end_cells)
+    return [
+        Elimination(cell, digit)
+        for cell in sorted(common_peers - blocked)
+        if state.can_place(cell, digit)
+    ]
+
+
+def _next_link_type(link_type: str) -> str:
+    return "weak" if link_type == "strong" else "strong"
+
+
 class AIC(Technique):
     name = "AIC"
     difficulty = 8
@@ -24,7 +76,6 @@ class AIC(Technique):
         for start in sorted(strong_links):
             self._extend_chain(
                 state,
-                start,
                 start,
                 "strong",
                 [start],
@@ -44,14 +95,6 @@ class AIC(Technique):
         strong_links: dict[CandidateNode, set[CandidateNode]] = {}
         weak_links: dict[CandidateNode, set[CandidateNode]] = {}
 
-        def add_link(
-            links: dict[CandidateNode, set[CandidateNode]],
-            left: CandidateNode,
-            right: CandidateNode,
-        ) -> None:
-            links.setdefault(left, set()).add(right)
-            links.setdefault(right, set()).add(left)
-
         # Cell links: bivalue cells are strong; all candidate pairs in a cell are weak.
         for cell in range(81):
             if is_single(state.candidate_mask(cell)):
@@ -59,25 +102,24 @@ class AIC(Technique):
 
             nodes = [(cell, digit) for digit in state.candidate_digits(cell)]
             for left, right in combinations(nodes, 2):
-                add_link(weak_links, left, right)
+                _add_link(weak_links, left, right)
                 if len(nodes) == 2:
-                    add_link(strong_links, left, right)
+                    _add_link(strong_links, left, right)
 
         # Unit links: conjugate digit pairs are strong; all same-digit unit pairs are weak.
         for unit in ALL_UNITS:
             for digit in range(1, 10):
                 nodes = [(cell, digit) for cell in unit if state.can_place(cell, digit)]
                 for left, right in combinations(nodes, 2):
-                    add_link(weak_links, left, right)
+                    _add_link(weak_links, left, right)
                 if len(nodes) == 2:
-                    add_link(strong_links, nodes[0], nodes[1])
+                    _add_link(strong_links, nodes[0], nodes[1])
 
         return strong_links, weak_links
 
     def _extend_chain(
         self,
         state: SudokuState,
-        start: CandidateNode,
         current: CandidateNode,
         next_link_type: str,
         path: List[CandidateNode],
@@ -91,7 +133,7 @@ class AIC(Technique):
             return
 
         links = strong_links if next_link_type == "strong" else weak_links
-        following_link_type = "weak" if next_link_type == "strong" else "strong"
+        following_link_type = _next_link_type(next_link_type)
 
         for next_node in sorted(links.get(current, set())):
             if next_node in path:
@@ -105,7 +147,6 @@ class AIC(Technique):
 
             self._extend_chain(
                 state,
-                start,
                 next_node,
                 following_link_type,
                 next_path,
@@ -129,12 +170,7 @@ class AIC(Technique):
         eliminations: List[Elimination] = []
 
         if start_digit == end_digit and start_cell != end_cell:
-            common_peers = PEERS[start_cell] & PEERS[end_cell]
-            eliminations = [
-                Elimination(cell, start_digit)
-                for cell in sorted(common_peers)
-                if cell not in (start_cell, end_cell) and state.can_place(cell, start_digit)
-            ]
+            eliminations = _candidate_common_peer_eliminations(state, start_cell, end_cell, start_digit)
         elif start_cell == end_cell and start_digit != end_digit:
             endpoint_digits = {start_digit, end_digit}
             eliminations = [
@@ -146,14 +182,8 @@ class AIC(Technique):
         if not eliminations:
             return
 
-        elimination_key = tuple((elimination.cell, elimination.digit) for elimination in eliminations)
-        path_key = tuple(path)
-        reverse_path_key = tuple(reversed(path))
-        key = (path_key, elimination_key)
-        reverse_key = (reverse_path_key, elimination_key)
-        if key in seen or reverse_key in seen:
+        if _is_duplicate_elimination(seen, path, eliminations):
             return
-        seen.add(key)
 
         chain_text = self._chain_text(path, edge_types)
         moves.append(
@@ -189,21 +219,13 @@ class XChain(AIC):
         strong_links: dict[CandidateNode, set[CandidateNode]] = {}
         weak_links: dict[CandidateNode, set[CandidateNode]] = {}
 
-        def add_link(
-            links: dict[CandidateNode, set[CandidateNode]],
-            left: CandidateNode,
-            right: CandidateNode,
-        ) -> None:
-            links.setdefault(left, set()).add(right)
-            links.setdefault(right, set()).add(left)
-
         for unit in ALL_UNITS:
             for digit in range(1, 10):
                 nodes = [(cell, digit) for cell in unit if state.can_place(cell, digit)]
                 for left, right in combinations(nodes, 2):
-                    add_link(weak_links, left, right)
+                    _add_link(weak_links, left, right)
                 if len(nodes) == 2:
-                    add_link(strong_links, nodes[0], nodes[1])
+                    _add_link(strong_links, nodes[0], nodes[1])
 
         return strong_links, weak_links
 
@@ -220,23 +242,12 @@ class XChain(AIC):
         if digit != end_digit or start_cell == end_cell:
             return
 
-        common_peers = PEERS[start_cell] & PEERS[end_cell]
-        eliminations = [
-            Elimination(cell, digit)
-            for cell in sorted(common_peers)
-            if cell not in (start_cell, end_cell) and state.can_place(cell, digit)
-        ]
+        eliminations = _candidate_common_peer_eliminations(state, start_cell, end_cell, digit)
         if not eliminations:
             return
 
-        elimination_key = tuple((elimination.cell, elimination.digit) for elimination in eliminations)
-        path_key = tuple(path)
-        reverse_path_key = tuple(reversed(path))
-        key = (path_key, elimination_key)
-        reverse_key = (reverse_path_key, elimination_key)
-        if key in seen or reverse_key in seen:
+        if _is_duplicate_elimination(seen, path, eliminations):
             return
-        seen.add(key)
 
         chain_text = self._chain_text(path, edge_types)
         moves.append(
@@ -262,7 +273,10 @@ class GroupedAIC(Technique):
         self.max_moves = max_moves
 
     def find_moves(self, state: SudokuState) -> List[Move]:
-        strong_links, weak_links = self._build_links(state, include_cell_links=True)
+        return self._find_grouped_moves(state, include_cell_links=True)
+
+    def _find_grouped_moves(self, state: SudokuState, *, include_cell_links: bool) -> List[Move]:
+        strong_links, weak_links = self._build_links(state, include_cell_links=include_cell_links)
         moves: List[Move] = []
         seen = set()
 
@@ -293,14 +307,6 @@ class GroupedAIC(Technique):
         strong_links: dict[GroupedNode, set[GroupedNode]] = {}
         weak_links: dict[GroupedNode, set[GroupedNode]] = {}
 
-        def add_link(
-            links: dict[GroupedNode, set[GroupedNode]],
-            left: GroupedNode,
-            right: GroupedNode,
-        ) -> None:
-            links.setdefault(left, set()).add(right)
-            links.setdefault(right, set()).add(left)
-
         for digit, nodes in nodes_by_digit.items():
             for unit in ALL_UNITS:
                 unit_cells = frozenset(unit)
@@ -317,9 +323,9 @@ class GroupedAIC(Technique):
                     right_cells = set(right[1])
                     if left_cells & right_cells:
                         continue
-                    add_link(weak_links, left, right)
+                    _add_link(weak_links, left, right)
                     if frozenset(left_cells | right_cells) == unit_candidates:
-                        add_link(strong_links, left, right)
+                        _add_link(strong_links, left, right)
 
         if include_cell_links:
             for cell in range(81):
@@ -330,9 +336,9 @@ class GroupedAIC(Technique):
                     for digit in state.candidate_digits(cell)
                 ]
                 for left, right in combinations(cell_nodes, 2):
-                    add_link(weak_links, left, right)
+                    _add_link(weak_links, left, right)
                     if len(cell_nodes) == 2:
-                        add_link(strong_links, left, right)
+                        _add_link(strong_links, left, right)
 
         return strong_links, weak_links
 
@@ -372,7 +378,7 @@ class GroupedAIC(Technique):
             return
 
         links = strong_links if next_link_type == "strong" else weak_links
-        following_link_type = "weak" if next_link_type == "strong" else "strong"
+        following_link_type = _next_link_type(next_link_type)
 
         for next_node in sorted(links.get(current, set())):
             if len(moves) >= self.max_moves:
@@ -410,15 +416,7 @@ class GroupedAIC(Technique):
         eliminations: List[Elimination] = []
 
         if start_digit == end_digit and set(start_cells) != set(end_cells):
-            common_peers = set(range(81))
-            for cell in (*start_cells, *end_cells):
-                common_peers &= PEERS[cell]
-            blocked = set(start_cells) | set(end_cells)
-            eliminations = [
-                Elimination(cell, start_digit)
-                for cell in sorted(common_peers - blocked)
-                if state.can_place(cell, start_digit)
-            ]
+            eliminations = _grouped_common_peer_eliminations(state, start_cells, end_cells, start_digit)
         elif len(start_cells) == 1 and start_cells == end_cells and start_digit != end_digit:
             endpoint_digits = {start_digit, end_digit}
             cell = start_cells[0]
@@ -431,14 +429,8 @@ class GroupedAIC(Technique):
         if not eliminations:
             return
 
-        elimination_key = tuple((elimination.cell, elimination.digit) for elimination in eliminations)
-        path_key = tuple(path)
-        reverse_path_key = tuple(reversed(path))
-        key = (path_key, elimination_key)
-        reverse_key = (reverse_path_key, elimination_key)
-        if key in seen or reverse_key in seen:
+        if _is_duplicate_elimination(seen, path, eliminations):
             return
-        seen.add(key)
 
         chain_text = self._chain_text(path, edge_types)
         moves.append(
@@ -470,23 +462,4 @@ class GroupedXChain(GroupedAIC):
     difficulty = 7
 
     def find_moves(self, state: SudokuState) -> List[Move]:
-        strong_links, weak_links = self._build_links(state, include_cell_links=False)
-        moves: List[Move] = []
-        seen = set()
-
-        for start in sorted(strong_links):
-            if len(moves) >= self.max_moves:
-                break
-            self._extend_chain(
-                state,
-                start,
-                "strong",
-                [start],
-                [],
-                strong_links,
-                weak_links,
-                seen,
-                moves,
-            )
-
-        return moves
+        return self._find_grouped_moves(state, include_cell_links=False)
