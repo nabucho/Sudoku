@@ -3,25 +3,20 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
+from explanation import explanation_steps
 from strategies import techniques_for_strategy
 from techniques.common import (
-    Elimination,
     Move,
-    PEERS,
     Placement,
     SudokuState,
     Technique,
     TechniqueTiming,
-    bit,
     bit_count,
-    digits_from_mask,
     i_to_rc,
     is_single,
-    placement_text,
     rc_to_i,
-    single_digit,
 )
 from visualization import format_steps, print_progress_steps, print_timing_summary
 
@@ -121,215 +116,6 @@ class SudokuSolver:
 
         return self._record_move_use(best_move) if best_move is not None else None
 
-    def _expanded_steps(self, before: SudokuState, after: SudokuState, move: Move) -> List[Move]:
-        replay = before.clone()
-        steps: List[Move] = []
-        forced_queue: List[Tuple[int, int]] = []
-        queued_forced: set[int] = set()
-
-        def append_step(step: Move, changed_cells: Iterable[int]) -> None:
-            step.after_candidates = replay.candidates[:]
-            step.changed_cells = sorted(set(changed_cells))
-            steps.append(step)
-
-        def queue_forced_single(cell: int, difficulty: int) -> None:
-            if cell not in replay.fixed_cells and cell not in queued_forced and is_single(replay.candidate_mask(cell)):
-                forced_queue.append((cell, difficulty))
-                queued_forced.add(cell)
-
-        def process_forced_singles() -> bool:
-            while forced_queue:
-                cell, difficulty = forced_queue.pop(0)
-                queued_forced.discard(cell)
-                if cell in replay.fixed_cells or not is_single(replay.candidate_mask(cell)):
-                    continue
-                if not select_forced_single(cell, difficulty):
-                    return False
-            return True
-
-        def propagate_digit(source_cell: int, digit: int, difficulty: int) -> bool:
-            eliminations: List[Elimination] = []
-            for peer in sorted(PEERS[source_cell]):
-                if not replay.can_place(peer, digit):
-                    continue
-
-                new_mask = replay.candidate_mask(peer) & ~bit(digit)
-                if new_mask == 0:
-                    return False
-
-                replay.candidates[peer] = new_mask
-                eliminations.append(Elimination(peer, digit))
-                if is_single(new_mask):
-                    queue_forced_single(peer, difficulty)
-
-            if eliminations:
-                noun = "peer" if len(eliminations) == 1 else "peers"
-                step = Move(
-                    technique="Propagation",
-                    difficulty=difficulty,
-                    reason=f"{placement_text(Placement(source_cell, digit))} removes {digit} from {len(eliminations)} {noun}.",
-                    eliminations=eliminations,
-                )
-                step.cause_cells = [source_cell]
-                step.timing_ms = 0.0
-                append_step(step, [elimination.cell for elimination in eliminations])
-
-            return True
-
-        def select_digit(cell: int, digit: int, technique: str, reason: str, difficulty: int) -> bool:
-            if not replay.can_place(cell, digit):
-                return False
-
-            replay.candidates[cell] = bit(digit)
-            replay.fixed_cells.add(cell)
-            step = Move(
-                technique=technique,
-                difficulty=difficulty,
-                reason=reason,
-                placements=[Placement(cell, digit)],
-            )
-            step.timing_ms = move.timing_ms if technique == move.technique else 0.0
-            append_step(
-                step,
-                [cell],
-            )
-
-            if not propagate_digit(cell, digit, difficulty):
-                return False
-            return process_forced_singles()
-
-        def select_forced_single(cell: int, difficulty: int) -> bool:
-            digit = single_digit(replay.candidate_mask(cell))
-            r, c = i_to_rc(cell)
-            return select_digit(
-                cell,
-                digit,
-                "Naked Single",
-                f"r{r+1}c{c+1} is forced to {digit}.",
-                difficulty,
-            )
-
-        def eliminate_digits_group(
-            eliminations: Sequence[Elimination],
-            technique: str,
-            reason: str,
-            difficulty: int,
-            cause_cells: Optional[Iterable[int]] = None,
-        ) -> bool:
-            applied: List[Elimination] = []
-            changed_cells: List[int] = []
-
-            for elimination in eliminations:
-                dmask = bit(elimination.digit)
-                cur = replay.candidate_mask(elimination.cell)
-                if not (cur & dmask):
-                    continue
-
-                new_mask = cur & ~dmask
-                if new_mask == 0:
-                    return False
-
-                replay.candidates[elimination.cell] = new_mask
-                applied.append(elimination)
-                changed_cells.append(elimination.cell)
-                if is_single(new_mask) and elimination.cell not in replay.fixed_cells:
-                    queue_forced_single(elimination.cell, difficulty)
-
-            if applied:
-                step = Move(
-                    technique=technique,
-                    difficulty=difficulty,
-                    reason=reason,
-                    eliminations=applied,
-                )
-                step.cause_cells = sorted(set(cause_cells or []))
-                step.timing_ms = move.timing_ms if technique == move.technique else 0.0
-                append_step(step, changed_cells)
-
-            return True
-
-        for placement in move.placements:
-            cell = placement.cell
-            digit = placement.digit
-            if not replay.can_place(cell, digit):
-                return self._coarse_expanded_steps(before, after, move)
-
-            if not select_digit(cell, digit, move.technique, move.reason, move.difficulty):
-                return self._coarse_expanded_steps(before, after, move)
-
-        if move.eliminations:
-            if not eliminate_digits_group(
-                move.eliminations,
-                move.technique,
-                move.reason,
-                move.difficulty,
-                move.cause_cells,
-            ):
-                return self._coarse_expanded_steps(before, after, move)
-
-        if not process_forced_singles():
-            return self._coarse_expanded_steps(before, after, move)
-
-        if replay.candidates != after.candidates:
-            return self._coarse_expanded_steps(before, after, move)
-
-        return steps
-
-    def _explanation_steps(self, before: SudokuState, after: SudokuState, move: Move, detailed_steps: bool) -> List[Move]:
-        if detailed_steps:
-            return self._expanded_steps(before, after, move)
-        return self._coarse_expanded_steps(before, after, move)
-
-    def _coarse_expanded_steps(self, before: SudokuState, after: SudokuState, move: Move) -> List[Move]:
-        changed_cells = {
-            cell
-            for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates))
-            if before_mask != after_mask
-        }
-
-        full_move = Move(
-            technique=move.technique,
-            difficulty=move.difficulty,
-            reason=move.reason,
-            placements=move.placements[:],
-            eliminations=move.eliminations[:],
-        )
-        full_move.cause_cells = move.cause_cells[:]
-        full_move.timing_ms = move.timing_ms
-
-        known_eliminations = {(elimination.cell, elimination.digit) for elimination in full_move.eliminations}
-        for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates)):
-            removed_mask = before_mask & ~after_mask
-            for digit in digits_from_mask(removed_mask):
-                key = (cell, digit)
-                if key not in known_eliminations:
-                    full_move.eliminations.append(Elimination(cell, digit))
-                    known_eliminations.add(key)
-
-        full_move.after_candidates = after.candidates[:]
-        full_move.changed_cells = sorted(changed_cells)
-        steps = [full_move]
-        placed_cells = {placement.cell for placement in full_move.placements}
-
-        for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates)):
-            if cell in placed_cells:
-                continue
-            if not is_single(before_mask) and is_single(after_mask):
-                digit = single_digit(after_mask)
-                r, c = i_to_rc(cell)
-                implied_move = Move(
-                    technique="Naked Single",
-                    difficulty=1,
-                    reason=f"r{r+1}c{c+1} is forced to {digit}.",
-                    placements=[Placement(cell, digit)],
-                )
-                implied_move.after_candidates = after.candidates[:]
-                implied_move.changed_cells = [cell]
-                implied_move.timing_ms = 0.0
-                steps.append(implied_move)
-
-        return steps
-
     def _has_unprocessed_singles(self, state: SudokuState) -> bool:
         return any(
             is_single(state.candidate_mask(cell)) and cell not in state.fixed_cells
@@ -354,7 +140,7 @@ class SudokuSolver:
                 return False, steps
 
             if explain and before is not None:
-                steps.extend(self._explanation_steps(before, state, move, detailed_steps))
+                steps.extend(explanation_steps(before, state, move, detailed_steps))
 
         return True, steps
 
@@ -407,7 +193,7 @@ class SudokuSolver:
             if result is not None:
                 if explain:
                     guess_steps = (
-                        self._explanation_steps(before_guess, after_guess, guess_move, detailed_steps)
+                        explanation_steps(before_guess, after_guess, guess_move, detailed_steps)
                         if before_guess and after_guess
                         else [guess_move]
                     )
@@ -456,7 +242,7 @@ class SudokuSolver:
             if result is not None:
                 if explain:
                     guess_steps = (
-                        self._explanation_steps(before_guess, after_guess, guess_move, detailed_steps)
+                        explanation_steps(before_guess, after_guess, guess_move, detailed_steps)
                         if before_guess and after_guess
                         else [guess_move]
                     )
