@@ -121,6 +121,33 @@ class Elimination:
     digit: int
 
 
+@dataclass
+class TechniqueTiming:
+    attempts: int = 0
+    successes: int = 0
+    used: int = 0
+    total_ms: float = 0.0
+    successful_ms: float = 0.0
+
+    def record_run(self, elapsed_ms: float, successful: bool) -> None:
+        self.attempts += 1
+        self.total_ms += elapsed_ms
+        if successful:
+            self.successes += 1
+            self.successful_ms += elapsed_ms
+
+    def record_use(self) -> None:
+        self.used += 1
+
+    @property
+    def average_ms(self) -> float:
+        return self.total_ms / self.attempts if self.attempts else 0.0
+
+    @property
+    def success_percent(self) -> float:
+        return (self.successes / self.attempts * 100.0) if self.attempts else 0.0
+
+
 def placement_text(placement: Placement) -> str:
     return f"{cell_text(placement.cell)}={placement.digit}"
 
@@ -139,6 +166,7 @@ class Move:
     after_candidates: Optional[List[int]] = field(default=None, repr=False)
     changed_cells: List[int] = field(default_factory=list, repr=False)
     cause_cells: List[int] = field(default_factory=list, repr=False)
+    timing_ms: float = field(default=0.0, repr=False)
 
     def summary(self) -> str:
         if self.reason.startswith(f"{self.technique}:"):

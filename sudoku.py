@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 from techniques import (
@@ -33,12 +34,13 @@ from techniques import (
     XYZWing,
 )
 from techniques.common import *
-from visualization import format_steps, print_progress_steps
+from visualization import format_steps, print_progress_steps, print_timing_summary
 
 
 class SudokuSolver:
     def __init__(self, techniques: Optional[List[Technique]] = None, strategy: str = "human"):
         self.strategy = strategy
+        self.timing_stats: dict[str, TechniqueTiming] = {}
         if techniques is not None:
             self.techniques = techniques
         elif strategy == "fastest":
@@ -93,6 +95,36 @@ class SudokuSolver:
             HiddenSubset(2),
         ]
 
+    def reset_timing(self) -> None:
+        self.timing_stats = {}
+
+    def _timing_for(self, technique_name: str) -> TechniqueTiming:
+        if technique_name not in self.timing_stats:
+            self.timing_stats[technique_name] = TechniqueTiming()
+        return self.timing_stats[technique_name]
+
+    def _find_moves_timed(self, technique: Technique, state: SudokuState) -> List[Move]:
+        start = time.perf_counter()
+        moves = technique.find_moves(state)
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        successful = bool(moves)
+
+        self._timing_for(technique.name).record_run(elapsed_ms, successful)
+        for move in moves:
+            move.timing_ms = elapsed_ms
+        return moves
+
+    def _record_move_use(self, move: Move) -> Move:
+        self._timing_for(move.technique).record_use()
+        return move
+
+    def _record_guess_run(self, move: Move, elapsed_ms: float, successful: bool) -> None:
+        move.timing_ms = elapsed_ms
+        timing = self._timing_for(move.technique)
+        timing.record_run(elapsed_ms, successful)
+        if successful:
+            timing.record_use()
+
     def next_move(self, state: SudokuState) -> Optional[Move]:
         """
         Pick the first valid move according to technique order.
@@ -101,9 +133,9 @@ class SudokuSolver:
             return self._highest_impact_move(state)
 
         for technique in self.techniques:
-            moves = technique.find_moves(state)
+            moves = self._find_moves_timed(technique, state)
             if moves:
-                return self._best_move(moves)
+                return self._record_move_use(self._best_move(moves))
         return None
 
     def _best_move(self, moves: List[Move]) -> Move:
@@ -129,7 +161,7 @@ class SudokuSolver:
         before_candidates = sum(bit_count(mask) for mask in state.candidates)
 
         for technique in self.techniques:
-            for move in technique.find_moves(state):
+            for move in self._find_moves_timed(technique, state):
                 child = state.clone()
                 if not child.apply_move(move):
                     continue
@@ -147,7 +179,7 @@ class SudokuSolver:
                     best_score = score
                     best_move = move
 
-        return best_move
+        return self._record_move_use(best_move) if best_move is not None else None
 
     def _expanded_steps(self, before: SudokuState, after: SudokuState, move: Move) -> List[Move]:
         replay = before.clone()
@@ -199,6 +231,7 @@ class SudokuSolver:
                     eliminations=eliminations,
                 )
                 step.cause_cells = [source_cell]
+                step.timing_ms = 0.0
                 append_step(step, [elimination.cell for elimination in eliminations])
 
             return True
@@ -209,13 +242,15 @@ class SudokuSolver:
 
             replay.candidates[cell] = bit(digit)
             replay.fixed_cells.add(cell)
+            step = Move(
+                technique=technique,
+                difficulty=difficulty,
+                reason=reason,
+                placements=[Placement(cell, digit)],
+            )
+            step.timing_ms = move.timing_ms if technique == move.technique else 0.0
             append_step(
-                Move(
-                    technique=technique,
-                    difficulty=difficulty,
-                    reason=reason,
-                    placements=[Placement(cell, digit)],
-                ),
+                step,
                 [cell],
             )
 
@@ -268,6 +303,7 @@ class SudokuSolver:
                     eliminations=applied,
                 )
                 step.cause_cells = sorted(set(cause_cells or []))
+                step.timing_ms = move.timing_ms if technique == move.technique else 0.0
                 append_step(step, changed_cells)
 
             return True
@@ -319,6 +355,7 @@ class SudokuSolver:
             eliminations=move.eliminations[:],
         )
         full_move.cause_cells = move.cause_cells[:]
+        full_move.timing_ms = move.timing_ms
 
         known_eliminations = {(elimination.cell, elimination.digit) for elimination in full_move.eliminations}
         for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates)):
@@ -348,6 +385,7 @@ class SudokuSolver:
                 )
                 implied_move.after_candidates = after.candidates[:]
                 implied_move.changed_cells = [cell]
+                implied_move.timing_ms = 0.0
                 steps.append(implied_move)
 
         return steps
@@ -417,7 +455,11 @@ class SudokuSolver:
             )
 
             before_guess = child.clone() if explain else None
-            if not child.apply_move(guess_move):
+            guess_start = time.perf_counter()
+            guess_applied = child.apply_move(guess_move)
+            guess_elapsed_ms = (time.perf_counter() - guess_start) * 1000.0
+            self._record_guess_run(guess_move, guess_elapsed_ms, guess_applied)
+            if not guess_applied:
                 continue
             after_guess = child.clone() if explain else None
 
@@ -462,7 +504,11 @@ class SudokuSolver:
             )
 
             before_guess = child.clone() if explain else None
-            if not child.apply_move(guess_move):
+            guess_start = time.perf_counter()
+            guess_applied = child.apply_move(guess_move)
+            guess_elapsed_ms = (time.perf_counter() - guess_start) * 1000.0
+            self._record_guess_run(guess_move, guess_elapsed_ms, guess_applied)
+            if not guess_applied:
                 continue
             after_guess = child.clone() if explain else None
 
@@ -610,6 +656,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     initial_candidates = state.candidates[:]
     solver = SudokuSolver(strategy=args.strategy)
+    solver.reset_timing()
     explain = not args.no_steps
     detailed_steps = args.step_style == "detailed"
 
@@ -650,6 +697,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 )
         else:
             print("Already solved; no steps needed.")
+
+    print_timing_summary(solver.timing_stats)
 
     return 0
 

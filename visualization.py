@@ -12,18 +12,22 @@ def move_change_details(move: Move) -> List[str]:
     return details
 
 
+def timing_text(move: Move) -> str:
+    return f"{move.timing_ms:.2f} ms"
+
+
 def compact_move_text(move: Move) -> str:
     details = move_change_details(move)
     if details:
-        return f"{move.technique}: {', '.join(details)}"
-    return move.summary()
+        return f"{move.technique} [{timing_text(move)}]: {', '.join(details)}"
+    return f"{move.summary()} [{timing_text(move)}]"
 
 
 def detailed_move_text(move: Move) -> str:
     details = move_change_details(move)
     if details:
-        return f"{move.summary()} Changes: {', '.join(details)}"
-    return move.summary()
+        return f"{move.summary()} [{timing_text(move)}] Changes: {', '.join(details)}"
+    return f"{move.summary()} [{timing_text(move)}]"
 
 
 def compact_batch_text(technique: str, moves: Sequence[Move]) -> str:
@@ -93,6 +97,7 @@ def combine_step_group(technique: str, moves: Sequence[Move]) -> Move:
     combined.after_candidates = moves[-1].after_candidates[:] if moves[-1].after_candidates is not None else None
     combined.changed_cells = sorted(changed_cells)
     combined.cause_cells = sorted(cause_cells)
+    combined.timing_ms = sum(move.timing_ms for move in moves)
     return combined
 
 
@@ -425,7 +430,7 @@ def print_progress_steps(
     print()
 
     for i, step in enumerate(steps_for_progress(steps, style), start=1):
-        print(f"{i:02d}. {step.summary()}")
+        print(f"{i:02d}. {step.summary()} [{timing_text(step)}]")
         details = move_change_details(step)
         if details:
             print(f"    Changes: {', '.join(details)}")
@@ -451,3 +456,29 @@ def print_progress_steps(
             return
 
 
+def print_timing_summary(timing_stats: dict[str, TechniqueTiming]) -> None:
+    if not timing_stats:
+        return
+
+    rows = [
+        (technique, stats)
+        for technique, stats in timing_stats.items()
+        if stats.used
+    ]
+    if not rows:
+        return
+
+    rows.sort(key=lambda item: (-item[1].used, item[0]))
+    print()
+    print("Technique timing summary:")
+    print("Technique                 Used  Runs  Success  Total ms  Avg ms")
+    print("------------------------  ----  ----  -------  --------  ------")
+    for technique, stats in rows:
+        print(
+            f"{technique[:24]:24}  "
+            f"{stats.used:4d}  "
+            f"{stats.attempts:4d}  "
+            f"{stats.success_percent:6.1f}%  "
+            f"{stats.total_ms:8.2f}  "
+            f"{stats.average_ms:6.2f}"
+        )
