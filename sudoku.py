@@ -5,41 +5,7 @@ import sys
 import time
 from typing import Iterable, List, Optional, Sequence, Tuple
 
-from techniques import (
-    ALSXZ,
-    ALSWing,
-    AIC,
-    AvoidableRectangle,
-    BUGPlusOne,
-    EmptyRectangle,
-    FinnedJellyfish,
-    FinnedSwordfish,
-    FinnedXWing,
-    Fish,
-    GroupedAIC,
-    GroupedXChain,
-    HiddenSingle,
-    HiddenSubset,
-    LockedCandidates,
-    MultiColoring,
-    NakedSingle,
-    NakedSubset,
-    Nishio,
-    RemotePairs,
-    SimpleColoring,
-    Skyscraper,
-    TurbotFish,
-    TwoStringKite,
-    UniqueRectangleType1,
-    UniqueRectangleType2,
-    UniqueRectangleType3,
-    UniqueRectangleType4,
-    WWing,
-    XChain,
-    XYChain,
-    XYWing,
-    XYZWing,
-)
+from strategies import techniques_for_strategy
 from techniques.common import (
     Elimination,
     Move,
@@ -66,78 +32,8 @@ class SudokuSolver:
         self.timing_stats: dict[str, TechniqueTiming] = {}
         if techniques is not None:
             self.techniques = techniques
-        elif strategy == "fastest":
-            self.techniques = self.fast_techniques()
-        elif strategy == "balanced":
-            self.techniques = self.balanced_techniques()
         else:
-            self.techniques = self.default_techniques()
-
-    @staticmethod
-    def default_techniques() -> List[Technique]:
-        return [
-            NakedSingle(),
-            HiddenSingle(),
-            LockedCandidates(),
-            NakedSubset(2),
-            HiddenSubset(2),
-            NakedSubset(3),
-            HiddenSubset(3),
-            NakedSubset(4),
-            HiddenSubset(4),
-            Fish(2),   # X-Wing
-            FinnedXWing(),
-            SimpleColoring(),
-            MultiColoring(),
-            Skyscraper(),
-            TwoStringKite(),
-            TurbotFish(),
-            WWing(),
-            RemotePairs(),
-            Fish(3),   # Swordfish
-            FinnedSwordfish(),
-            XYWing(),
-            Fish(4),   # Jellyfish
-            FinnedJellyfish(),
-            XYZWing(),
-            XYChain(),
-            EmptyRectangle(),
-            UniqueRectangleType1(),
-            UniqueRectangleType2(),
-            UniqueRectangleType3(),
-            UniqueRectangleType4(),
-            AvoidableRectangle(),
-            ALSXZ(),
-            ALSWing(),
-            XChain(),
-            GroupedXChain(),
-            AIC(),
-            GroupedAIC(),
-            BUGPlusOne(),
-            Nishio(),
-        ]
-
-    @staticmethod
-    def fast_techniques() -> List[Technique]:
-        return [
-            HiddenSingle(),
-            NakedSingle(),
-            NakedSubset(2),
-            LockedCandidates(),
-            HiddenSubset(2),
-        ]
-
-    @staticmethod
-    def balanced_techniques() -> List[Technique]:
-        return [
-            HiddenSingle(),
-            NakedSingle(),
-            NakedSubset(2),
-            LockedCandidates(),
-            XYWing(),
-            WWing(),
-            HiddenSubset(2),
-        ]
+            self.techniques = techniques_for_strategy(strategy)
 
     def reset_timing(self) -> None:
         self.timing_stats = {}
