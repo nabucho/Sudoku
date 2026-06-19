@@ -1,23 +1,30 @@
-from .als import ALSXZ
+from .aic import AIC, GroupedAIC, GroupedXChain, XChain
+from .als import ALSWing, ALSXZ
 from .basic import HiddenSingle, HiddenSubset, LockedCandidates, NakedSingle, NakedSubset
-from .fish import EmptyRectangle, FinnedJellyfish, FinnedSwordfish, FinnedXWing, Fish, SimpleColoring, Skyscraper, TurbotFish, TwoStringKite
-from .unique import BUGPlusOne, Nishio, UniqueRectangleType1, UniqueRectangleType2, UniqueRectangleType3, UniqueRectangleType4
+from .fish import EmptyRectangle, FinnedJellyfish, FinnedSwordfish, FinnedXWing, Fish, MultiColoring, SimpleColoring, Skyscraper, TurbotFish, TwoStringKite
+from .unique import AvoidableRectangle, BUGPlusOne, Nishio, UniqueRectangleType1, UniqueRectangleType2, UniqueRectangleType3, UniqueRectangleType4
 from .wings import RemotePairs, WWing, XYChain, XYWing, XYZWing
 
 __all__ = [
     "ALSXZ",
+    "ALSWing",
+    "AIC",
+    "AvoidableRectangle",
     "BUGPlusOne",
     "EmptyRectangle",
     "FinnedJellyfish",
     "FinnedSwordfish",
     "FinnedXWing",
     "Fish",
+    "GroupedAIC",
+    "GroupedXChain",
     "HiddenSingle",
     "HiddenSubset",
     "LockedCandidates",
     "NakedSingle",
     "NakedSubset",
     "Nishio",
+    "MultiColoring",
     "RemotePairs",
     "SimpleColoring",
     "Skyscraper",
@@ -28,6 +35,7 @@ __all__ = [
     "UniqueRectangleType3",
     "UniqueRectangleType4",
     "WWing",
+    "XChain",
     "XYChain",
     "XYWing",
     "XYZWing",

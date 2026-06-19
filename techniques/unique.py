@@ -296,6 +296,75 @@ class UniqueRectangleType4(Technique):
 
         return moves
 
+class AvoidableRectangle(Technique):
+    name = "Avoidable Rectangle"
+    difficulty = 7
+
+    def find_moves(self, state: SudokuState) -> List[Move]:
+        moves: List[Move] = []
+        seen = set()
+
+        for r1, r2 in combinations(range(9), 2):
+            for c1, c2 in combinations(range(9), 2):
+                cells = [
+                    rc_to_i(r1, c1),
+                    rc_to_i(r1, c2),
+                    rc_to_i(r2, c1),
+                    rc_to_i(r2, c2),
+                ]
+                if len({BOX_OF[cell] for cell in cells}) != 2:
+                    continue
+                if any(cell in state.given_cells for cell in cells):
+                    continue
+
+                for digit_a, digit_b in combinations(range(1, 10), 2):
+                    patterns = [
+                        [digit_a, digit_b, digit_b, digit_a],
+                        [digit_b, digit_a, digit_a, digit_b],
+                    ]
+                    for pattern in patterns:
+                        solved_corners = [
+                            cell
+                            for cell, expected_digit in zip(cells, pattern)
+                            if is_single(state.candidate_mask(cell))
+                            and single_digit(state.candidate_mask(cell)) == expected_digit
+                        ]
+                        if len(solved_corners) != 3:
+                            continue
+
+                        target_index = next(
+                            index
+                            for index, cell in enumerate(cells)
+                            if cell not in solved_corners
+                        )
+                        target = cells[target_index]
+                        target_digit = pattern[target_index]
+                        if is_single(state.candidate_mask(target)):
+                            continue
+                        if not state.can_place(target, target_digit):
+                            continue
+
+                        key = (tuple(cells), target, target_digit)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+
+                        moves.append(
+                            Move(
+                                technique=self.name,
+                                difficulty=self.difficulty,
+                                reason=(
+                                    f"Avoidable Rectangle on {', '.join(cell_text(cell) for cell in cells)}: "
+                                    f"placing {target_digit} in {cell_text(target)} would complete a non-given "
+                                    f"{digit_a}/{digit_b} deadly rectangle."
+                                ),
+                                eliminations=[Elimination(target, target_digit)],
+                                cause_cells=cells,
+                            )
+                        )
+
+        return moves
+
 class BUGPlusOne(Technique):
     name = "BUG+1"
     difficulty = 7
