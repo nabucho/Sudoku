@@ -169,8 +169,8 @@ def test_benchmark_profile_output() -> None:
 
 def test_all_puzzle_fixtures() -> None:
     fixtures = sorted(path for path in PUZZLE_DIR.iterdir() if path.is_file())
-    if len(fixtures) != 50:
-        raise AssertionError(f"Expected 50 puzzle fixtures in {PUZZLE_DIR}, got {len(fixtures)}")
+    if len(fixtures) != 150:
+        raise AssertionError(f"Expected 150 puzzle fixtures in {PUZZLE_DIR}, got {len(fixtures)}")
 
     solver = SudokuSolver(strategy="fastest")
     for path in fixtures:
