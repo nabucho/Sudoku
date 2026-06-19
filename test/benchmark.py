@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -16,6 +17,27 @@ DEFAULT_STRATEGIES = ["human", "balanced", "fastest", "search-first"]
 ORIGINAL_FIXTURES = ["puzzle", "puzzle2", "puzzle3", "puzzle4"]
 
 
+@dataclass(frozen=True)
+class ProfileRow:
+    strategy: str
+    puzzle: str
+    technique: str
+    attempts: int
+    successes: int
+    used: int
+    total_ms: float
+    successful_ms: float
+    solved: bool
+
+    @property
+    def average_ms(self) -> float:
+        return self.total_ms / self.attempts if self.attempts else 0.0
+
+    @property
+    def success_percent(self) -> float:
+        return self.successes / self.attempts * 100.0 if self.attempts else 0.0
+
+
 def fixture_paths(include_original: bool = True, include_puzzle_bank: bool = True) -> list[Path]:
     paths: list[Path] = []
     if include_original:
@@ -25,8 +47,9 @@ def fixture_paths(include_original: bool = True, include_puzzle_bank: bool = Tru
     return [path for path in paths if path.is_file()]
 
 
-def run_strategy(strategy: str, paths: list[Path]) -> tuple[dict[str, dict[str, float]], int, float]:
+def run_strategy(strategy: str, paths: list[Path]) -> tuple[dict[str, dict[str, float]], list[ProfileRow], int, float]:
     aggregate: dict[str, dict[str, float]] = {}
+    profile_rows: list[ProfileRow] = []
     failures = 0
     wall_start = time.perf_counter()
 
@@ -35,7 +58,8 @@ def run_strategy(strategy: str, paths: list[Path]) -> tuple[dict[str, dict[str, 
         solver = SudokuSolver(strategy=strategy)
         solver.reset_timing()
         result, _ = solver.solve_with_search(state, explain=False)
-        if result is None:
+        solved = result is not None
+        if not solved:
             failures += 1
 
         for technique, stats in solver.timing_stats.items():
@@ -54,9 +78,22 @@ def run_strategy(strategy: str, paths: list[Path]) -> tuple[dict[str, dict[str, 
             entry["used"] += stats.used
             entry["total_ms"] += stats.total_ms
             entry["successful_ms"] += stats.successful_ms
+            profile_rows.append(
+                ProfileRow(
+                    strategy=strategy,
+                    puzzle=str(path.relative_to(ROOT)),
+                    technique=technique,
+                    attempts=stats.attempts,
+                    successes=stats.successes,
+                    used=stats.used,
+                    total_ms=stats.total_ms,
+                    successful_ms=stats.successful_ms,
+                    solved=solved,
+                )
+            )
 
     wall_ms = (time.perf_counter() - wall_start) * 1000.0
-    return aggregate, failures, wall_ms
+    return aggregate, profile_rows, failures, wall_ms
 
 
 def print_summary(strategy: str, aggregate: dict[str, dict[str, float]], failures: int, wall_ms: float, puzzle_count: int) -> None:
@@ -87,6 +124,28 @@ def print_summary(strategy: str, aggregate: dict[str, dict[str, float]], failure
     print()
 
 
+def print_slowest_profile(rows: list[ProfileRow], limit: int) -> None:
+    if limit <= 0 or not rows:
+        return
+
+    print(f"Slowest technique runs by puzzle (top {limit}):")
+    print("Strategy      Puzzle                Technique                 Runs  Used  Total ms  Avg ms  Success")
+    print("------------  --------------------  ------------------------  ----  ----  --------  ------  -------")
+    slowest = sorted(rows, key=lambda row: (-row.total_ms, -row.average_ms, row.strategy, row.puzzle, row.technique))
+    for row in slowest[:limit]:
+        print(
+            f"{row.strategy[:12]:12}  "
+            f"{row.puzzle[:20]:20}  "
+            f"{row.technique[:24]:24}  "
+            f"{row.attempts:4d}  "
+            f"{row.used:4d}  "
+            f"{row.total_ms:8.2f}  "
+            f"{row.average_ms:6.2f}  "
+            f"{row.success_percent:6.1f}%"
+        )
+    print()
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Benchmark Sudoku solver strategy timing across fixtures.")
     parser.add_argument(
@@ -105,6 +164,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Benchmark only the four original fixtures.",
     )
+    parser.add_argument(
+        "--profile-slowest",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Print the N slowest per-puzzle technique timing rows across all selected strategies.",
+    )
     return parser
 
 
@@ -121,9 +187,12 @@ def main() -> int:
         raise SystemExit("No fixtures found.")
 
     strategies = args.strategy or DEFAULT_STRATEGIES
+    all_profile_rows: list[ProfileRow] = []
     for strategy in strategies:
-        aggregate, failures, wall_ms = run_strategy(strategy, paths)
+        aggregate, profile_rows, failures, wall_ms = run_strategy(strategy, paths)
+        all_profile_rows.extend(profile_rows)
         print_summary(strategy, aggregate, failures, wall_ms, len(paths))
+    print_slowest_profile(all_profile_rows, args.profile_slowest)
 
     return 0
 
