@@ -6,6 +6,8 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 
 from techniques import (
     BUGPlusOne,
+    EmptyRectangle,
+    FinnedSwordfish,
     FinnedXWing,
     Fish,
     HiddenSingle,
@@ -23,6 +25,7 @@ from techniques import (
     UniqueRectangleType2,
     UniqueRectangleType4,
     WWing,
+    XYChain,
     XYWing,
     XYZWing,
 )
@@ -61,9 +64,12 @@ class SudokuSolver:
             WWing(),
             RemotePairs(),
             Fish(3),   # Swordfish
+            FinnedSwordfish(),
             XYWing(),
             Fish(4),   # Jellyfish
             XYZWing(),
+            XYChain(),
+            EmptyRectangle(),
             UniqueRectangleType1(),
             UniqueRectangleType2(),
             UniqueRectangleType4(),

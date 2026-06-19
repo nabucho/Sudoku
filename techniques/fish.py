@@ -543,9 +543,155 @@ class FinnedXWing(Technique):
         return moves
 
 
-# ============================================================
-# Solver engine
-# ============================================================
+class FinnedSwordfish(Technique):
+    name = "Finned Swordfish"
+    difficulty = 7
+
+    def find_moves(self, state: SudokuState) -> List[Move]:
+        moves: List[Move] = []
+        seen = set()
+
+        for digit in range(1, 10):
+            row_patterns = [
+                (row, [col for col in range(9) if state.can_place(rc_to_i(row, col), digit)])
+                for row in range(9)
+            ]
+            row_patterns = [(row, cols) for row, cols in row_patterns if 2 <= len(cols) <= 5]
+            for combo in combinations(row_patterns, 3):
+                rows = [row for row, _ in combo]
+                union_cols = sorted({col for _, cols in combo for col in cols})
+                if len(union_cols) <= 3:
+                    continue
+
+                for fish_cols in combinations(union_cols, 3):
+                    fish_col_set = set(fish_cols)
+                    if any(not (set(cols) & fish_col_set) for _, cols in combo):
+                        continue
+                    if any(not any(col in cols for _, cols in combo) for col in fish_cols):
+                        continue
+
+                    fins = [
+                        rc_to_i(row, col)
+                        for row, cols in combo
+                        for col in cols
+                        if col not in fish_col_set
+                    ]
+                    if not fins:
+                        continue
+                    fin_boxes = {BOX_OF[cell] for cell in fins}
+                    if len(fin_boxes) != 1:
+                        continue
+
+                    fin_box = next(iter(fin_boxes))
+                    eliminations = [
+                        Elimination(cell, digit)
+                        for col in fish_cols
+                        for cell in set(COL_UNITS[col]) & set(BOX_UNITS[fin_box])
+                        if ROW_OF[cell] not in rows and state.can_place(cell, digit)
+                    ]
+                    if not eliminations:
+                        continue
+
+                    cause_cells = [
+                        rc_to_i(row, col)
+                        for row, cols in combo
+                        for col in cols
+                    ]
+                    key = (
+                        "row",
+                        digit,
+                        tuple(rows),
+                        tuple(fish_cols),
+                        tuple(sorted(fins)),
+                        tuple(sorted((elimination.cell, elimination.digit) for elimination in eliminations)),
+                    )
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    moves.append(
+                        Move(
+                            technique=self.name,
+                            difficulty=self.difficulty,
+                            reason=(
+                                f"Finned Swordfish on digit {digit}: rows {[row+1 for row in rows]} use "
+                                f"columns {[col+1 for col in fish_cols]} with fins in box {fin_box+1}."
+                            ),
+                            eliminations=eliminations,
+                            cause_cells=cause_cells,
+                        )
+                    )
+
+            col_patterns = [
+                (col, [row for row in range(9) if state.can_place(rc_to_i(row, col), digit)])
+                for col in range(9)
+            ]
+            col_patterns = [(col, rows) for col, rows in col_patterns if 2 <= len(rows) <= 5]
+            for combo in combinations(col_patterns, 3):
+                cols = [col for col, _ in combo]
+                union_rows = sorted({row for _, rows in combo for row in rows})
+                if len(union_rows) <= 3:
+                    continue
+
+                for fish_rows in combinations(union_rows, 3):
+                    fish_row_set = set(fish_rows)
+                    if any(not (set(rows) & fish_row_set) for _, rows in combo):
+                        continue
+                    if any(not any(row in rows for _, rows in combo) for row in fish_rows):
+                        continue
+
+                    fins = [
+                        rc_to_i(row, col)
+                        for col, rows in combo
+                        for row in rows
+                        if row not in fish_row_set
+                    ]
+                    if not fins:
+                        continue
+                    fin_boxes = {BOX_OF[cell] for cell in fins}
+                    if len(fin_boxes) != 1:
+                        continue
+
+                    fin_box = next(iter(fin_boxes))
+                    eliminations = [
+                        Elimination(cell, digit)
+                        for row in fish_rows
+                        for cell in set(ROW_UNITS[row]) & set(BOX_UNITS[fin_box])
+                        if COL_OF[cell] not in cols and state.can_place(cell, digit)
+                    ]
+                    if not eliminations:
+                        continue
+
+                    cause_cells = [
+                        rc_to_i(row, col)
+                        for col, rows in combo
+                        for row in rows
+                    ]
+                    key = (
+                        "col",
+                        digit,
+                        tuple(cols),
+                        tuple(fish_rows),
+                        tuple(sorted(fins)),
+                        tuple(sorted((elimination.cell, elimination.digit) for elimination in eliminations)),
+                    )
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    moves.append(
+                        Move(
+                            technique=self.name,
+                            difficulty=self.difficulty,
+                            reason=(
+                                f"Finned Swordfish on digit {digit}: columns {[col+1 for col in cols]} use "
+                                f"rows {[row+1 for row in fish_rows]} with fins in box {fin_box+1}."
+                            ),
+                            eliminations=eliminations,
+                            cause_cells=cause_cells,
+                        )
+                    )
+
+        return moves
+
 
 class EmptyRectangle(Technique):
     name = "Empty Rectangle"
@@ -563,73 +709,71 @@ class EmptyRectangle(Technique):
                 box_rows = sorted({ROW_OF[cell] for cell in box})
                 box_cols = sorted({COL_OF[cell] for cell in box})
 
-                for row in box_rows:
-                    for col in box_cols:
-                        pivot = rc_to_i(row, col)
-                        if state.can_place(pivot, d):
+                for eri_row in box_rows:
+                    for eri_col in box_cols:
+                        eri = rc_to_i(eri_row, eri_col)
+                        if state.can_place(eri, d):
                             continue
-                        if not all(ROW_OF[cell] == row or COL_OF[cell] == col for cell in box_candidates):
+                        if not all(ROW_OF[cell] == eri_row or COL_OF[cell] == eri_col for cell in box_candidates):
                             continue
-                        if not any(ROW_OF[cell] == row for cell in box_candidates):
+                        if not any(ROW_OF[cell] == eri_row for cell in box_candidates):
                             continue
-                        if not any(COL_OF[cell] == col for cell in box_candidates):
+                        if not any(COL_OF[cell] == eri_col for cell in box_candidates):
                             continue
 
-                        row_cells = [cell for cell in ROW_UNITS[row] if state.can_place(cell, d)]
-                        if len(row_cells) == 2:
-                            inside = [cell for cell in row_cells if cell in box]
-                            outside = [cell for cell in row_cells if cell not in box]
-                            if inside and outside:
-                                outside_col = COL_OF[outside[0]]
-                                eliminations = [
-                                    Elimination(rc_to_i(target_row, outside_col), d)
-                                    for target_row in box_rows
-                                    if target_row != row
-                                    and rc_to_i(target_row, outside_col) not in box
-                                    and state.can_place(rc_to_i(target_row, outside_col), d)
-                                ]
-                                if eliminations:
-                                    moves.append(
-                                        Move(
-                                            technique=self.name,
-                                            difficulty=self.difficulty,
-                                            reason=(
-                                                f"Empty Rectangle on digit {d}: box {box_index+1} is covered by "
-                                                f"row {row+1} and column {col+1}, with a strong row link to "
-                                                f"{cell_text(outside[0])}."
-                                            ),
-                                            eliminations=eliminations,
-                                            cause_cells=sorted({*box_candidates, *row_cells}),
-                                        )
-                                    )
+                        for strong_row in range(9):
+                            if strong_row in box_rows:
+                                continue
+                            row_cells = [cell for cell in ROW_UNITS[strong_row] if state.can_place(cell, d)]
+                            if len(row_cells) != 2:
+                                continue
+                            near = [cell for cell in row_cells if COL_OF[cell] == eri_col]
+                            if len(near) != 1:
+                                continue
+                            far = row_cells[0] if row_cells[1] == near[0] else row_cells[1]
+                            target = rc_to_i(eri_row, COL_OF[far])
+                            if target in box or not state.can_place(target, d):
+                                continue
+                            moves.append(
+                                Move(
+                                    technique=self.name,
+                                    difficulty=self.difficulty,
+                                    reason=(
+                                        f"Empty Rectangle on digit {d}: box {box_index+1} is covered by "
+                                        f"row {eri_row+1} and column {eri_col+1}; strong row link "
+                                        f"{cell_text(near[0])}-{cell_text(far)} eliminates {d} from {cell_text(target)}."
+                                    ),
+                                    eliminations=[Elimination(target, d)],
+                                    cause_cells=sorted({*box_candidates, *row_cells}),
+                                )
+                            )
 
-                        col_cells = [cell for cell in COL_UNITS[col] if state.can_place(cell, d)]
-                        if len(col_cells) == 2:
-                            inside = [cell for cell in col_cells if cell in box]
-                            outside = [cell for cell in col_cells if cell not in box]
-                            if inside and outside:
-                                outside_row = ROW_OF[outside[0]]
-                                eliminations = [
-                                    Elimination(rc_to_i(outside_row, target_col), d)
-                                    for target_col in box_cols
-                                    if target_col != col
-                                    and rc_to_i(outside_row, target_col) not in box
-                                    and state.can_place(rc_to_i(outside_row, target_col), d)
-                                ]
-                                if eliminations:
-                                    moves.append(
-                                        Move(
-                                            technique=self.name,
-                                            difficulty=self.difficulty,
-                                            reason=(
-                                                f"Empty Rectangle on digit {d}: box {box_index+1} is covered by "
-                                                f"row {row+1} and column {col+1}, with a strong column link to "
-                                                f"{cell_text(outside[0])}."
-                                            ),
-                                            eliminations=eliminations,
-                                            cause_cells=sorted({*box_candidates, *col_cells}),
-                                        )
-                                    )
+                        for strong_col in range(9):
+                            if strong_col in box_cols:
+                                continue
+                            col_cells = [cell for cell in COL_UNITS[strong_col] if state.can_place(cell, d)]
+                            if len(col_cells) != 2:
+                                continue
+                            near = [cell for cell in col_cells if ROW_OF[cell] == eri_row]
+                            if len(near) != 1:
+                                continue
+                            far = col_cells[0] if col_cells[1] == near[0] else col_cells[1]
+                            target = rc_to_i(ROW_OF[far], eri_col)
+                            if target in box or not state.can_place(target, d):
+                                continue
+                            moves.append(
+                                Move(
+                                    technique=self.name,
+                                    difficulty=self.difficulty,
+                                    reason=(
+                                        f"Empty Rectangle on digit {d}: box {box_index+1} is covered by "
+                                        f"row {eri_row+1} and column {eri_col+1}; strong column link "
+                                        f"{cell_text(near[0])}-{cell_text(far)} eliminates {d} from {cell_text(target)}."
+                                    ),
+                                    eliminations=[Elimination(target, d)],
+                                    cause_cells=sorted({*box_candidates, *col_cells}),
+                                )
+                            )
 
         return moves
 

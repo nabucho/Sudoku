@@ -135,6 +135,111 @@ class XYZWing(Technique):
 
         return moves
 
+class XYChain(Technique):
+    name = "XY-Chain"
+    difficulty = 7
+
+    def __init__(self, max_length: int = 8):
+        self.max_length = max_length
+
+    def find_moves(self, state: SudokuState) -> List[Move]:
+        moves: List[Move] = []
+        seen = set()
+        bivalue_cells = [cell for cell in range(81) if state.is_bivalue(cell)]
+        bivalue_set = set(bivalue_cells)
+
+        for start in bivalue_cells:
+            start_digits = digits_from_mask(state.candidate_mask(start))
+            for eliminated_digit in start_digits:
+                next_digit = start_digits[0] if start_digits[1] == eliminated_digit else start_digits[1]
+                self._extend_chain(
+                    state,
+                    start,
+                    start,
+                    eliminated_digit,
+                    next_digit,
+                    [start],
+                    bivalue_set,
+                    seen,
+                    moves,
+                )
+
+        return moves
+
+    def _extend_chain(
+        self,
+        state: SudokuState,
+        start: int,
+        current: int,
+        eliminated_digit: int,
+        needed_digit: int,
+        path: List[int],
+        bivalue_cells: set[int],
+        seen: set[tuple[int, int, tuple[int, ...], tuple[tuple[int, int], ...]]],
+        moves: List[Move],
+    ) -> None:
+        if len(path) >= self.max_length:
+            return
+
+        next_cells = sorted((PEERS[current] & bivalue_cells) - set(path))
+        for next_cell in next_cells:
+            next_mask = state.candidate_mask(next_cell)
+            if not (next_mask & bit(needed_digit)):
+                continue
+
+            next_digits = digits_from_mask(next_mask)
+            if len(next_digits) != 2:
+                continue
+            next_needed = next_digits[0] if next_digits[1] == needed_digit else next_digits[1]
+            next_path = path + [next_cell]
+
+            if next_needed == eliminated_digit and len(next_path) >= 3:
+                common_peers = (PEERS[start] & PEERS[next_cell]) - set(next_path)
+                eliminations = [
+                    Elimination(cell, eliminated_digit)
+                    for cell in sorted(common_peers)
+                    if state.can_place(cell, eliminated_digit)
+                ]
+                if not eliminations:
+                    continue
+
+                key = (
+                    eliminated_digit,
+                    min(start, next_cell),
+                    tuple(sorted(next_path)),
+                    tuple((elimination.cell, elimination.digit) for elimination in eliminations),
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                chain_text = " -> ".join(cell_text(cell) for cell in next_path)
+                moves.append(
+                    Move(
+                        technique=self.name,
+                        difficulty=self.difficulty,
+                        reason=(
+                            f"XY-Chain on digit {eliminated_digit}: chain {chain_text} "
+                            "forces one endpoint to contain the digit, so common peers cannot."
+                        ),
+                        eliminations=eliminations,
+                        cause_cells=next_path,
+                    )
+                )
+                continue
+
+            self._extend_chain(
+                state,
+                start,
+                next_cell,
+                eliminated_digit,
+                next_needed,
+                next_path,
+                bivalue_cells,
+                seen,
+                moves,
+            )
+
 class WWing(Technique):
     name = "W-Wing"
     difficulty = 6

@@ -1,11 +1,12 @@
 from .basic import HiddenSingle, HiddenSubset, LockedCandidates, NakedSingle, NakedSubset
-from .fish import EmptyRectangle, FinnedXWing, Fish, SimpleColoring, Skyscraper, TurbotFish, TwoStringKite
+from .fish import EmptyRectangle, FinnedSwordfish, FinnedXWing, Fish, SimpleColoring, Skyscraper, TurbotFish, TwoStringKite
 from .unique import BUGPlusOne, Nishio, UniqueRectangleType1, UniqueRectangleType2, UniqueRectangleType4
-from .wings import RemotePairs, WWing, XYWing, XYZWing
+from .wings import RemotePairs, WWing, XYChain, XYWing, XYZWing
 
 __all__ = [
     "BUGPlusOne",
     "EmptyRectangle",
+    "FinnedSwordfish",
     "FinnedXWing",
     "Fish",
     "HiddenSingle",
@@ -23,6 +24,7 @@ __all__ = [
     "UniqueRectangleType2",
     "UniqueRectangleType4",
     "WWing",
+    "XYChain",
     "XYWing",
     "XYZWing",
 ]
