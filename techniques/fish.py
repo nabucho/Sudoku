@@ -8,6 +8,7 @@ from .common import (
     BOX_UNITS,
     COL_OF,
     COL_UNITS,
+    DIGITS,
     Elimination,
     Move,
     ROW_OF,
@@ -32,7 +33,7 @@ class Fish(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for d in range(1, 10):
+        for d in DIGITS:
             # Row-based fish
             row_patterns = []
             for r in range(9):
@@ -117,7 +118,7 @@ class FinnedXWing(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for d in range(1, 10):
+        for d in DIGITS:
             row_cols = {
                 row: [col for col in range(9) if state.can_place(rc_to_i(row, col), d)]
                 for row in range(9)
@@ -243,7 +244,7 @@ class FinnedSwordfish(Technique):
         moves: List[Move] = []
         seen = set()
 
-        for digit in range(1, 10):
+        for digit in DIGITS:
             row_patterns = [
                 (row, [col for col in range(9) if state.can_place(rc_to_i(row, col), digit)])
                 for row in range(9)

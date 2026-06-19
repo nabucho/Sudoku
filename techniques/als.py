@@ -12,6 +12,7 @@ from .common import (
     Technique,
     bit_count,
     cell_text,
+    common_peer_eliminations,
     digits_from_mask,
     is_single,
     unit_text,
@@ -135,16 +136,7 @@ class ALSXZ(Technique):
         if not digit_cells:
             return []
 
-        common_peers = set(range(81))
-        for cell in digit_cells:
-            common_peers &= PEERS[cell]
-
-        blocked = set(left_cells) | set(right_cells)
-        return [
-            Elimination(cell, digit)
-            for cell in sorted(common_peers - blocked)
-            if state.can_place(cell, digit)
-        ]
+        return common_peer_eliminations(state, digit_cells, digit, blocked=(*left_cells, *right_cells))
 
 
 class ALSWing(ALSXZ):

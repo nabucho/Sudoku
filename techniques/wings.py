@@ -5,16 +5,21 @@ from typing import List
 
 from .common import (
     ALL_UNITS,
-    Elimination,
+    CELLS,
+    DIGITS,
     Move,
     PEERS,
     SudokuState,
     Technique,
     bit,
     bit_count,
+    bivalue_cells,
+    candidate_cells,
     cell_text,
+    common_peer_eliminations,
     digits_from_mask,
     single_digit,
+    trivalue_cells,
 )
 
 
@@ -24,9 +29,9 @@ class XYWing(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        bivalue_cells = [cell for cell in range(81) if state.is_bivalue(cell)]
+        bivalue = bivalue_cells(state)
 
-        for pivot in bivalue_cells:
+        for pivot in bivalue:
             pivot_mask = state.candidate_mask(pivot)
             x, y = digits_from_mask(pivot_mask)
 
@@ -63,12 +68,7 @@ class XYWing(Technique):
                     if state.candidate_mask(b) != (y_mask | z_mask):
                         continue
 
-                    common = (PEERS[a] & PEERS[b]) - {pivot}
-                    eliminations = [
-                        Elimination(cell, z)
-                        for cell in common
-                        if state.can_place(cell, z)
-                    ]
+                    eliminations = common_peer_eliminations(state, (a, b), z, blocked={pivot})
                     if eliminations:
                         moves.append(
                             Move(
@@ -94,8 +94,8 @@ class XYZWing(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        pivots = [cell for cell in range(81) if state.is_trivalue(cell)]
-        bivalue_cells = {cell for cell in range(81) if state.is_bivalue(cell)}
+        pivots = trivalue_cells(state)
+        bivalue = set(bivalue_cells(state))
 
         for pivot in pivots:
             pivot_digits = digits_from_mask(state.candidate_mask(pivot))
@@ -106,11 +106,11 @@ class XYZWing(Technique):
                 x_mask, y_mask, z_mask = bit(x), bit(y), bit(z)
 
                 xz_peers = [
-                    peer for peer in (PEERS[pivot] & bivalue_cells)
+                    peer for peer in (PEERS[pivot] & bivalue)
                     if state.candidate_mask(peer) == (x_mask | z_mask)
                 ]
                 yz_peers = [
-                    peer for peer in (PEERS[pivot] & bivalue_cells)
+                    peer for peer in (PEERS[pivot] & bivalue)
                     if state.candidate_mask(peer) == (y_mask | z_mask)
                 ]
 
@@ -119,12 +119,7 @@ class XYZWing(Technique):
                         if a == b:
                             continue
 
-                        common = PEERS[pivot] & PEERS[a] & PEERS[b]
-                        eliminations = [
-                            Elimination(cell, z)
-                            for cell in common
-                            if state.can_place(cell, z)
-                        ]
+                        eliminations = common_peer_eliminations(state, (pivot, a, b), z)
                         if eliminations:
                             moves.append(
                                 Move(
@@ -153,10 +148,10 @@ class XYChain(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
         seen = set()
-        bivalue_cells = [cell for cell in range(81) if state.is_bivalue(cell)]
-        bivalue_set = set(bivalue_cells)
+        bivalue = bivalue_cells(state)
+        bivalue_set = set(bivalue)
 
-        for start in bivalue_cells:
+        for start in bivalue:
             start_digits = digits_from_mask(state.candidate_mask(start))
             for eliminated_digit in start_digits:
                 next_digit = start_digits[0] if start_digits[1] == eliminated_digit else start_digits[1]
@@ -202,12 +197,7 @@ class XYChain(Technique):
             next_path = path + [next_cell]
 
             if next_needed == eliminated_digit and len(next_path) >= 3:
-                common_peers = (PEERS[start] & PEERS[next_cell]) - set(next_path)
-                eliminations = [
-                    Elimination(cell, eliminated_digit)
-                    for cell in sorted(common_peers)
-                    if state.can_place(cell, eliminated_digit)
-                ]
+                eliminations = common_peer_eliminations(state, (start, next_cell), eliminated_digit, blocked=next_path)
                 if not eliminations:
                     continue
 
@@ -260,13 +250,13 @@ class WWing(Technique):
             d: [
                 tuple(cells)
                 for unit in ALL_UNITS
-                for cells in ([cell for cell in unit if state.can_place(cell, d)],)
+                for cells in (candidate_cells(state, unit, d),)
                 if len(cells) == 2
             ]
-            for d in range(1, 10)
+            for d in DIGITS
         }
 
-        for cell in range(81):
+        for cell in CELLS:
             if state.is_bivalue(cell):
                 bivalue_by_mask.setdefault(state.candidate_mask(cell), []).append(cell)
 
@@ -286,11 +276,7 @@ class WWing(Technique):
                         if not linked:
                             continue
 
-                        eliminations = [
-                            Elimination(cell, eliminated_digit)
-                            for cell in (PEERS[a] & PEERS[b])
-                            if cell not in (a, b) and state.can_place(cell, eliminated_digit)
-                        ]
+                        eliminations = common_peer_eliminations(state, (a, b), eliminated_digit, blocked=(a, b))
                         if eliminations:
                             moves.append(
                                 Move(
@@ -317,7 +303,7 @@ class RemotePairs(Technique):
         moves: List[Move] = []
         cells_by_mask = {}
 
-        for cell in range(81):
+        for cell in CELLS:
             if state.is_bivalue(cell):
                 cells_by_mask.setdefault(state.candidate_mask(cell), []).append(cell)
 
@@ -357,11 +343,11 @@ class RemotePairs(Technique):
                     if color[a] == color[b]:
                         continue
 
-                    eliminations = []
-                    for cell in (PEERS[a] & PEERS[b]) - {a, b}:
-                        for digit in pair_digits:
-                            if state.can_place(cell, digit):
-                                eliminations.append(Elimination(cell, digit))
+                    eliminations = [
+                        elimination
+                        for digit in pair_digits
+                        for elimination in common_peer_eliminations(state, (a, b), digit, blocked=(a, b))
+                    ]
 
                     if eliminations:
                         moves.append(

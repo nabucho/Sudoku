@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from explanation import explanation_steps
 from strategies import techniques_for_strategy
 from techniques.common import (
+    CELLS,
     ExplanationStep,
     Move,
     Placement,
@@ -18,6 +19,7 @@ from techniques.common import (
     cell_text,
     is_single,
     rc_to_i,
+    unsolved_cells,
 )
 from visualization import format_steps, print_progress_steps, print_timing_summary
 
@@ -120,7 +122,7 @@ class SudokuSolver:
     def _has_unprocessed_singles(self, state: SudokuState) -> bool:
         return any(
             is_single(state.candidate_mask(cell)) and cell not in state.fixed_cells
-            for cell in range(81)
+            for cell in CELLS
         )
 
     def solve_logic(
@@ -165,12 +167,12 @@ class SudokuSolver:
         if not state.consistency_ok():
             return None, all_steps
 
-        unsolved_cells = [cell for cell in range(81) if not is_single(state.candidate_mask(cell))]
-        if not unsolved_cells:
+        unsolved = unsolved_cells(state)
+        if not unsolved:
             return None, all_steps
 
         # MRV heuristic
-        cell = min(unsolved_cells, key=lambda c: bit_count(state.candidate_mask(c)))
+        cell = min(unsolved, key=lambda c: bit_count(state.candidate_mask(c)))
 
         for d in state.candidate_digits(cell):
             child = state.clone()
@@ -215,11 +217,11 @@ class SudokuSolver:
         if not state.consistency_ok():
             return None, []
 
-        unsolved_cells = [cell for cell in range(81) if not is_single(state.candidate_mask(cell))]
-        if not unsolved_cells:
+        unsolved = unsolved_cells(state)
+        if not unsolved:
             return None, []
 
-        cell = min(unsolved_cells, key=lambda c: bit_count(state.candidate_mask(c)))
+        cell = min(unsolved, key=lambda c: bit_count(state.candidate_mask(c)))
 
         for d in state.candidate_digits(cell):
             child = state.clone()

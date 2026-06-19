@@ -9,6 +9,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 # ============================================================
 
 ALL_DIGITS_MASK = 0x1FF  # bits 0..8 => digits 1..9
+DIGITS = range(1, 10)
 
 
 def bit(d: int) -> int:
@@ -51,6 +52,7 @@ def digits_from_mask(mask: int) -> List[int]:
 
 ROWS = range(9)
 COLS = range(9)
+CELLS = range(81)
 
 
 def rc_to_i(r: int, c: int) -> int:
@@ -95,22 +97,62 @@ def unit_text(unit_index: int) -> str:
         return f"column {unit_index - 8}"
     return f"box {unit_index - 17}"
 
-CELL_UNITS: List[List[List[int]]] = [[] for _ in range(81)]
+CELL_UNITS: List[List[List[int]]] = [[] for _ in CELLS]
 for unit in ALL_UNITS:
     for cell in unit:
         CELL_UNITS[cell].append(unit)
 
 PEERS: List[set[int]] = []
-for i in range(81):
+for i in CELLS:
     s = set()
     for unit in CELL_UNITS[i]:
         s.update(unit)
     s.discard(i)
     PEERS.append(s)
 
-ROW_OF = [i // 9 for i in range(81)]
-COL_OF = [i % 9 for i in range(81)]
-BOX_OF = [((i // 9) // 3) * 3 + ((i % 9) // 3) for i in range(81)]
+ROW_OF = [i // 9 for i in CELLS]
+COL_OF = [i % 9 for i in CELLS]
+BOX_OF = [((i // 9) // 3) * 3 + ((i % 9) // 3) for i in CELLS]
+
+
+def candidate_cells(state: "SudokuState", unit: Sequence[int], digit: int) -> List[int]:
+    return [cell for cell in unit if state.can_place(cell, digit)]
+
+
+def bivalue_cells(state: "SudokuState") -> List[int]:
+    return [cell for cell in CELLS if state.is_bivalue(cell)]
+
+
+def trivalue_cells(state: "SudokuState") -> List[int]:
+    return [cell for cell in CELLS if state.is_trivalue(cell)]
+
+
+def unsolved_cells(state: "SudokuState") -> List[int]:
+    return [cell for cell in CELLS if not is_single(state.candidate_mask(cell))]
+
+
+def common_peers(cells: Iterable[int]) -> set[int]:
+    cells = list(cells)
+    if not cells:
+        return set()
+    peers = PEERS[cells[0]].copy()
+    for cell in cells[1:]:
+        peers &= PEERS[cell]
+    return peers
+
+
+def common_peer_eliminations(
+    state: "SudokuState",
+    cells: Iterable[int],
+    digit: int,
+    blocked: Iterable[int] = (),
+) -> List["Elimination"]:
+    blocked_cells = set(blocked)
+    return [
+        Elimination(cell, digit)
+        for cell in sorted(common_peers(cells) - blocked_cells)
+        if state.can_place(cell, digit)
+    ]
 
 
 # ============================================================
@@ -345,7 +387,7 @@ class SudokuState:
                         return False
                     seen_fixed.add(d)
 
-            for d in range(1, 10):
+            for d in DIGITS:
                 dmask = bit(d)
                 if not any(self.candidates[cell] & dmask for cell in unit):
                     return False

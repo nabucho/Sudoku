@@ -8,11 +8,12 @@ from .common import (
     BOX_OF,
     BOX_UNITS,
     CELL_UNITS,
+    CELLS,
     COL_OF,
     COL_UNITS,
+    DIGITS,
     Elimination,
     Move,
-    PEERS,
     Placement,
     ROW_OF,
     ROW_UNITS,
@@ -20,11 +21,13 @@ from .common import (
     Technique,
     bit_count,
     cell_text,
+    common_peer_eliminations,
     digits_from_mask,
     is_single,
     placement_text,
     rc_to_i,
     single_digit,
+    unsolved_cells,
     unit_text,
 )
 
@@ -141,11 +144,12 @@ class UniqueRectangleType2(Technique):
                         continue
 
                     extra_digit = single_digit(extra_masks[0])
-                    eliminations = [
-                        Elimination(cell, extra_digit)
-                        for cell in (PEERS[extra_cells[0]] & PEERS[extra_cells[1]])
-                        if cell not in cells and state.can_place(cell, extra_digit)
-                    ]
+                    eliminations = common_peer_eliminations(
+                        state,
+                        (extra_cells[0], extra_cells[1]),
+                        extra_digit,
+                        blocked=cells,
+                    )
                     if eliminations:
                         pair_digits = digits_from_mask(pair_mask)
                         moves.append(
@@ -343,7 +347,7 @@ class AvoidableRectangle(Technique):
                 if any(cell in state.given_cells for cell in cells):
                     continue
 
-                for digit_a, digit_b in combinations(range(1, 10), 2):
+                for digit_a, digit_b in combinations(DIGITS, 2):
                     patterns = [
                         [digit_a, digit_b, digit_b, digit_a],
                         [digit_b, digit_a, digit_a, digit_b],
@@ -399,7 +403,7 @@ class BUGPlusOne(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        unsolved = [cell for cell in range(81) if not is_single(state.candidate_mask(cell))]
+        unsolved = unsolved_cells(state)
         if not unsolved:
             return moves
 
@@ -446,7 +450,7 @@ class Nishio(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for cell in range(81):
+        for cell in CELLS:
             if is_single(state.candidate_mask(cell)):
                 continue
 

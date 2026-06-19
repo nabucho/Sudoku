@@ -7,8 +7,10 @@ from .common import (
     ALL_UNITS,
     BOX_OF,
     BOX_UNITS,
+    CELLS,
     COL_OF,
     COL_UNITS,
+    DIGITS,
     Elimination,
     Move,
     Placement,
@@ -19,6 +21,7 @@ from .common import (
     bit,
     bit_count,
     bits,
+    candidate_cells,
     cell_text,
     cells_text,
     digits_from_mask,
@@ -34,7 +37,7 @@ class NakedSingle(Technique):
     difficulty = 1
 
     def find_moves(self, state: SudokuState) -> List[Move]:
-        for cell in range(81):
+        for cell in CELLS:
             mask = state.candidate_mask(cell)
             if is_single(mask) and cell not in state.fixed_cells:
                 digit = single_digit(mask)
@@ -55,8 +58,8 @@ class HiddenSingle(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         for unit_index, unit in enumerate(ALL_UNITS):
-            for d in range(1, 10):
-                cells = [cell for cell in unit if state.can_place(cell, d)]
+            for d in DIGITS:
+                cells = candidate_cells(state, unit, d)
                 if len(cells) == 1:
                     cell = cells[0]
                     if not is_single(state.candidate_mask(cell)):
@@ -83,8 +86,8 @@ class LockedCandidates(Technique):
 
         # Pointing: box -> row / column
         for box_index, box in enumerate(BOX_UNITS):
-            for d in range(1, 10):
-                cells = [cell for cell in box if state.can_place(cell, d)]
+            for d in DIGITS:
+                cells = candidate_cells(state, box, d)
                 if len(cells) < 2:
                     continue
 
@@ -130,8 +133,8 @@ class LockedCandidates(Technique):
         # Claiming: row / column -> box
         for family_name, unit_list in (("row", ROW_UNITS), ("column", COL_UNITS)):
             for unit_index, unit in enumerate(unit_list):
-                for d in range(1, 10):
-                    cells = [cell for cell in unit if state.can_place(cell, d)]
+                for d in DIGITS:
+                    cells = candidate_cells(state, unit, d)
                     if len(cells) < 2:
                         continue
 
@@ -222,11 +225,11 @@ class HiddenSubset(Technique):
 
         for unit in ALL_UNITS:
             cells_by_digit = {
-                d: [cell for cell in unit if state.can_place(cell, d)]
-                for d in range(1, 10)
+                d: candidate_cells(state, unit, d)
+                for d in DIGITS
             }
 
-            for digits_combo in combinations(range(1, 10), self.size):
+            for digits_combo in combinations(DIGITS, self.size):
                 combo_mask = 0
                 cells_set = set()
                 for d in digits_combo:

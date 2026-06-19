@@ -6,14 +6,17 @@ from typing import List
 from .common import (
     ALL_UNITS,
     BOX_UNITS,
+    CELLS,
     COL_OF,
+    DIGITS,
     Elimination,
     Move,
-    PEERS,
     ROW_OF,
     SudokuState,
     Technique,
+    candidate_cells,
     cell_text,
+    common_peer_eliminations,
     is_single,
 )
 
@@ -44,12 +47,7 @@ def _candidate_common_peer_eliminations(
     end_cell: int,
     digit: int,
 ) -> List[Elimination]:
-    common_peers = PEERS[start_cell] & PEERS[end_cell]
-    return [
-        Elimination(cell, digit)
-        for cell in sorted(common_peers)
-        if cell not in (start_cell, end_cell) and state.can_place(cell, digit)
-    ]
+    return common_peer_eliminations(state, (start_cell, end_cell), digit, blocked=(start_cell, end_cell))
 
 
 def _grouped_common_peer_eliminations(
@@ -58,15 +56,8 @@ def _grouped_common_peer_eliminations(
     end_cells: tuple[int, ...],
     digit: int,
 ) -> List[Elimination]:
-    common_peers = set(range(81))
-    for cell in (*start_cells, *end_cells):
-        common_peers &= PEERS[cell]
-    blocked = set(start_cells) | set(end_cells)
-    return [
-        Elimination(cell, digit)
-        for cell in sorted(common_peers - blocked)
-        if state.can_place(cell, digit)
-    ]
+    grouped_cells = (*start_cells, *end_cells)
+    return common_peer_eliminations(state, grouped_cells, digit, blocked=grouped_cells)
 
 
 def _next_link_type(link_type: str) -> str:
@@ -108,7 +99,7 @@ class AIC(Technique):
         weak_links: dict[CandidateNode, set[CandidateNode]] = {}
 
         # Cell links: bivalue cells are strong; all candidate pairs in a cell are weak.
-        for cell in range(81):
+        for cell in CELLS:
             if is_single(state.candidate_mask(cell)):
                 continue
 
@@ -120,8 +111,8 @@ class AIC(Technique):
 
         # Unit links: conjugate digit pairs are strong; all same-digit unit pairs are weak.
         for unit in ALL_UNITS:
-            for digit in range(1, 10):
-                nodes = [(cell, digit) for cell in unit if state.can_place(cell, digit)]
+            for digit in DIGITS:
+                nodes = [(cell, digit) for cell in candidate_cells(state, unit, digit)]
                 for left, right in combinations(nodes, 2):
                     _add_link(weak_links, left, right)
                 if len(nodes) == 2:
@@ -232,8 +223,8 @@ class XChain(AIC):
         weak_links: dict[CandidateNode, set[CandidateNode]] = {}
 
         for unit in ALL_UNITS:
-            for digit in range(1, 10):
-                nodes = [(cell, digit) for cell in unit if state.can_place(cell, digit)]
+            for digit in DIGITS:
+                nodes = [(cell, digit) for cell in candidate_cells(state, unit, digit)]
                 for left, right in combinations(nodes, 2):
                     _add_link(weak_links, left, right)
                 if len(nodes) == 2:
@@ -340,7 +331,7 @@ class GroupedAIC(Technique):
                         _add_link(strong_links, left, right)
 
         if include_cell_links:
-            for cell in range(81):
+            for cell in CELLS:
                 if is_single(state.candidate_mask(cell)):
                     continue
                 cell_nodes = [
@@ -355,10 +346,10 @@ class GroupedAIC(Technique):
         return strong_links, weak_links
 
     def _grouped_nodes_by_digit(self, state: SudokuState) -> dict[int, set[GroupedNode]]:
-        nodes_by_digit: dict[int, set[GroupedNode]] = {digit: set() for digit in range(1, 10)}
+        nodes_by_digit: dict[int, set[GroupedNode]] = {digit: set() for digit in DIGITS}
 
-        for digit in range(1, 10):
-            for cell in range(81):
+        for digit in DIGITS:
+            for cell in CELLS:
                 if state.can_place(cell, digit):
                     nodes_by_digit[digit].add((digit, (cell,)))
 

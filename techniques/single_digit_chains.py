@@ -8,6 +8,7 @@ from .common import (
     BOX_UNITS,
     COL_OF,
     COL_UNITS,
+    DIGITS,
     Elimination,
     Move,
     PEERS,
@@ -15,7 +16,9 @@ from .common import (
     ROW_UNITS,
     SudokuState,
     Technique,
+    candidate_cells,
     cell_text,
+    common_peer_eliminations,
     rc_to_i,
 )
 
@@ -31,7 +34,7 @@ class TurbotFish(Technique):
         moves: List[Move] = []
         seen = set()
 
-        for digit in range(1, 10):
+        for digit in DIGITS:
             strong_links = strong_links_for_digit(state, digit)
             for link1, link2 in combinations(strong_links, 2):
                 if set(link1) & set(link2):
@@ -47,11 +50,7 @@ class TurbotFish(Technique):
                             continue
 
                         cause_cells = sorted({*link1, *link2})
-                        eliminations = [
-                            Elimination(cell, digit)
-                            for cell in (PEERS[endpoint1] & PEERS[endpoint2])
-                            if cell not in cause_cells and state.can_place(cell, digit)
-                        ]
+                        eliminations = common_peer_eliminations(state, (endpoint1, endpoint2), digit, blocked=cause_cells)
                         if not eliminations:
                             continue
 
@@ -92,7 +91,7 @@ class Skyscraper(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for d in range(1, 10):
+        for d in DIGITS:
             # Row-based skyscraper
             row_pairs = []
             for r in range(9):
@@ -114,12 +113,7 @@ class Skyscraper(Technique):
                 cell1 = rc_to_i(r1, roof1)
                 cell2 = rc_to_i(r2, roof2)
 
-                common_peers = PEERS[cell1] & PEERS[cell2]
-                eliminations = [
-                    Elimination(cell, d)
-                    for cell in common_peers
-                    if state.can_place(cell, d)
-                ]
+                eliminations = common_peer_eliminations(state, (cell1, cell2), d)
                 if eliminations:
                     moves.append(
                         Move(
@@ -160,12 +154,7 @@ class Skyscraper(Technique):
                 cell1 = rc_to_i(roof1, c1)
                 cell2 = rc_to_i(roof2, c2)
 
-                common_peers = PEERS[cell1] & PEERS[cell2]
-                eliminations = [
-                    Elimination(cell, d)
-                    for cell in common_peers
-                    if state.can_place(cell, d)
-                ]
+                eliminations = common_peer_eliminations(state, (cell1, cell2), d)
                 if eliminations:
                     moves.append(
                         Move(
@@ -195,7 +184,7 @@ class TwoStringKite(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for d in range(1, 10):
+        for d in DIGITS:
             row_twos = []
             col_twos = []
 
@@ -224,12 +213,7 @@ class TwoStringKite(Technique):
                             col_other = col_cells[0] if col_cells[1] == col_cell else col_cells[1]
 
                             # Row-other and col-other are the kite tips.
-                            common_peers = PEERS[row_other] & PEERS[col_other]
-                            eliminations = [
-                                Elimination(cell, d)
-                                for cell in common_peers
-                                if state.can_place(cell, d)
-                            ]
+                            eliminations = common_peer_eliminations(state, (row_other, col_other), d)
                             if eliminations:
                                 moves.append(
                                     Move(
@@ -256,9 +240,9 @@ class EmptyRectangle(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
 
-        for d in range(1, 10):
+        for d in DIGITS:
             for box_index, box in enumerate(BOX_UNITS):
-                box_candidates = [cell for cell in box if state.can_place(cell, d)]
+                box_candidates = candidate_cells(state, box, d)
                 if len(box_candidates) < 2:
                     continue
 
@@ -280,7 +264,7 @@ class EmptyRectangle(Technique):
                         for strong_row in range(9):
                             if strong_row in box_rows:
                                 continue
-                            row_cells = [cell for cell in ROW_UNITS[strong_row] if state.can_place(cell, d)]
+                            row_cells = candidate_cells(state, ROW_UNITS[strong_row], d)
                             if len(row_cells) != 2:
                                 continue
                             near = [cell for cell in row_cells if COL_OF[cell] == eri_col]
@@ -307,7 +291,7 @@ class EmptyRectangle(Technique):
                         for strong_col in range(9):
                             if strong_col in box_cols:
                                 continue
-                            col_cells = [cell for cell in COL_UNITS[strong_col] if state.can_place(cell, d)]
+                            col_cells = candidate_cells(state, COL_UNITS[strong_col], d)
                             if len(col_cells) != 2:
                                 continue
                             near = [cell for cell in col_cells if ROW_OF[cell] == eri_row]
