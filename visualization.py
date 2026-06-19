@@ -1,3 +1,5 @@
+"""Formatting and progress-board rendering for Sudoku explanations."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,16 +21,19 @@ from techniques.common import (
 
 
 def move_change_details(move: Move | ExplanationStep) -> List[str]:
+    """Return human-readable placement and elimination details for a move."""
     details = [placement_text(placement) for placement in move.placements]
     details.extend(elimination_text(elimination) for elimination in move.eliminations)
     return details
 
 
 def timing_text(move: Move | ExplanationStep) -> str:
+    """Format move timing in milliseconds."""
     return f"{move.timing_ms:.2f} ms"
 
 
 def compact_move_text(move: Move | ExplanationStep) -> str:
+    """Format one move for compact step output."""
     details = move_change_details(move)
     if details:
         return f"{move.technique} [{timing_text(move)}]: {', '.join(details)}"
@@ -36,6 +41,7 @@ def compact_move_text(move: Move | ExplanationStep) -> str:
 
 
 def detailed_move_text(move: Move | ExplanationStep) -> str:
+    """Format one move for detailed step output."""
     details = move_change_details(move)
     if details:
         return f"{move.summary()} [{timing_text(move)}] Changes: {', '.join(details)}"
@@ -43,6 +49,7 @@ def detailed_move_text(move: Move | ExplanationStep) -> str:
 
 
 def plural_technique_name(technique: str) -> str:
+    """Return a readable plural label for grouped technique output."""
     if technique.endswith("Single"):
         return f"{technique}s"
     if technique == "Guess":
@@ -53,6 +60,7 @@ def plural_technique_name(technique: str) -> str:
 
 
 def combine_step_group(technique: str, moves: Sequence[ExplanationStep]) -> ExplanationStep:
+    """Combine consecutive explanation steps into one display step."""
     placements = [
         placement
         for move in moves
@@ -92,6 +100,7 @@ def combine_step_group(technique: str, moves: Sequence[ExplanationStep]) -> Expl
 
 
 def steps_for_style(steps: Sequence[ExplanationStep], style: str) -> List[ExplanationStep]:
+    """Return steps transformed according to a CLI step style."""
     if style == "detailed":
         return list(steps)
 
@@ -126,6 +135,7 @@ def steps_for_style(steps: Sequence[ExplanationStep], style: str) -> List[Explan
 
 
 def group_progress_propagations(steps: Sequence[ExplanationStep]) -> List[ExplanationStep]:
+    """Combine consecutive propagation steps for progress-board rendering."""
     grouped: List[ExplanationStep] = []
     i = 0
     while i < len(steps):
@@ -148,10 +158,12 @@ def group_progress_propagations(steps: Sequence[ExplanationStep]) -> List[Explan
 
 
 def steps_for_progress(steps: Sequence[ExplanationStep], style: str) -> List[ExplanationStep]:
+    """Return styled steps with propagation groups applied."""
     return group_progress_propagations(steps_for_style(steps, style))
 
 
 def format_steps(steps: Sequence[ExplanationStep], style: str) -> List[str]:
+    """Format explanation steps as printable text lines."""
     styled_steps = steps_for_style(steps, style)
     if style == "detailed":
         return [detailed_move_text(step) for step in styled_steps]
@@ -159,6 +171,7 @@ def format_steps(steps: Sequence[ExplanationStep], style: str) -> List[str]:
 
 
 def ansi_text(text: str, *, fg: Optional[int] = None, bg: Optional[int] = None, bold: bool = False, enabled: bool = True) -> str:
+    """Return ANSI-styled text when color output is enabled."""
     if not enabled:
         return text
 
@@ -262,12 +275,15 @@ def solved_cell_lines(
 
 @dataclass(frozen=True)
 class CellRenderStyle:
+    """Foreground, background, and bold settings for one rendered cell."""
+
     fg: int
     bold: bool
     bg: Optional[int] = None
 
 
 def base_cell_style(cell: int, given_cells: set[int], solved_cells: set[int], display_as_solved: bool) -> CellRenderStyle:
+    """Return the base style for a clue, solved value, or candidate cell."""
     if not display_as_solved:
         return CellRenderStyle(fg=36, bold=False)
     if cell in given_cells:
@@ -284,6 +300,7 @@ def highlighted_cell_style(
     selected: set[int],
     causes: set[int],
 ) -> CellRenderStyle:
+    """Apply selected, changed, or cause-cell highlighting to a base style."""
     if cell in candidate_changed and cell in selected:
         return CellRenderStyle(fg=30, bold=True, bg=42)
     if cell in candidate_changed and cell in causes:
@@ -309,6 +326,7 @@ def render_progress_cell(
     cell_width: int,
     use_color: bool,
 ) -> List[str]:
+    """Render one Sudoku cell as three text lines for the progress board."""
     display_as_solved = is_single(mask) and (cell in given_cells or cell in solved_cells or cell in selected)
     base_style = base_cell_style(cell, given_cells, solved_cells, display_as_solved)
     style = highlighted_cell_style(cell, base_style, candidate_changed, selected, causes)
@@ -344,6 +362,11 @@ def render_progress_grid(
     cause_cells: Iterable[int],
     use_color: bool,
 ) -> str:
+    """Render a full 9x9 progress board with candidate mini-grids.
+
+    The color roles match README.md: clues, solved values, selected cells,
+    changed candidates, elimination sources, and eliminated candidates.
+    """
     selected = set(selected_cells)
     candidate_eliminated_digits: dict[int, set[int]] = {}
     for elimination in candidate_eliminations:
@@ -387,6 +410,7 @@ def render_progress_grid(
 
 
 def wait_for_keypress(enabled: bool) -> bool:
+    """Wait for interactive step navigation and return false on quit."""
     if not enabled or not sys.stdin.isatty():
         return True
 
@@ -423,6 +447,7 @@ def print_progress_steps(
     use_color: bool,
     pause_after_move: bool,
 ) -> None:
+    """Print interactive progress boards for explanation steps."""
     print("Legend:")
     print(
         "  "
@@ -475,6 +500,7 @@ def print_progress_steps(
 
 
 def print_timing_summary(timing_stats: dict[str, TechniqueTiming]) -> None:
+    """Print aggregate timing statistics for techniques that were used."""
     if not timing_stats:
         return
 

@@ -25,6 +25,7 @@ GroupedNode = tuple[int, tuple[int, ...]]
 
 
 def _add_link(links: dict, left, right) -> None:
+    """Add an undirected graph link between two candidate nodes."""
     links.setdefault(left, set()).add(right)
     links.setdefault(right, set()).add(left)
 
@@ -65,6 +66,11 @@ def _next_link_type(link_type: str) -> str:
 
 
 class AIC(Technique):
+    """Find Alternating Inference Chain eliminations from strong-ended chains.
+
+    See `doc/aic.md` for the full technique description.
+    """
+
     name = "AIC"
     difficulty = 8
 
@@ -212,6 +218,11 @@ class AIC(Technique):
 
 
 class XChain(AIC):
+    """Find single-digit AIC eliminations, also known as X-Chains.
+
+    See `doc/x-chain.md` for the full technique description.
+    """
+
     name = "X-Chain"
     difficulty = 7
 
@@ -268,6 +279,11 @@ class XChain(AIC):
 
 
 class GroupedAIC(Technique):
+    """Find AIC eliminations that allow grouped candidate nodes.
+
+    See `doc/grouped-aic.md` for the full technique description.
+    """
+
     name = "Grouped AIC"
     difficulty = 8
 
@@ -461,6 +477,11 @@ class GroupedAIC(Technique):
 
 
 class GroupedXChain(GroupedAIC):
+    """Find grouped single-digit chain eliminations.
+
+    See `doc/grouped-x-chain.md` for the full technique description.
+    """
+
     name = "Grouped X-Chain"
     difficulty = 7
 

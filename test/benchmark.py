@@ -1,3 +1,5 @@
+"""Benchmark solver strategies across puzzle fixtures."""
+
 from __future__ import annotations
 
 import argparse
@@ -19,6 +21,8 @@ ORIGINAL_FIXTURES = ["puzzle", "puzzle2", "puzzle3", "puzzle4"]
 
 @dataclass(frozen=True)
 class ProfileRow:
+    """Per-puzzle timing summary for one technique under one strategy."""
+
     strategy: str
     puzzle: str
     technique: str
@@ -39,6 +43,7 @@ class ProfileRow:
 
 
 def fixture_paths(include_original: bool = True, include_puzzle_bank: bool = True) -> list[Path]:
+    """Return benchmark fixture paths based on fixture-set flags."""
     paths: list[Path] = []
     if include_original:
         paths.extend(ROOT / "test" / name for name in ORIGINAL_FIXTURES)
@@ -48,6 +53,7 @@ def fixture_paths(include_original: bool = True, include_puzzle_bank: bool = Tru
 
 
 def run_strategy(strategy: str, paths: list[Path]) -> tuple[dict[str, dict[str, float]], list[ProfileRow], int, float]:
+    """Run one strategy over fixtures and collect aggregate/profile timings."""
     aggregate: dict[str, dict[str, float]] = {}
     profile_rows: list[ProfileRow] = []
     failures = 0
@@ -97,6 +103,7 @@ def run_strategy(strategy: str, paths: list[Path]) -> tuple[dict[str, dict[str, 
 
 
 def print_summary(strategy: str, aggregate: dict[str, dict[str, float]], failures: int, wall_ms: float, puzzle_count: int) -> None:
+    """Print aggregate timing rows for one strategy."""
     print(f"Strategy: {strategy}")
     print(f"Puzzles: {puzzle_count}  Failures: {failures}  Wall ms: {wall_ms:.2f}")
     print("Technique                 Used  Runs  Success  Total ms  Avg ms  Avg success ms")
@@ -125,6 +132,7 @@ def print_summary(strategy: str, aggregate: dict[str, dict[str, float]], failure
 
 
 def print_slowest_profile(rows: list[ProfileRow], limit: int) -> None:
+    """Print the slowest per-puzzle technique timing rows."""
     if limit <= 0 or not rows:
         return
 
@@ -147,6 +155,7 @@ def print_slowest_profile(rows: list[ProfileRow], limit: int) -> None:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Build the benchmark CLI parser documented in README.md."""
     parser = argparse.ArgumentParser(description="Benchmark Sudoku solver strategy timing across fixtures.")
     parser.add_argument(
         "--strategy",
@@ -175,6 +184,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Run the benchmark command-line interface."""
     args = build_arg_parser().parse_args()
     if args.only_original and args.only_puzzle_bank:
         raise SystemExit("--only-original and --only-puzzle-bank cannot be combined.")

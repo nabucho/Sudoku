@@ -27,6 +27,11 @@ from .coloring import strong_links_for_digit
 
 
 class TurbotFish(Technique):
+    """Find Turbot Fish eliminations from connected single-digit links.
+
+    See `doc/turbot-fish.md` for the full technique description.
+    """
+
     name = "Turbot Fish"
     difficulty = 6
 
@@ -85,6 +90,11 @@ class TurbotFish(Technique):
 # ============================================================
 
 class Skyscraper(Technique):
+    """Find Skyscraper eliminations from two parallel strong links.
+
+    See `doc/skyscraper.md` for the full technique description.
+    """
+
     name = "Skyscraper"
     difficulty = 6
 
@@ -178,6 +188,11 @@ class Skyscraper(Technique):
 
 
 class TwoStringKite(Technique):
+    """Find Two-String Kite eliminations using row and column strong links.
+
+    See `doc/two-string-kite.md` for the full technique description.
+    """
+
     name = "Two-String Kite"
     difficulty = 6
 
@@ -234,6 +249,11 @@ class TwoStringKite(Technique):
 
 
 class EmptyRectangle(Technique):
+    """Find Empty Rectangle eliminations using box cover and strong links.
+
+    See `doc/empty-rectangle.md` for the full technique description.
+    """
+
     name = "Empty Rectangle"
     difficulty = 6
 

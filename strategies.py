@@ -1,3 +1,9 @@
+"""Technique order definitions for solver strategies.
+
+The strategy names and behavior here are documented in README.md and exposed
+through the `--strategy` CLI option.
+"""
+
 from __future__ import annotations
 
 from techniques import (
@@ -39,6 +45,7 @@ from techniques.common import Technique
 
 
 def default_techniques() -> list[Technique]:
+    """Return the full human-style logical technique order."""
     return [
         NakedSingle(),
         HiddenSingle(),
@@ -83,6 +90,7 @@ def default_techniques() -> list[Technique]:
 
 
 def fast_techniques() -> list[Technique]:
+    """Return the cheap technique order used by the `fastest` strategy."""
     return [
         HiddenSingle(),
         NakedSingle(),
@@ -93,6 +101,7 @@ def fast_techniques() -> list[Technique]:
 
 
 def balanced_techniques() -> list[Technique]:
+    """Return a fast order that adds low-cost guess-reducing techniques."""
     return [
         HiddenSingle(),
         NakedSingle(),
@@ -105,6 +114,7 @@ def balanced_techniques() -> list[Technique]:
 
 
 def techniques_for_strategy(strategy: str) -> list[Technique]:
+    """Return technique instances for a named solver strategy."""
     if strategy == "fastest":
         return fast_techniques()
     if strategy == "balanced":

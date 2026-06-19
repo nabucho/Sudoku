@@ -33,6 +33,11 @@ from .common import (
 
 
 class NakedSingle(Technique):
+    """Place a digit when a cell has exactly one candidate.
+
+    See `doc/naked-single.md` for the full technique description.
+    """
+
     name = "Naked Single"
     difficulty = 1
 
@@ -53,6 +58,11 @@ class NakedSingle(Technique):
 
 
 class HiddenSingle(Technique):
+    """Place a digit when it has only one possible cell in a unit.
+
+    See `doc/hidden-single.md` for the full technique description.
+    """
+
     name = "Hidden Single"
     difficulty = 1
 
@@ -75,9 +85,11 @@ class HiddenSingle(Technique):
 
 
 class LockedCandidates(Technique):
+    """Remove candidates using pointing and claiming box-line interactions.
+
+    See `doc/locked-candidates.md` for the full technique description.
     """
-    Pointing + claiming.
-    """
+
     name = "Locked Candidates"
     difficulty = 2
 
@@ -162,9 +174,11 @@ class LockedCandidates(Technique):
 
 
 class NakedSubset(Technique):
+    """Remove candidates using a naked pair, triple, or quad.
+
+    See `doc/naked-subsets.md` for the full technique description.
     """
-    Generic naked pair / triple / quad.
-    """
+
     def __init__(self, size: int):
         self.size = size
         self.name = {2: "Naked Pair", 3: "Naked Triple", 4: "Naked Quad"}[size]
@@ -212,9 +226,11 @@ class NakedSubset(Technique):
 
 
 class HiddenSubset(Technique):
+    """Remove extra candidates from a hidden pair, triple, or quad.
+
+    See `doc/hidden-subsets.md` for the full technique description.
     """
-    Generic hidden pair / triple / quad.
-    """
+
     def __init__(self, size: int):
         self.size = size
         self.name = {2: "Hidden Pair", 3: "Hidden Triple", 4: "Hidden Quad"}[size]

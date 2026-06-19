@@ -20,11 +20,12 @@ from .common import (
 
 
 class Fish(Technique):
+    """Find X-Wing, Swordfish, or Jellyfish candidate eliminations.
+
+    See `doc/x-wing.md`, `doc/swordfish.md`, and `doc/jellyfish.md` for
+    the full technique descriptions.
     """
-    size=2 => X-Wing
-    size=3 => Swordfish
-    size=4 => Jellyfish
-    """
+
     def __init__(self, size: int):
         self.size = size
         self.name = {2: "X-Wing", 3: "Swordfish", 4: "Jellyfish"}[size]
@@ -112,6 +113,11 @@ class Fish(Technique):
 
 
 class FinnedXWing(Technique):
+    """Find Finned X-Wing eliminations where a fin restricts targets.
+
+    See `doc/finned-x-wing.md` for the full technique description.
+    """
+
     name = "Finned X-Wing"
     difficulty = 6
 
@@ -235,6 +241,11 @@ class FinnedXWing(Technique):
 
 
 class FinnedSwordfish(Technique):
+    """Find Finned Swordfish or Finned Jellyfish eliminations.
+
+    See `doc/finned-swordfish.md` for the full technique description.
+    """
+
     def __init__(self, size: int = 3):
         self.size = size
         self.name = {3: "Finned Swordfish", 4: "Finned Jellyfish"}[size]
@@ -387,6 +398,11 @@ class FinnedSwordfish(Technique):
 
 
 class FinnedJellyfish(FinnedSwordfish):
+    """Specialized finned fish technique for size-four Jellyfish patterns.
+
+    See `doc/finned-jellyfish.md` for the full technique description.
+    """
+
     def __init__(self):
         super().__init__(4)
 

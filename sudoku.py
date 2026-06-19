@@ -1,3 +1,5 @@
+"""Command-line entry point and solver orchestration for the Sudoku solver."""
+
 from __future__ import annotations
 
 import argparse
@@ -25,6 +27,14 @@ from visualization import format_steps, print_progress_steps, print_timing_summa
 
 
 class SudokuSolver:
+    """Coordinate technique selection, timing, logical solving, and search.
+
+    Args:
+        techniques: Optional explicit technique order. When omitted, the order
+            is chosen from `strategy`.
+        strategy: Strategy name used by `strategies.techniques_for_strategy`.
+    """
+
     def __init__(self, techniques: list[Technique] | None = None, strategy: str = "human"):
         self.strategy = strategy
         self.timing_stats: dict[str, TechniqueTiming] = {}
@@ -34,14 +44,17 @@ class SudokuSolver:
             self.techniques = techniques_for_strategy(strategy)
 
     def reset_timing(self) -> None:
+        """Clear all recorded technique timing counters."""
         self.timing_stats = {}
 
     def _timing_for(self, technique_name: str) -> TechniqueTiming:
+        """Return the mutable timing aggregate for a technique name."""
         if technique_name not in self.timing_stats:
             self.timing_stats[technique_name] = TechniqueTiming()
         return self.timing_stats[technique_name]
 
     def _find_moves_timed(self, technique: Technique, state: SudokuState) -> list[Move]:
+        """Run a technique, recording elapsed time and success statistics."""
         start = time.perf_counter()
         moves = technique.find_moves(state)
         elapsed_ms = (time.perf_counter() - start) * 1000.0
@@ -53,10 +66,12 @@ class SudokuSolver:
         return moves
 
     def _record_move_use(self, move: Move) -> Move:
+        """Record that a selected move was actually used."""
         self._timing_for(move.technique).record_use()
         return move
 
     def _record_guess_run(self, move: Move, elapsed_ms: float, successful: bool) -> None:
+        """Record timing for one speculative MRV guess."""
         move.timing_ms = elapsed_ms
         timing = self._timing_for(move.technique)
         timing.record_run(elapsed_ms, successful)
@@ -64,9 +79,7 @@ class SudokuSolver:
             timing.record_use()
 
     def next_move(self, state: SudokuState) -> Move | None:
-        """
-        Pick the first valid move according to technique order.
-        """
+        """Pick the next logical move according to the configured strategy."""
         if self.strategy == "fewest-steps":
             return self._highest_impact_move(state)
 
@@ -77,11 +90,7 @@ class SudokuSolver:
         return None
 
     def _best_move(self, moves: list[Move]) -> Move:
-        """
-        Simple heuristic:
-          - more eliminations / placements first
-          - lower difficulty first
-        """
+        """Choose the most useful move from one technique result set."""
         return min(
             moves,
             key=lambda m: (
@@ -92,6 +101,7 @@ class SudokuSolver:
         )
 
     def _highest_impact_move(self, state: SudokuState) -> Move | None:
+        """Evaluate all logical moves and return the one with best impact."""
         best_move: Move | None = None
         best_score: tuple[int, int, int, int] | None = None
 
@@ -120,6 +130,7 @@ class SudokuSolver:
         return self._record_move_use(best_move) if best_move is not None else None
 
     def _has_unprocessed_singles(self, state: SudokuState) -> bool:
+        """Return whether solved cells still need explanation as singles."""
         return any(
             is_single(state.candidate_mask(cell)) and cell not in state.fixed_cells
             for cell in CELL_INDICES
@@ -131,6 +142,16 @@ class SudokuSolver:
         explain: bool = True,
         detailed_steps: bool = True,
     ) -> tuple[bool, list[ExplanationStep]]:
+        """Apply logical moves until the puzzle is solved or logic is stuck.
+
+        Args:
+            state: Mutable puzzle state to solve in place.
+            explain: Whether to collect display-ready explanation steps.
+            detailed_steps: Whether to expand propagation into atomic steps.
+
+        Returns:
+            A `(solved, steps)` pair.
+        """
         steps: list[ExplanationStep] = []
 
         while not state.solved() or (explain and self._has_unprocessed_singles(state)):
@@ -153,9 +174,7 @@ class SudokuSolver:
         explain: bool = True,
         detailed_steps: bool = True,
     ) -> tuple[SudokuState | None, list[ExplanationStep]]:
-        """
-        Logic first; if stuck, use MRV backtracking.
-        """
+        """Solve with logical techniques first, then MRV backtracking."""
         all_steps: list[ExplanationStep] = []
 
         solved_logically, logic_steps = self.solve_logic(state, explain=explain, detailed_steps=detailed_steps)
@@ -211,6 +230,7 @@ class SudokuSolver:
         explain: bool = True,
         detailed_steps: bool = True,
     ) -> tuple[SudokuState | None, list[ExplanationStep]]:
+        """Solve by MRV backtracking before applying logical techniques."""
         if state.solved():
             return state, []
 
@@ -273,6 +293,7 @@ DEFAULT_PUZZLE = (
 
 
 def read_puzzle_argument(puzzle: str | None, puzzle_file: str | None) -> str:
+    """Return puzzle text from either an inline argument, file, or default."""
     if puzzle and puzzle_file:
         raise ValueError("Use either a puzzle argument or --file, not both.")
 
@@ -284,6 +305,7 @@ def read_puzzle_argument(puzzle: str | None, puzzle_file: str | None) -> str:
 
 
 def pretty_puzzle(puzzle: str) -> str:
+    """Format puzzle input as a 9x9 grid with separators."""
     chars = [ch for ch in puzzle if ch in "1234567890."]
     if len(chars) != 81:
         raise ValueError("String puzzle must contain exactly 81 digits / dots / zeros.")
@@ -302,6 +324,7 @@ def pretty_puzzle(puzzle: str) -> str:
     return "\n".join(lines)
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser documented in README.md."""
     parser = argparse.ArgumentParser(
         description=(
             "Solve a Sudoku puzzle. Empty cells may be written as 0 or .; "
@@ -369,6 +392,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run the command-line solver.
+
+    Args:
+        argv: Optional argument list. When `None`, arguments are read from
+            `sys.argv`.
+
+    Returns:
+        Process exit code, where `0` means solved and `1` means no solution was
+        found with the selected mode.
+    """
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 

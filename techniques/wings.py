@@ -24,6 +24,11 @@ from .common import (
 
 
 class XYWing(Technique):
+    """Find XY-Wing eliminations from a bivalue pivot and two pincers.
+
+    See `doc/xy-wing.md` for the full technique description.
+    """
+
     name = "XY-Wing"
     difficulty = 6
 
@@ -89,6 +94,11 @@ class XYWing(Technique):
 
 
 class XYZWing(Technique):
+    """Find XYZ-Wing eliminations from a trivalue pivot and two pincers.
+
+    See `doc/xyz-wing.md` for the full technique description.
+    """
+
     name = "XYZ-Wing"
     difficulty = 7
 
@@ -139,6 +149,11 @@ class XYZWing(Technique):
 
 
 class XYChain(Technique):
+    """Find eliminations from alternating chains through bivalue cells.
+
+    See `doc/xy-chain.md` for the full technique description.
+    """
+
     name = "XY-Chain"
     difficulty = 7
 
@@ -240,6 +255,11 @@ class XYChain(Technique):
 
 
 class WWing(Technique):
+    """Find W-Wing eliminations from matching bivalue cells and a strong link.
+
+    See `doc/w-wing.md` for the full technique description.
+    """
+
     name = "W-Wing"
     difficulty = 6
 
@@ -301,6 +321,11 @@ class WWing(Technique):
 
 
 class RemotePairs(Technique):
+    """Find Remote Pairs eliminations from alternating bivalue chains.
+
+    See `doc/remote-pairs.md` for the full technique description.
+    """
+
     name = "Remote Pairs"
     difficulty = 6
 

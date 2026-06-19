@@ -17,6 +17,7 @@ from .common import (
 
 
 def strong_links_for_digit(state: SudokuState, digit: int) -> List[Tuple[int, int]]:
+    """Return conjugate-pair strong links for one candidate digit."""
     links = set()
     for unit in ALL_UNITS:
         cells = [cell for cell in unit if state.can_place(cell, digit)]
@@ -25,6 +26,11 @@ def strong_links_for_digit(state: SudokuState, digit: int) -> List[Tuple[int, in
     return sorted(links)
 
 class SimpleColoring(Technique):
+    """Use two-color conjugate-link graphs to find contradictions.
+
+    See `doc/simple-coloring.md` for the full technique description.
+    """
+
     name = "Simple Coloring"
     difficulty = 6
 
@@ -112,6 +118,11 @@ class SimpleColoring(Technique):
 
 
 class MultiColoring(Technique):
+    """Use interactions between colored components for eliminations.
+
+    See `doc/multi-coloring.md` for the full technique description.
+    """
+
     name = "Multi-Coloring"
     difficulty = 7
 

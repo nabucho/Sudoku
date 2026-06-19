@@ -1,3 +1,5 @@
+"""Expand solver moves into display-ready explanation steps."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
@@ -25,12 +27,22 @@ def explanation_steps(
     move: Move,
     detailed_steps: bool,
 ) -> list[ExplanationStep]:
+    """Return explanation steps for one applied move.
+
+    Args:
+        before: State before applying the move.
+        after: State after applying the move.
+        move: Solver move that was applied.
+        detailed_steps: When true, replay placements, eliminations, and
+            propagations as atomic steps. When false, return a coarse summary.
+    """
     if detailed_steps:
         return StepExpander(before, after, move).expanded_steps()
     return coarse_expanded_steps(before, after, move)
 
 
 def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -> list[ExplanationStep]:
+    """Return a compact explanation step plus implied solved singles."""
     changed_cells = {
         cell
         for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates))
@@ -77,7 +89,16 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
 
 
 class StepExpander:
+    """Replay one move to produce detailed explanation steps.
+
+    The expander mirrors `SudokuState.apply_move()` but records intermediate
+    placements, eliminations, propagated peer removals, and forced singles.
+    If replay diverges from the already-applied state, it falls back to a
+    coarse explanation so display remains correct.
+    """
+
     def __init__(self, before: SudokuState, after: SudokuState, move: Move):
+        """Initialize a replay from `before` toward `after` for `move`."""
         self.before = before
         self.after = after
         self.move = move
@@ -87,6 +108,7 @@ class StepExpander:
         self.queued_forced: set[int] = set()
 
     def expanded_steps(self) -> list[ExplanationStep]:
+        """Replay the move and return detailed explanation steps."""
         for placement in self.move.placements:
             cell = placement.cell
             digit = placement.digit
@@ -115,12 +137,15 @@ class StepExpander:
         return self.steps
 
     def fallback(self) -> list[ExplanationStep]:
+        """Return a safe coarse explanation when detailed replay cannot match."""
         return coarse_expanded_steps(self.before, self.after, self.move)
 
     def append_step(self, move: Move, changed_cells: Iterable[int]) -> None:
+        """Append one display step using the replay state's current snapshot."""
         self.steps.append(ExplanationStep(move, self.replay.candidates[:], sorted(set(changed_cells))))
 
     def queue_forced_single(self, cell: int, difficulty: int) -> None:
+        """Queue an unsolved singleton cell for forced placement explanation."""
         if (
             cell not in self.replay.fixed_cells
             and cell not in self.queued_forced
@@ -130,6 +155,7 @@ class StepExpander:
             self.queued_forced.add(cell)
 
     def process_forced_singles(self) -> bool:
+        """Drain queued forced singles and record each placement."""
         while self.forced_queue:
             cell, difficulty = self.forced_queue.popleft()
             self.queued_forced.discard(cell)
@@ -140,6 +166,7 @@ class StepExpander:
         return True
 
     def propagate_digit(self, source_cell: int, digit: int, difficulty: int) -> bool:
+        """Remove a placed digit from peers and record propagation changes."""
         eliminations: list[Elimination] = []
         for peer in sorted(PEERS[source_cell]):
             if not self.replay.can_place(peer, digit):
@@ -169,6 +196,7 @@ class StepExpander:
         return True
 
     def select_digit(self, cell: int, digit: int, technique: str, reason: str, difficulty: int) -> bool:
+        """Record a placement, propagate it, and process new forced singles."""
         if not self.replay.can_place(cell, digit):
             return False
 
@@ -188,6 +216,7 @@ class StepExpander:
         return self.process_forced_singles()
 
     def select_forced_single(self, cell: int, difficulty: int) -> bool:
+        """Record a naked-single placement for a cell with one candidate."""
         digit = single_digit(self.replay.candidate_mask(cell))
         return self.select_digit(
             cell,
@@ -205,6 +234,7 @@ class StepExpander:
         difficulty: int,
         cause_cells: Iterable[int] | None = None,
     ) -> bool:
+        """Apply and record a group of candidate eliminations."""
         applied: list[Elimination] = []
         changed_cells: list[int] = []
 

@@ -33,6 +33,11 @@ from .common import (
 
 
 class UniqueRectangleType1(Technique):
+    """Eliminate deadly-pair digits from the only non-pair rectangle corner.
+
+    See `doc/unique-rectangle-type-1.md` for the full technique description.
+    """
+
     name = "Unique Rectangle Type 1"
     difficulty = 7
 
@@ -109,6 +114,11 @@ class UniqueRectangleType1(Technique):
 
 
 class UniqueRectangleType2(Technique):
+    """Eliminate a shared extra digit from peers of two extra-candidate corners.
+
+    See `doc/unique-rectangle-type-2.md` for the full technique description.
+    """
+
     name = "Unique Rectangle Type 2"
     difficulty = 7
 
@@ -169,6 +179,11 @@ class UniqueRectangleType2(Technique):
 
 
 class UniqueRectangleType3(Technique):
+    """Use extra candidates in a unique rectangle as a subset pattern.
+
+    See `doc/unique-rectangle-type-3.md` for the full technique description.
+    """
+
     name = "Unique Rectangle Type 3"
     difficulty = 7
 
@@ -262,6 +277,11 @@ class UniqueRectangleType3(Technique):
 
 
 class UniqueRectangleType4(Technique):
+    """Use strong links to remove one deadly-pair digit from rectangle corners.
+
+    See `doc/unique-rectangle-type-4.md` for the full technique description.
+    """
+
     name = "Unique Rectangle Type 4"
     difficulty = 7
 
@@ -327,6 +347,11 @@ class UniqueRectangleType4(Technique):
 
 
 class AvoidableRectangle(Technique):
+    """Avoid non-given rectangle patterns that would allow non-unique solutions.
+
+    See `doc/avoidable-rectangle.md` for the full technique description.
+    """
+
     name = "Avoidable Rectangle"
     difficulty = 7
 
@@ -397,6 +422,11 @@ class AvoidableRectangle(Technique):
 
 
 class BUGPlusOne(Technique):
+    """Place the correcting digit in the only tri-value cell of a BUG pattern.
+
+    See `doc/bug-plus-one.md` for the full technique description.
+    """
+
     name = "BUG+1"
     difficulty = 7
 
@@ -444,6 +474,11 @@ class BUGPlusOne(Technique):
 
 
 class Nishio(Technique):
+    """Eliminate candidates whose assumption leads to contradiction.
+
+    See `doc/nishio.md` for the full technique description.
+    """
+
     name = "Nishio"
     difficulty = 8
 

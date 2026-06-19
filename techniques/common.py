@@ -1,3 +1,10 @@
+"""Shared Sudoku model, grid topology, and technique helper utilities.
+
+This module is intentionally dependency-light because every solving technique
+uses it. Public helpers use row-major cell indices from 0 to 80 and candidate
+bitmasks where bit 0 represents digit 1 and bit 8 represents digit 9.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -13,10 +20,12 @@ DIGIT_VALUES = range(1, 10)
 
 
 def bit(digit: int) -> int:
+    """Return the candidate bitmask for a single Sudoku digit."""
     return 1 << (digit - 1)
 
 
 def bits(mask: int) -> Iterable[int]:
+    """Yield all digit values present in a candidate bitmask."""
     digit = 1
     while mask:
         if mask & 1:
@@ -26,6 +35,7 @@ def bits(mask: int) -> Iterable[int]:
 
 
 def bit_count(mask: int) -> int:
+    """Return the number of candidate digits present in a bitmask."""
     count = 0
     while mask:
         count += mask & 1
@@ -34,6 +44,7 @@ def bit_count(mask: int) -> int:
 
 
 def is_single(mask: int) -> bool:
+    """Return whether a candidate bitmask contains exactly one digit."""
     return mask != 0 and (mask & (mask - 1)) == 0
 
 
@@ -43,6 +54,7 @@ def single_digit(mask: int) -> int:
 
 
 def digits_from_mask(mask: int) -> List[int]:
+    """Return all digits present in a candidate bitmask as a list."""
     return list(bits(mask))
 
 
@@ -56,23 +68,28 @@ CELL_INDICES = range(81)
 
 
 def rc_to_i(row: int, col: int) -> int:
+    """Convert zero-based row and column coordinates to a cell index."""
     return row * 9 + col
 
 
 def i_to_rc(cell: int) -> Tuple[int, int]:
+    """Convert a cell index to zero-based row and column coordinates."""
     return divmod(cell, 9)
 
 
 def cell_text(cell: int) -> str:
+    """Format a cell index as a human-readable coordinate, such as r1c1."""
     r, c = i_to_rc(cell)
     return f"r{r+1}c{c+1}"
 
 
 def cells_text(cells: Iterable[int]) -> str:
+    """Format multiple cell indices as comma-separated coordinates."""
     return ", ".join(cell_text(cell) for cell in cells)
 
 
 def forced_cell_reason(cell: int, digit: int) -> str:
+    """Return the standard explanation text for a forced placement."""
     return f"{cell_text(cell)} is forced to {digit}."
 
 
@@ -91,6 +108,7 @@ ALL_UNITS = ROW_UNITS + COL_UNITS + BOX_UNITS
 
 
 def unit_text(unit_index: int) -> str:
+    """Format an ALL_UNITS index as row, column, or box text."""
     if unit_index < 9:
         return f"row {unit_index + 1}"
     if unit_index < 18:
@@ -116,22 +134,27 @@ BOX_OF = [((cell // 9) // 3) * 3 + ((cell % 9) // 3) for cell in CELL_INDICES]
 
 
 def cells_with_candidate(state: "SudokuState", unit: Sequence[int], digit: int) -> List[int]:
+    """Return cells in a unit that still allow a candidate digit."""
     return [cell for cell in unit if state.can_place(cell, digit)]
 
 
 def bivalue_candidate_cells(state: "SudokuState") -> List[int]:
+    """Return unsolved cells with exactly two candidates."""
     return [cell for cell in CELL_INDICES if state.is_bivalue(cell)]
 
 
 def trivalue_candidate_cells(state: "SudokuState") -> List[int]:
+    """Return unsolved cells with exactly three candidates."""
     return [cell for cell in CELL_INDICES if state.is_trivalue(cell)]
 
 
 def unsolved_cells(state: "SudokuState") -> List[int]:
+    """Return cells that are not solved to a single digit."""
     return [cell for cell in CELL_INDICES if not is_single(state.candidate_mask(cell))]
 
 
 def shared_peers(cells: Iterable[int]) -> set[int]:
+    """Return cells that see every cell in the given collection."""
     cells = list(cells)
     if not cells:
         return set()
@@ -147,6 +170,17 @@ def shared_peer_eliminations(
     digit: int,
     blocked: Iterable[int] = (),
 ) -> List["Elimination"]:
+    """Return candidate eliminations from peers shared by all given cells.
+
+    Args:
+        state: Sudoku state to inspect.
+        cells: Source cells whose shared peers should be considered.
+        digit: Candidate digit to eliminate.
+        blocked: Cells that must not be used as elimination targets.
+
+    Returns:
+        Eliminations for shared peers that still contain the candidate digit.
+    """
     blocked_cells = set(blocked)
     return [
         Elimination(cell, digit)
@@ -161,18 +195,24 @@ def shared_peer_eliminations(
 
 @dataclass(frozen=True)
 class Placement:
+    """A solved digit placement produced by a technique or guess."""
+
     cell: int
     digit: int
 
 
 @dataclass(frozen=True)
 class Elimination:
+    """A candidate removal produced by a technique or propagation."""
+
     cell: int
     digit: int
 
 
 @dataclass
 class TechniqueTiming:
+    """Aggregated timing counters for a solving technique."""
+
     attempts: int = 0
     successes: int = 0
     used: int = 0
@@ -180,6 +220,7 @@ class TechniqueTiming:
     successful_ms: float = 0.0
 
     def record_run(self, elapsed_ms: float, successful: bool) -> None:
+        """Record one technique attempt and whether it found at least one move."""
         self.attempts += 1
         self.total_ms += elapsed_ms
         if successful:
@@ -187,6 +228,7 @@ class TechniqueTiming:
             self.successful_ms += elapsed_ms
 
     def record_use(self) -> None:
+        """Record that a found move from this technique was selected."""
         self.used += 1
 
     @property
@@ -208,6 +250,13 @@ def elimination_text(elimination: Elimination) -> str:
 
 @dataclass
 class Move:
+    """A logical solver action before it is expanded for display.
+
+    Techniques return moves containing placements, eliminations, explanatory
+    text, difficulty, and cause cells. Rendering-specific state such as board
+    snapshots belongs to :class:`ExplanationStep`.
+    """
+
     technique: str
     reason: str
     placements: List[Placement] = field(default_factory=list)
@@ -224,6 +273,12 @@ class Move:
 
 @dataclass
 class ExplanationStep:
+    """A display-ready step with board snapshot metadata.
+
+    Explanation steps wrap a :class:`Move` and add the candidate grid state
+    after applying that step plus the cells changed by the step.
+    """
+
     move: Move
     after_candidates: Optional[List[int]] = field(default=None, repr=False)
     changed_cells: List[int] = field(default_factory=list, repr=False)
@@ -265,13 +320,11 @@ class ExplanationStep:
 # ============================================================
 
 class SudokuState:
-    """
-    Stores candidates as bitmasks (81 cells).
-    Mutation methods:
-      - place_digit(cell, digit)
-      - eliminate_digit(cell, digit)
+    """Mutable Sudoku grid state backed by 81 candidate bitmasks.
 
-    place_digit / eliminate_digit handle peer propagation automatically.
+    `place_digit()` and `eliminate_digit()` update candidates and propagate
+    solved singles to peer cells. `fixed_cells` tracks cells already committed
+    as solved, while `given_cells` tracks original puzzle clues.
     """
 
     def __init__(
@@ -286,6 +339,15 @@ class SudokuState:
 
     @classmethod
     def from_board(cls, board: Sequence[Sequence[int]] | str) -> "SudokuState":
+        """Build a state from a 9x9 board or puzzle string.
+
+        Args:
+            board: A 9x9 sequence or string containing 81 digits, dots, or
+                zeros. Dots and zeros represent empty cells.
+
+        Raises:
+            ValueError: If the board shape or givens are invalid.
+        """
         state = cls()
         givens: List[Tuple[int, int]] = []
 
@@ -329,12 +391,15 @@ class SudokuState:
         return state
 
     def clone(self) -> "SudokuState":
+        """Return a copy suitable for speculative solving."""
         return SudokuState(self.candidates, self.fixed_cells, self.given_cells)
 
     def solved(self) -> bool:
+        """Return whether every cell is solved to one digit."""
         return all(is_single(mask) for mask in self.candidates)
 
     def board(self) -> List[List[int]]:
+        """Return the current solved digits as a 9x9 integer grid."""
         out = [[0] * 9 for _ in range(9)]
         for cell, mask in enumerate(self.candidates):
             if is_single(mask):
@@ -343,6 +408,7 @@ class SudokuState:
         return out
 
     def pretty(self) -> str:
+        """Return a simple text rendering of solved digits and empty cells."""
         lines = []
         for row in range(9):
             if row and row % 3 == 0:
@@ -357,12 +423,15 @@ class SudokuState:
         return "\n".join(lines)
 
     def candidate_mask(self, cell: int) -> int:
+        """Return the candidate bitmask for one cell."""
         return self.candidates[cell]
 
     def candidate_digits(self, cell: int) -> List[int]:
+        """Return candidate digits for one cell."""
         return digits_from_mask(self.candidates[cell])
 
     def can_place(self, cell: int, digit: int) -> bool:
+        """Return whether a digit is still a candidate for a cell."""
         return bool(self.candidates[cell] & bit(digit))
 
     def is_bivalue(self, cell: int) -> bool:
@@ -372,6 +441,7 @@ class SudokuState:
         return bit_count(self.candidates[cell]) == 3
 
     def consistency_ok(self) -> bool:
+        """Return whether the current candidates satisfy Sudoku invariants."""
         # no empty cells
         if any(mask == 0 for mask in self.candidates):
             return False
@@ -395,10 +465,7 @@ class SudokuState:
         return True
 
     def eliminate_digit(self, cell: int, digit: int) -> bool:
-        """
-        Remove one candidate from a cell.
-        If the cell becomes single, propagate that single to peers.
-        """
+        """Remove one candidate and propagate if the cell becomes solved."""
         digit_mask = bit(digit)
         current_mask = self.candidates[cell]
 
@@ -425,10 +492,7 @@ class SudokuState:
         return True
 
     def place_digit(self, cell: int, digit: int) -> bool:
-        """
-        Set cell to exactly one digit by removing all others,
-        then remove that digit from peers.
-        """
+        """Place a digit in a cell and remove it from all peers."""
         if not self.can_place(cell, digit):
             return False
 
@@ -448,9 +512,7 @@ class SudokuState:
         return True
 
     def apply_move(self, move: Move) -> bool:
-        """
-        Applies placements first, then eliminations.
-        """
+        """Apply placements first, then eliminations, and validate state."""
         for p in move.placements:
             if not self.place_digit(p.cell, p.digit):
                 return False
@@ -467,10 +529,13 @@ class SudokuState:
 # ============================================================
 
 class Technique:
+    """Base class for all logical Sudoku solving techniques."""
+
     name: str = "Technique"
     difficulty: int = 0
 
     def find_moves(self, state: SudokuState) -> List[Move]:
+        """Return all moves this technique can currently find."""
         raise NotImplementedError
 
 # ============================================================

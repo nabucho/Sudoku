@@ -20,6 +20,11 @@ from .common import (
 
 
 class ALSXZ(Technique):
+    """Find ALS-XZ eliminations using two ALS groups and restricted commons.
+
+    See `doc/als-xz.md` for the full technique description.
+    """
+
     name = "ALS-XZ"
     difficulty = 8
 
@@ -140,6 +145,11 @@ class ALSXZ(Technique):
 
 
 class ALSWing(ALSXZ):
+    """Find ALS-Wing eliminations from a pivot ALS linked to two wing ALS groups.
+
+    See `doc/als-wing.md` for the full technique description.
+    """
+
     name = "ALS-Wing"
     difficulty = 8
 
