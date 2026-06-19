@@ -47,3 +47,41 @@ known-first-party = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["test"]
+
+[tool.coverage.run]
+branch = true
+source = ["sudoku_solver"]
+omit = [
+    "test/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "pragma: no cover",
+]
+fail_under = 0
+show_missing = true
+skip_covered = true
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.mypy]
+python_version = "3.10"
+files = [
+    "sudoku_solver",
+    "cli.py",
+    "sudoku.py",
+    "test/benchmark.py",
+    "test/run_tests.py",
+]
+check_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+pretty = true
+show_error_codes = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unused_configs = true

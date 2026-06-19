@@ -42,6 +42,26 @@ Run benchmark timing:
 python3 test/benchmark.py --strategy human --profile-slowest 10
 ```
 
+## Development
+
+Install development tools:
+
+```sh
+make install-dev
+```
+
+Common checks:
+
+```sh
+make test
+make coverage
+make typecheck
+make lint
+make check
+```
+
+Coverage reports use `coverage.py`; `make coverage` prints a terminal report and `make coverage-html` writes `htmlcov/`. Type checking uses `mypy` with project settings from `pyproject.toml`.
+
 ## CLI Usage
 
 ```text
@@ -239,7 +259,13 @@ Benchmark options:
 : Text and colored progress rendering.
 
 `pyproject.toml`
-: Project metadata plus Black, Ruff, and pytest configuration.
+: Project metadata plus Black, Ruff, coverage, mypy, and pytest configuration.
+
+`requirements-dev.txt`
+: Development tool dependencies for formatting, linting, coverage, and type checking.
+
+`Makefile`
+: Common development commands for tests, coverage, type checking, linting, formatting, and cleanup.
 
 `sudoku_solver/techniques/`
 : Human-style solving technique implementations and shared model helpers.

@@ -1,3 +1,8 @@
 __pycache__/
 .pycache/
+.venv/
 *.py[cod]
+.coverage
+.mypy_cache/
+.ruff_cache/
+htmlcov/
