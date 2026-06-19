@@ -208,28 +208,6 @@ def styled_cell(
     return "".join(parts)
 
 
-def candidate_cell_text(
-    mask: int,
-    eliminated_digits: set[int],
-    fg: int,
-    bold: bool,
-    cell_width: int,
-    use_color: bool,
-    *,
-    bg: Optional[int] = None,
-) -> str:
-    if eliminated_digits:
-        digits = sorted(set(digits_from_mask(mask)) | eliminated_digits)
-        segments = [
-            (str(digit), 31 if digit in eliminated_digits else fg, bg, True if digit in eliminated_digits else bold)
-            for digit in digits
-        ]
-        return styled_cell(segments, cell_width, use_color, bg=bg)
-
-    text = str(single_digit(mask)) if is_single(mask) else "".join(str(d) for d in digits_from_mask(mask))
-    return ansi_text(text.center(cell_width), fg=fg, bg=bg, bold=bold, enabled=use_color)
-
-
 def candidate_cell_lines(
     mask: int,
     eliminated_digits: set[int],

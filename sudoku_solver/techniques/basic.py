@@ -18,7 +18,6 @@ from .common import (
     Placement,
     SudokuState,
     Technique,
-    bit,
     bit_count,
     bits,
     cell_text,
@@ -246,10 +245,8 @@ class HiddenSubset(Technique):
             }
 
             for digits_combo in combinations(DIGIT_VALUES, self.size):
-                combo_mask = 0
                 cells_set = set()
                 for digit in digits_combo:
-                    combo_mask |= bit(digit)
                     cells_set.update(cells_by_digit[digit])
 
                 cells = [cell for cell in unit if cell in cells_set]
