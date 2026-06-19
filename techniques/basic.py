@@ -1,9 +1,31 @@
 from __future__ import annotations
 
 from itertools import combinations
-from typing import List, Tuple
+from typing import List
 
-from .common import *
+from .common import (
+    ALL_UNITS,
+    BOX_OF,
+    BOX_UNITS,
+    COL_OF,
+    COL_UNITS,
+    Elimination,
+    Move,
+    Placement,
+    ROW_OF,
+    ROW_UNITS,
+    SudokuState,
+    Technique,
+    bit,
+    bit_count,
+    bits,
+    cell_text,
+    digits_from_mask,
+    i_to_rc,
+    is_single,
+    single_digit,
+    unit_text,
+)
 
 
 class NakedSingle(Technique):

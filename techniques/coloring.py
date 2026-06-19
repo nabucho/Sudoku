@@ -3,7 +3,15 @@ from __future__ import annotations
 from itertools import combinations
 from typing import List, Tuple
 
-from .common import *
+from .common import (
+    ALL_UNITS,
+    Elimination,
+    Move,
+    PEERS,
+    SudokuState,
+    Technique,
+    cell_text,
+)
 
 
 def strong_links_for_digit(state: SudokuState, digit: int) -> List[Tuple[int, int]]:

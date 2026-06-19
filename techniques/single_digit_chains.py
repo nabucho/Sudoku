@@ -1,9 +1,24 @@
 from __future__ import annotations
 
 from itertools import combinations
-from typing import List, Tuple
+from typing import List
 
-from .common import *
+from .common import (
+    BOX_OF,
+    BOX_UNITS,
+    COL_OF,
+    COL_UNITS,
+    Elimination,
+    Move,
+    PEERS,
+    ROW_OF,
+    ROW_UNITS,
+    SudokuState,
+    Technique,
+    cell_text,
+    i_to_rc,
+    rc_to_i,
+)
 
 
 from .coloring import strong_links_for_digit

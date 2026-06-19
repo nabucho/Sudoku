@@ -1,9 +1,22 @@
 from __future__ import annotations
 
 from itertools import combinations
-from typing import List, Tuple
+from typing import List
 
-from .common import *
+from .common import (
+    ALL_UNITS,
+    Elimination,
+    Move,
+    PEERS,
+    SudokuState,
+    Technique,
+    bit,
+    bit_count,
+    cell_text,
+    digits_from_mask,
+    i_to_rc,
+    single_digit,
+)
 
 
 class XYWing(Technique):

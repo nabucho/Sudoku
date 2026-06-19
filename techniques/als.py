@@ -3,7 +3,19 @@ from __future__ import annotations
 from itertools import combinations
 from typing import List
 
-from .common import *
+from .common import (
+    ALL_UNITS,
+    Elimination,
+    Move,
+    PEERS,
+    SudokuState,
+    Technique,
+    bit_count,
+    cell_text,
+    digits_from_mask,
+    is_single,
+    unit_text,
+)
 
 
 class ALSXZ(Technique):

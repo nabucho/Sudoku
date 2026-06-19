@@ -1,9 +1,33 @@
 from __future__ import annotations
 
 from itertools import combinations
-from typing import List, Tuple
+from typing import List
 
-from .common import *
+from .common import (
+    ALL_UNITS,
+    BOX_OF,
+    BOX_UNITS,
+    CELL_UNITS,
+    COL_OF,
+    COL_UNITS,
+    Elimination,
+    Move,
+    PEERS,
+    Placement,
+    ROW_OF,
+    ROW_UNITS,
+    SudokuState,
+    Technique,
+    bit_count,
+    cell_text,
+    digits_from_mask,
+    i_to_rc,
+    is_single,
+    placement_text,
+    rc_to_i,
+    single_digit,
+    unit_text,
+)
 
 
 class UniqueRectangleType1(Technique):

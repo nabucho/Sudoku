@@ -3,7 +3,17 @@ from __future__ import annotations
 import sys
 from typing import Iterable, List, Optional, Sequence, Tuple
 
-from techniques.common import *
+from techniques.common import (
+    Elimination,
+    Move,
+    TechniqueTiming,
+    digits_from_mask,
+    elimination_text,
+    is_single,
+    placement_text,
+    rc_to_i,
+    single_digit,
+)
 
 
 def move_change_details(move: Move) -> List[str]:
@@ -28,27 +38,6 @@ def detailed_move_text(move: Move) -> str:
     if details:
         return f"{move.summary()} [{timing_text(move)}] Changes: {', '.join(details)}"
     return f"{move.summary()} [{timing_text(move)}]"
-
-
-def compact_batch_text(technique: str, moves: Sequence[Move]) -> str:
-    placements = [
-        placement_text(placement)
-        for move in moves
-        for placement in move.placements
-    ]
-    eliminations = [
-        elimination_text(elimination)
-        for move in moves
-        for elimination in move.eliminations
-    ]
-    details = placements + eliminations
-    change_count = len(details)
-    noun = "change" if change_count == 1 else "changes"
-
-    if details:
-        return f"{technique} ({change_count} {noun}): {', '.join(details)}"
-
-    return f"{technique}: {moves[0].reason}"
 
 
 def plural_technique_name(technique: str) -> str:

@@ -1,9 +1,21 @@
 from __future__ import annotations
 
 from itertools import combinations
-from typing import List, Tuple
+from typing import List
 
-from .common import *
+from .common import (
+    BOX_OF,
+    BOX_UNITS,
+    COL_OF,
+    COL_UNITS,
+    Elimination,
+    Move,
+    ROW_OF,
+    ROW_UNITS,
+    SudokuState,
+    Technique,
+    rc_to_i,
+)
 
 
 class Fish(Technique):

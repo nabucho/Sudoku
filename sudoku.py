@@ -40,7 +40,23 @@ from techniques import (
     XYWing,
     XYZWing,
 )
-from techniques.common import *
+from techniques.common import (
+    Elimination,
+    Move,
+    PEERS,
+    Placement,
+    SudokuState,
+    Technique,
+    TechniqueTiming,
+    bit,
+    bit_count,
+    digits_from_mask,
+    i_to_rc,
+    is_single,
+    placement_text,
+    rc_to_i,
+    single_digit,
+)
 from visualization import format_steps, print_progress_steps, print_timing_summary
 
 

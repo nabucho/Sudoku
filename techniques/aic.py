@@ -3,7 +3,19 @@ from __future__ import annotations
 from itertools import combinations
 from typing import List
 
-from .common import *
+from .common import (
+    ALL_UNITS,
+    BOX_UNITS,
+    COL_OF,
+    Elimination,
+    Move,
+    PEERS,
+    ROW_OF,
+    SudokuState,
+    Technique,
+    cell_text,
+    is_single,
+)
 
 CandidateNode = tuple[int, int]
 GroupedNode = tuple[int, tuple[int, ...]]
