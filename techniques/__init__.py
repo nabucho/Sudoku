@@ -1,7 +1,9 @@
 from .aic import AIC, GroupedAIC, GroupedXChain, XChain
 from .als import ALSWing, ALSXZ
 from .basic import HiddenSingle, HiddenSubset, LockedCandidates, NakedSingle, NakedSubset
-from .fish import EmptyRectangle, FinnedJellyfish, FinnedSwordfish, FinnedXWing, Fish, MultiColoring, SimpleColoring, Skyscraper, TurbotFish, TwoStringKite
+from .coloring import MultiColoring, SimpleColoring
+from .fish import FinnedJellyfish, FinnedSwordfish, FinnedXWing, Fish
+from .single_digit_chains import EmptyRectangle, Skyscraper, TurbotFish, TwoStringKite
 from .unique import AvoidableRectangle, BUGPlusOne, Nishio, UniqueRectangleType1, UniqueRectangleType2, UniqueRectangleType3, UniqueRectangleType4
 from .wings import RemotePairs, WWing, XYChain, XYWing, XYZWing
 
