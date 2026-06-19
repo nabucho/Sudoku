@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import sys
 from typing import Iterable, List, Optional, Sequence, Tuple
 
@@ -259,6 +260,81 @@ def solved_cell_lines(
     return [blank, value, blank]
 
 
+@dataclass(frozen=True)
+class CellRenderStyle:
+    fg: int
+    bold: bool
+    bg: Optional[int] = None
+
+
+def base_cell_style(cell: int, given_cells: set[int], solved_cells: set[int], display_as_solved: bool) -> CellRenderStyle:
+    if not display_as_solved:
+        return CellRenderStyle(fg=36, bold=False)
+    if cell in given_cells:
+        return CellRenderStyle(fg=37, bold=True)
+    if cell in solved_cells:
+        return CellRenderStyle(fg=32, bold=False)
+    return CellRenderStyle(fg=36, bold=False)
+
+
+def highlighted_cell_style(
+    cell: int,
+    base_style: CellRenderStyle,
+    candidate_changed: set[int],
+    selected: set[int],
+    causes: set[int],
+) -> CellRenderStyle:
+    if cell in candidate_changed and cell in selected:
+        return CellRenderStyle(fg=30, bold=True, bg=42)
+    if cell in candidate_changed and cell in causes:
+        return CellRenderStyle(fg=30, bold=True, bg=43)
+    if cell in candidate_changed:
+        return CellRenderStyle(fg=37, bold=True, bg=44)
+    if cell in causes:
+        return CellRenderStyle(fg=30, bold=True, bg=43)
+    if cell in selected:
+        return CellRenderStyle(fg=30, bold=True, bg=42)
+    return base_style
+
+
+def render_progress_cell(
+    cell: int,
+    mask: int,
+    given_cells: set[int],
+    solved_cells: set[int],
+    selected: set[int],
+    causes: set[int],
+    candidate_changed: set[int],
+    candidate_eliminated_digits: dict[int, set[int]],
+    cell_width: int,
+    use_color: bool,
+) -> List[str]:
+    display_as_solved = is_single(mask) and (cell in given_cells or cell in solved_cells or cell in selected)
+    base_style = base_cell_style(cell, given_cells, solved_cells, display_as_solved)
+    style = highlighted_cell_style(cell, base_style, candidate_changed, selected, causes)
+    eliminated_digits = candidate_eliminated_digits.get(cell, set())
+
+    if display_as_solved:
+        return solved_cell_lines(
+            str(single_digit(mask)),
+            style.fg,
+            style.bold,
+            cell_width,
+            use_color,
+            bg=style.bg,
+        )
+
+    return candidate_cell_lines(
+        mask,
+        eliminated_digits,
+        style.fg,
+        style.bold,
+        cell_width,
+        use_color,
+        bg=style.bg,
+    )
+
+
 def render_progress_grid(
     candidates: Sequence[int],
     given_cells: set[int],
@@ -289,65 +365,18 @@ def render_progress_grid(
 
             cell = rc_to_i(r, c)
             mask = candidates[cell]
-            display_as_solved = is_single(mask) and (cell in given_cells or cell in solved_cells or cell in selected)
-            if display_as_solved:
-                text = str(single_digit(mask))
-                if cell in given_cells:
-                    fg = 37
-                elif cell in solved_cells:
-                    fg = 32
-                else:
-                    fg = 36
-                bold = cell in given_cells
-            else:
-                fg = 36
-                bold = False
-
-            if cell in candidate_changed and cell in selected:
-                cell_lines = candidate_cell_lines(
-                        mask,
-                        candidate_eliminated_digits[cell],
-                        30,
-                        True,
-                        cell_width,
-                        use_color,
-                        bg=42,
-                    )
-            elif cell in candidate_changed and cell in causes:
-                cell_lines = candidate_cell_lines(
-                        mask,
-                        candidate_eliminated_digits[cell],
-                        30,
-                        True,
-                        cell_width,
-                        use_color,
-                        bg=43,
-                    )
-            elif cell in candidate_changed:
-                cell_lines = candidate_cell_lines(
-                        mask,
-                        candidate_eliminated_digits[cell],
-                        37,
-                        True,
-                        cell_width,
-                        use_color,
-                        bg=44,
-                    )
-            elif cell in causes:
-                if display_as_solved:
-                    cell_lines = solved_cell_lines(text, 30, True, cell_width, use_color, bg=43)
-                else:
-                    cell_lines = candidate_cell_lines(mask, set(), 30, True, cell_width, use_color, bg=43)
-            elif cell in selected:
-                if display_as_solved:
-                    cell_lines = solved_cell_lines(text, 30, True, cell_width, use_color, bg=42)
-                else:
-                    cell_lines = candidate_cell_lines(mask, set(), 30, True, cell_width, use_color, bg=42)
-            else:
-                if display_as_solved:
-                    cell_lines = solved_cell_lines(text, fg, bold, cell_width, use_color)
-                else:
-                    cell_lines = candidate_cell_lines(mask, set(), fg, bold, cell_width, use_color)
+            cell_lines = render_progress_cell(
+                cell,
+                mask,
+                given_cells,
+                solved_cells,
+                selected,
+                causes,
+                candidate_changed,
+                candidate_eliminated_digits,
+                cell_width,
+                use_color,
+            )
 
             for subline, rendered_cell in zip(row_lines, cell_lines):
                 subline.append(rendered_cell)
