@@ -140,6 +140,98 @@ class UniqueRectangleType2(Technique):
 
         return moves
 
+class UniqueRectangleType3(Technique):
+    name = "Unique Rectangle Type 3"
+    difficulty = 7
+
+    def find_moves(self, state: SudokuState) -> List[Move]:
+        moves: List[Move] = []
+        seen = set()
+
+        for r1, r2 in combinations(range(9), 2):
+            for c1, c2 in combinations(range(9), 2):
+                cells = [
+                    rc_to_i(r1, c1),
+                    rc_to_i(r1, c2),
+                    rc_to_i(r2, c1),
+                    rc_to_i(r2, c2),
+                ]
+                if len({BOX_OF[cell] for cell in cells}) != 2:
+                    continue
+
+                masks = {cell: state.candidate_mask(cell) for cell in cells}
+                for pair_mask in {mask for mask in masks.values() if bit_count(mask) == 2}:
+                    pair_cells = [cell for cell in cells if masks[cell] == pair_mask]
+                    floor_cells = [
+                        cell
+                        for cell in cells
+                        if cell not in pair_cells and (masks[cell] & pair_mask) == pair_mask and masks[cell] != pair_mask
+                    ]
+                    if len(pair_cells) != 2 or len(floor_cells) != 2:
+                        continue
+
+                    shared_units = [
+                        (unit_index, unit)
+                        for unit_index, unit in enumerate(ALL_UNITS)
+                        if floor_cells[0] in unit and floor_cells[1] in unit
+                    ]
+                    extra_mask = (masks[floor_cells[0]] | masks[floor_cells[1]]) & ~pair_mask
+                    subset_size = bit_count(extra_mask)
+                    if subset_size < 2:
+                        continue
+
+                    for unit_index, unit in shared_units:
+                        subset_candidates = [
+                            cell for cell in unit
+                            if cell not in cells
+                            and not is_single(state.candidate_mask(cell))
+                            and state.candidate_mask(cell) & extra_mask
+                            and (state.candidate_mask(cell) & ~extra_mask) == 0
+                        ]
+                        for helpers in combinations(subset_candidates, subset_size - 1):
+                            union_mask = extra_mask
+                            for helper in helpers:
+                                union_mask |= state.candidate_mask(helper)
+                            if union_mask != extra_mask:
+                                continue
+
+                            subset_cells = set(floor_cells) | set(helpers)
+                            eliminations = [
+                                Elimination(cell, digit)
+                                for cell in unit
+                                if cell not in subset_cells
+                                for digit in digits_from_mask(extra_mask)
+                                if state.can_place(cell, digit)
+                            ]
+                            if not eliminations:
+                                continue
+
+                            key = (
+                                tuple(cells),
+                                tuple(sorted(helpers)),
+                                unit_index,
+                                extra_mask,
+                                tuple((elimination.cell, elimination.digit) for elimination in eliminations),
+                            )
+                            if key in seen:
+                                continue
+                            seen.add(key)
+
+                            moves.append(
+                                Move(
+                                    technique=self.name,
+                                    difficulty=self.difficulty,
+                                    reason=(
+                                        f"Unique Rectangle Type 3 on {', '.join(cell_text(cell) for cell in cells)}: "
+                                        f"extra digits {digits_from_mask(extra_mask)} form a naked subset in {unit_text(unit_index)}."
+                                    ),
+                                    eliminations=eliminations,
+                                    cause_cells=sorted({*cells, *helpers}),
+                                )
+                            )
+
+        return moves
+
 class UniqueRectangleType4(Technique):
     name = "Unique Rectangle Type 4"
     difficulty = 7

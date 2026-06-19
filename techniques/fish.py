@@ -544,8 +544,10 @@ class FinnedXWing(Technique):
 
 
 class FinnedSwordfish(Technique):
-    name = "Finned Swordfish"
-    difficulty = 7
+    def __init__(self, size: int = 3):
+        self.size = size
+        self.name = {3: "Finned Swordfish", 4: "Finned Jellyfish"}[size]
+        self.difficulty = {3: 7, 4: 8}[size]
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
@@ -556,14 +558,14 @@ class FinnedSwordfish(Technique):
                 (row, [col for col in range(9) if state.can_place(rc_to_i(row, col), digit)])
                 for row in range(9)
             ]
-            row_patterns = [(row, cols) for row, cols in row_patterns if 2 <= len(cols) <= 5]
-            for combo in combinations(row_patterns, 3):
+            row_patterns = [(row, cols) for row, cols in row_patterns if 2 <= len(cols) <= self.size + 2]
+            for combo in combinations(row_patterns, self.size):
                 rows = [row for row, _ in combo]
                 union_cols = sorted({col for _, cols in combo for col in cols})
-                if len(union_cols) <= 3:
+                if len(union_cols) <= self.size:
                     continue
 
-                for fish_cols in combinations(union_cols, 3):
+                for fish_cols in combinations(union_cols, self.size):
                     fish_col_set = set(fish_cols)
                     if any(not (set(cols) & fish_col_set) for _, cols in combo):
                         continue
@@ -613,7 +615,7 @@ class FinnedSwordfish(Technique):
                             technique=self.name,
                             difficulty=self.difficulty,
                             reason=(
-                                f"Finned Swordfish on digit {digit}: rows {[row+1 for row in rows]} use "
+                                f"{self.name} on digit {digit}: rows {[row+1 for row in rows]} use "
                                 f"columns {[col+1 for col in fish_cols]} with fins in box {fin_box+1}."
                             ),
                             eliminations=eliminations,
@@ -625,14 +627,14 @@ class FinnedSwordfish(Technique):
                 (col, [row for row in range(9) if state.can_place(rc_to_i(row, col), digit)])
                 for col in range(9)
             ]
-            col_patterns = [(col, rows) for col, rows in col_patterns if 2 <= len(rows) <= 5]
-            for combo in combinations(col_patterns, 3):
+            col_patterns = [(col, rows) for col, rows in col_patterns if 2 <= len(rows) <= self.size + 2]
+            for combo in combinations(col_patterns, self.size):
                 cols = [col for col, _ in combo]
                 union_rows = sorted({row for _, rows in combo for row in rows})
-                if len(union_rows) <= 3:
+                if len(union_rows) <= self.size:
                     continue
 
-                for fish_rows in combinations(union_rows, 3):
+                for fish_rows in combinations(union_rows, self.size):
                     fish_row_set = set(fish_rows)
                     if any(not (set(rows) & fish_row_set) for _, rows in combo):
                         continue
@@ -682,7 +684,7 @@ class FinnedSwordfish(Technique):
                             technique=self.name,
                             difficulty=self.difficulty,
                             reason=(
-                                f"Finned Swordfish on digit {digit}: columns {[col+1 for col in cols]} use "
+                                f"{self.name} on digit {digit}: columns {[col+1 for col in cols]} use "
                                 f"rows {[row+1 for row in fish_rows]} with fins in box {fin_box+1}."
                             ),
                             eliminations=eliminations,
@@ -691,6 +693,11 @@ class FinnedSwordfish(Technique):
                     )
 
         return moves
+
+
+class FinnedJellyfish(FinnedSwordfish):
+    def __init__(self):
+        super().__init__(4)
 
 
 class EmptyRectangle(Technique):

@@ -5,8 +5,10 @@ import sys
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 from techniques import (
+    ALSXZ,
     BUGPlusOne,
     EmptyRectangle,
+    FinnedJellyfish,
     FinnedSwordfish,
     FinnedXWing,
     Fish,
@@ -23,6 +25,7 @@ from techniques import (
     TwoStringKite,
     UniqueRectangleType1,
     UniqueRectangleType2,
+    UniqueRectangleType3,
     UniqueRectangleType4,
     WWing,
     XYChain,
@@ -67,12 +70,15 @@ class SudokuSolver:
             FinnedSwordfish(),
             XYWing(),
             Fish(4),   # Jellyfish
+            FinnedJellyfish(),
             XYZWing(),
             XYChain(),
             EmptyRectangle(),
             UniqueRectangleType1(),
             UniqueRectangleType2(),
+            UniqueRectangleType3(),
             UniqueRectangleType4(),
+            ALSXZ(),
             BUGPlusOne(),
             Nishio(),
         ]
