@@ -66,6 +66,14 @@ def cell_text(cell: int) -> str:
     return f"r{r+1}c{c+1}"
 
 
+def cells_text(cells: Iterable[int]) -> str:
+    return ", ".join(cell_text(cell) for cell in cells)
+
+
+def forced_cell_reason(cell: int, digit: int) -> str:
+    return f"{cell_text(cell)} is forced to {digit}."
+
+
 ROW_UNITS = [[rc_to_i(r, c) for c in COLS] for r in ROWS]
 COL_UNITS = [[rc_to_i(r, c) for r in ROWS] for c in COLS]
 BOX_UNITS = [

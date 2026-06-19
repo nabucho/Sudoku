@@ -16,7 +16,6 @@ from .common import (
     SudokuState,
     Technique,
     cell_text,
-    i_to_rc,
     rc_to_i,
 )
 
@@ -128,7 +127,7 @@ class Skyscraper(Technique):
                             difficulty=self.difficulty,
                             reason=(
                                 f"Skyscraper on digit {d}: rows {r1+1} and {r2+1} share base column "
-                                f"{common_col+1}; roof cells are r{r1+1}c{roof1+1} and r{r2+1}c{roof2+1}."
+                                f"{common_col+1}; roof cells are {cell_text(cell1)} and {cell_text(cell2)}."
                             ),
                             eliminations=eliminations,
                             cause_cells=[
@@ -174,7 +173,7 @@ class Skyscraper(Technique):
                             difficulty=self.difficulty,
                             reason=(
                                 f"Skyscraper on digit {d}: columns {c1+1} and {c2+1} share base row "
-                                f"{common_row+1}; roof cells are r{roof1+1}c{c1+1} and r{roof2+1}c{c2+1}."
+                                f"{common_row+1}; roof cells are {cell_text(cell1)} and {cell_text(cell2)}."
                             ),
                             eliminations=eliminations,
                             cause_cells=[
@@ -231,20 +230,15 @@ class TwoStringKite(Technique):
                                 if state.can_place(cell, d)
                             ]
                             if eliminations:
-                                rr1, cc1 = i_to_rc(row_other)
-                                rr2, cc2 = i_to_rc(col_other)
-                                rrp, ccp = i_to_rc(row_cell)
-                                rrc, ccc = i_to_rc(col_cell)
-
                                 moves.append(
                                     Move(
                                         technique=self.name,
                                         difficulty=self.difficulty,
                                         reason=(
                                             f"Two-String Kite on digit {d}: row {r+1} and column {c+1} "
-                                            f"are linked via same-box cells r{rrp+1}c{ccp+1} and r{rrc+1}c{ccc+1}; "
+                                            f"are linked via same-box cells {cell_text(row_cell)} and {cell_text(col_cell)}; "
                                             f"therefore digit {d} can be removed from cells seeing both "
-                                            f"r{rr1+1}c{cc1+1} and r{rr2+1}c{cc2+1}."
+                                            f"{cell_text(row_other)} and {cell_text(col_other)}."
                                         ),
                                         eliminations=eliminations,
                                         cause_cells=sorted({*row_cells, *col_cells}),

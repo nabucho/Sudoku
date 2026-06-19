@@ -21,7 +21,6 @@ from .common import (
     bit_count,
     cell_text,
     digits_from_mask,
-    i_to_rc,
     is_single,
     placement_text,
     rc_to_i,
@@ -89,14 +88,13 @@ class UniqueRectangleType1(Technique):
                     if state.can_place(odd_cell, d)
                 ]
                 if eliminations:
-                    rr, cc = i_to_rc(odd_cell)
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
                             reason=(
                                 f"Unique Rectangle Type 1 on rows {r1+1},{r2+1} and columns {c1+1},{c2+1}: "
-                                f"three corners form deadly pair {pair_digits}, so r{rr+1}c{cc+1} "
+                                f"three corners form deadly pair {pair_digits}, so {cell_text(odd_cell)} "
                                 f"cannot keep both of those digits."
                             ),
                             eliminations=eliminations,
@@ -420,13 +418,12 @@ class BUGPlusOne(Technique):
             box_count = sum(1 for c in BOX_UNITS[box] if state.can_place(c, d))
 
             if row_count == 3 and col_count == 3 and box_count == 3:
-                r, c = i_to_rc(cell)
                 moves.append(
                     Move(
                         technique=self.name,
                         difficulty=self.difficulty,
                         reason=(
-                            f"BUG+1: r{r+1}c{c+1} is the only tri-value cell, "
+                            f"BUG+1: {cell_text(cell)} is the only tri-value cell, "
                             f"so digit {d} must be placed there."
                         ),
                         placements=[Placement(cell, d)],

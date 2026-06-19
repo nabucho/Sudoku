@@ -12,7 +12,7 @@ from techniques.common import (
     SudokuState,
     bit,
     digits_from_mask,
-    i_to_rc,
+    forced_cell_reason,
     is_single,
     placement_text,
     single_digit,
@@ -64,11 +64,10 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
             continue
         if not is_single(before_mask) and is_single(after_mask):
             digit = single_digit(after_mask)
-            r, c = i_to_rc(cell)
             implied_move = Move(
                 technique="Naked Single",
                 difficulty=1,
-                reason=f"r{r+1}c{c+1} is forced to {digit}.",
+                reason=forced_cell_reason(cell, digit),
                 placements=[Placement(cell, digit)],
             )
             implied_move.timing_ms = 0.0
@@ -190,12 +189,11 @@ class StepExpander:
 
     def select_forced_single(self, cell: int, difficulty: int) -> bool:
         digit = single_digit(self.replay.candidate_mask(cell))
-        r, c = i_to_rc(cell)
         return self.select_digit(
             cell,
             digit,
             "Naked Single",
-            f"r{r+1}c{c+1} is forced to {digit}.",
+            forced_cell_reason(cell, digit),
             difficulty,
         )
 

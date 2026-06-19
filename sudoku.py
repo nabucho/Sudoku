@@ -15,7 +15,7 @@ from techniques.common import (
     Technique,
     TechniqueTiming,
     bit_count,
-    i_to_rc,
+    cell_text,
     is_single,
     rc_to_i,
 )
@@ -177,7 +177,7 @@ class SudokuSolver:
             guess_move = Move(
                 technique="Guess",
                 difficulty=99,
-                reason=f"MRV guess: try {d} in r{i_to_rc(cell)[0]+1}c{i_to_rc(cell)[1]+1}.",
+                reason=f"MRV guess: try {d} in {cell_text(cell)}.",
                 placements=[Placement(cell, d)],
             )
 
@@ -226,7 +226,7 @@ class SudokuSolver:
             guess_move = Move(
                 technique="Guess",
                 difficulty=99,
-                reason=f"MRV guess: try {d} in r{i_to_rc(cell)[0]+1}c{i_to_rc(cell)[1]+1}.",
+                reason=f"MRV guess: try {d} in {cell_text(cell)}.",
                 placements=[Placement(cell, d)],
             )
 

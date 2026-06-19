@@ -14,7 +14,6 @@ from .common import (
     bit_count,
     cell_text,
     digits_from_mask,
-    i_to_rc,
     single_digit,
 )
 
@@ -71,17 +70,14 @@ class XYWing(Technique):
                         if state.can_place(cell, z)
                     ]
                     if eliminations:
-                        pr, pc = i_to_rc(pivot)
-                        ar, ac = i_to_rc(a)
-                        br, bc = i_to_rc(b)
                         moves.append(
                             Move(
                                 technique=self.name,
                                 difficulty=self.difficulty,
                                 reason=(
-                                    f"Pivot r{pr+1}c{pc+1} is {{{x},{y}}}; pincers "
-                                    f"r{ar+1}c{ac+1}={digits_from_mask(state.candidate_mask(a))} and "
-                                    f"r{br+1}c{bc+1}={digits_from_mask(state.candidate_mask(b))}, "
+                                    f"Pivot {cell_text(pivot)} is {{{x},{y}}}; pincers "
+                                    f"{cell_text(a)}={digits_from_mask(state.candidate_mask(a))} and "
+                                    f"{cell_text(b)}={digits_from_mask(state.candidate_mask(b))}, "
                                     f"so digit {z} can be eliminated from common peers."
                                 ),
                                 eliminations=eliminations,
@@ -129,16 +125,13 @@ class XYZWing(Technique):
                             if state.can_place(cell, z)
                         ]
                         if eliminations:
-                            pr, pc = i_to_rc(pivot)
-                            ar, ac = i_to_rc(a)
-                            br, bc = i_to_rc(b)
                             moves.append(
                                 Move(
                                     technique=self.name,
                                     difficulty=self.difficulty,
                                     reason=(
-                                        f"Pivot r{pr+1}c{pc+1} is {{{x},{y},{z}}}; pincers "
-                                        f"r{ar+1}c{ac+1} are {{{x},{z}}} and r{br+1}c{bc+1} are "
+                                        f"Pivot {cell_text(pivot)} is {{{x},{y},{z}}}; pincers "
+                                        f"{cell_text(a)} are {{{x},{z}}} and {cell_text(b)} are "
                                         f"{{{y},{z}}}, so digit {z} can be removed from cells seeing all three."
                                     ),
                                     eliminations=eliminations,

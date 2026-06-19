@@ -20,8 +20,9 @@ from .common import (
     bit_count,
     bits,
     cell_text,
+    cells_text,
     digits_from_mask,
-    i_to_rc,
+    forced_cell_reason,
     is_single,
     single_digit,
     unit_text,
@@ -37,12 +38,11 @@ class NakedSingle(Technique):
             mask = state.candidate_mask(cell)
             if is_single(mask) and cell not in state.fixed_cells:
                 digit = single_digit(mask)
-                r, c = i_to_rc(cell)
                 return [
                     Move(
                         technique=self.name,
                         difficulty=self.difficulty,
-                        reason=f"r{r+1}c{c+1} is forced to {digit}.",
+                        reason=forced_cell_reason(cell, digit),
                         placements=[Placement(cell, digit)],
                     )
                 ]
@@ -191,13 +191,12 @@ class NakedSubset(Technique):
                             eliminations.append(Elimination(other, d))
 
                 if eliminations:
-                    combo_text = ", ".join(f"r{i_to_rc(c)[0]+1}c{i_to_rc(c)[1]+1}" for c in combo)
                     digits_text = digits_from_mask(union_mask)
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
-                            reason=f"{self.name}: cells {combo_text} contain only digits {digits_text}.",
+                            reason=f"{self.name}: cells {cells_text(combo)} contain only digits {digits_text}.",
                             eliminations=eliminations,
                             cause_cells=list(combo),
                         )
@@ -245,12 +244,11 @@ class HiddenSubset(Technique):
                             eliminations.append(Elimination(cell, d))
 
                 if eliminations:
-                    cell_text = ", ".join(f"r{i_to_rc(c)[0]+1}c{i_to_rc(c)[1]+1}" for c in cells)
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
-                            reason=f"{self.name}: digits {list(digits_combo)} are confined to cells {cell_text}.",
+                            reason=f"{self.name}: digits {list(digits_combo)} are confined to cells {cells_text(cells)}.",
                             eliminations=eliminations,
                             cause_cells=cells,
                         )
