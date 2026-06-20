@@ -15,7 +15,7 @@ from sudoku_solver.techniques.common import SudokuState
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STRATEGIES = ["human", "balanced", "fastest", "search-first"]
-ORIGINAL_FIXTURES = ["puzzle", "puzzle2", "puzzle3", "puzzle4"]
+PUZZLE_DIR = ROOT / "test" / "puzzles"
 
 
 @dataclass(frozen=True)
@@ -41,14 +41,9 @@ class ProfileRow:
         return self.successes / self.attempts * 100.0 if self.attempts else 0.0
 
 
-def fixture_paths(include_original: bool = True, include_puzzle_bank: bool = True) -> list[Path]:
-    """Return benchmark fixture paths based on fixture-set flags."""
-    paths: list[Path] = []
-    if include_original:
-        paths.extend(ROOT / "test" / name for name in ORIGINAL_FIXTURES)
-    if include_puzzle_bank:
-        paths.extend(sorted((ROOT / "test" / "puzzles").iterdir()))
-    return [path for path in paths if path.is_file()]
+def fixture_paths() -> list[Path]:
+    """Return all benchmark fixture paths."""
+    return [path for path in sorted(PUZZLE_DIR.iterdir()) if path.is_file()]
 
 
 def run_strategy(strategy: str, paths: list[Path]) -> tuple[dict[str, dict[str, float]], list[ProfileRow], int, float]:
@@ -163,16 +158,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Strategy to benchmark. Can be passed multiple times. Defaults to human, balanced, fastest, search-first.",
     )
     parser.add_argument(
-        "--only-puzzle-bank",
-        action="store_true",
-        help="Benchmark only fixtures under test/puzzles, excluding the four original fixtures.",
-    )
-    parser.add_argument(
-        "--only-original",
-        action="store_true",
-        help="Benchmark only the four original fixtures.",
-    )
-    parser.add_argument(
         "--profile-slowest",
         type=int,
         default=0,
@@ -185,13 +170,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
 def main() -> int:
     """Run the benchmark command-line interface."""
     args = build_arg_parser().parse_args()
-    if args.only_original and args.only_puzzle_bank:
-        raise SystemExit("--only-original and --only-puzzle-bank cannot be combined.")
 
-    paths = fixture_paths(
-        include_original=not args.only_puzzle_bank,
-        include_puzzle_bank=not args.only_original,
-    )
+    paths = fixture_paths()
     if not paths:
         raise SystemExit("No fixtures found.")
 

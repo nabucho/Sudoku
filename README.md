@@ -15,7 +15,7 @@ python3 sudoku.py
 Solve a puzzle from a file:
 
 ```sh
-python3 sudoku.py --file test/puzzle2
+python3 sudoku.py --file test/puzzles/hard_01
 ```
 
 Solve an inline puzzle string:
@@ -27,7 +27,7 @@ python3 sudoku.py "...8....3..8.61...14.37..2...4.8...7...7...4.9.6.5..1.2......
 Print text steps without progress boards:
 
 ```sh
-python3 sudoku.py --file test/puzzle --no-progress --no-pause
+python3 sudoku.py --file test/puzzles/diabolical_01 --no-progress --no-pause
 ```
 
 Run the automated tests:
@@ -213,14 +213,14 @@ Each technique call is timed in milliseconds. At the end of a solve, the timing 
 
 ## Benchmarking
 
-`test/benchmark.py` benchmarks strategies across the original fixtures and the 50-puzzle fixture bank.
+`test/benchmark.py` benchmarks strategies across all puzzle fixtures under `test/puzzles/`.
 
 Examples:
 
 ```sh
 python3 test/benchmark.py
-python3 test/benchmark.py --only-original --strategy fastest
-python3 test/benchmark.py --only-puzzle-bank --strategy human --strategy balanced
+python3 test/benchmark.py --strategy fastest
+python3 test/benchmark.py --strategy human --strategy balanced
 python3 test/benchmark.py --profile-slowest 20
 ```
 
@@ -228,12 +228,6 @@ Benchmark options:
 
 `--strategy STRATEGY`
 : Benchmark one strategy. Can be passed more than once.
-
-`--only-original`
-: Benchmark only `test/puzzle`, `test/puzzle2`, `test/puzzle3`, and `test/puzzle4`.
-
-`--only-puzzle-bank`
-: Benchmark only fixtures under `test/puzzles`.
 
 `--profile-slowest N`
 : Print the `N` slowest per-puzzle technique timing rows across selected strategies.

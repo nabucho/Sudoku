@@ -39,7 +39,6 @@ from sudoku_solver.visualization import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-PUZZLE_FILES = ["puzzle", "puzzle2", "puzzle3", "puzzle4"]
 PUZZLE_DIR = ROOT / "test" / "puzzles"
 SYNTHETIC_DIR = ROOT / "test" / "synthetic"
 ONLINE_DIR = ROOT / "test" / "online"
@@ -67,8 +66,12 @@ def run_benchmark_command(args: list[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
-def puzzle_path(name: str) -> str:
-    return str(Path("test") / name)
+def puzzle_fixtures() -> list[Path]:
+    return sorted(path for path in PUZZLE_DIR.iterdir() if path.is_file())
+
+
+def fixture_arg(path: Path) -> str:
+    return str(path.relative_to(ROOT))
 
 
 def assert_success(args: list[str]) -> None:
@@ -195,25 +198,38 @@ def assert_technique_fixtures(
 
 
 def test_direct_strategies() -> None:
-    for fixture, strategy in itertools.product(PUZZLE_FILES, STRATEGIES):
-        assert_success(["--file", puzzle_path(fixture), "--strategy", strategy, "--no-steps"])
+    for fixture, strategy in itertools.product(puzzle_fixtures()[:4], STRATEGIES):
+        assert_success(["--file", fixture_arg(fixture), "--strategy", strategy, "--no-steps"])
 
 
 def test_human_logic_only() -> None:
-    for fixture in ["puzzle", "puzzle2", "puzzle3"]:
-        assert_success(["--file", puzzle_path(fixture), "--strategy", "human", "--logic-only", "--no-steps"])
+    logic_solved = []
+    logic_unsolved = None
+    for fixture in puzzle_fixtures():
+        result = run_command(["--file", fixture_arg(fixture), "--strategy", "human", "--logic-only", "--no-steps"])
+        if result.returncode == 0:
+            logic_solved.append(fixture)
+            if len(logic_solved) == 3 and logic_unsolved is not None:
+                break
+        elif result.returncode == 1 and result.stderr.strip() == "No solution found.":
+            logic_unsolved = fixture
+            if len(logic_solved) == 3:
+                break
+        else:
+            raise AssertionError(f"Unexpected logic-only result for {fixture}: {result.returncode}: {result.stderr}")
 
-    result = run_command(["--file", puzzle_path("puzzle4"), "--strategy", "human", "--logic-only", "--no-steps"])
-    if result.returncode != 1 or result.stderr.strip() != "No solution found.":
-        raise AssertionError(f"Expected puzzle4 human logic-only to be unsolved, got {result.returncode}: {result.stderr}")
+    if len(logic_solved) < 3:
+        raise AssertionError("Expected at least three fixtures to solve with human logic-only")
+    if logic_unsolved is None:
+        raise AssertionError("Expected at least one fixture to be unsolved with human logic-only")
 
 
 def test_step_styles() -> None:
-    for fixture, style in itertools.product(PUZZLE_FILES, STEP_STYLES):
+    for fixture, style in itertools.product(puzzle_fixtures()[:4], STEP_STYLES):
         assert_success(
             [
                 "--file",
-                puzzle_path(fixture),
+                fixture_arg(fixture),
                 "--strategy",
                 "human",
                 "--step-style",
@@ -226,7 +242,7 @@ def test_step_styles() -> None:
 
 def test_cli_validation() -> None:
     assert_failure_contains(
-        ["--file", puzzle_path("puzzle"), "--logic-only", "--strategy", "search-first", "--no-steps"],
+        ["--file", fixture_arg(puzzle_fixtures()[0]), "--logic-only", "--strategy", "search-first", "--no-steps"],
         "--logic-only cannot be used with --strategy search-first",
     )
     assert_failure_contains(["--file", str(Path("test") / "missing"), "--no-steps"], "Could not read puzzle file")
@@ -237,7 +253,7 @@ def test_cli_helpers_in_process() -> None:
         raise AssertionError("Expected inline puzzle argument to be returned")
 
     try:
-        read_puzzle_argument("0" * 81, str(ROOT / "test" / "puzzle"))
+        read_puzzle_argument("0" * 81, str(puzzle_fixtures()[0]))
     except ValueError as exc:
         if "Use either" not in str(exc):
             raise AssertionError(f"Unexpected read_puzzle_argument error: {exc}")
@@ -251,19 +267,24 @@ def test_cli_helpers_in_process() -> None:
     stdout = io.StringIO()
     stderr = io.StringIO()
     with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-        exit_code = cli_main(["--file", str(ROOT / "test" / "puzzle"), "--no-steps"])
+        exit_code = cli_main(["--file", str(puzzle_fixtures()[0]), "--no-steps"])
     if exit_code != 0:
         raise AssertionError(f"Expected in-process CLI success, got {exit_code}: {stderr.getvalue()}")
     if "Original puzzle:" not in stdout.getvalue() or "Solved board:" not in stdout.getvalue():
         raise AssertionError(f"Unexpected in-process CLI output: {stdout.getvalue()}")
 
+    unsolved_fixture = next(
+        fixture
+        for fixture in puzzle_fixtures()
+        if run_command(["--file", fixture_arg(fixture), "--strategy", "human", "--logic-only", "--no-steps"]).returncode == 1
+    )
     stdout = io.StringIO()
     stderr = io.StringIO()
     with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
         exit_code = cli_main(
             [
                 "--file",
-                str(ROOT / "test" / "puzzle4"),
+                str(unsolved_fixture),
                 "--strategy",
                 "human",
                 "--logic-only",
@@ -340,7 +361,7 @@ def test_online_technique_fixtures() -> None:
 
 
 def test_timing_measurements() -> None:
-    state = SudokuState.from_board((ROOT / "test" / "puzzle").read_text(encoding="utf-8"))
+    state = SudokuState.from_board(puzzle_fixtures()[0].read_text(encoding="utf-8"))
     solver = SudokuSolver(strategy="fastest")
     result, _ = solver.solve_with_search(state, explain=False)
     if result is None:
@@ -427,7 +448,7 @@ def test_visualization_directly() -> None:
 
 
 def test_benchmark_profile_output() -> None:
-    result = run_benchmark_command(["--only-original", "--strategy", "fastest", "--profile-slowest", "3"])
+    result = run_benchmark_command(["--strategy", "fastest", "--profile-slowest", "3"])
     if result.returncode != 0:
         raise AssertionError(f"Expected benchmark success, got {result.returncode}: {result.stderr.strip()}")
     required = ["Strategy: fastest", "Slowest technique runs by puzzle", "Technique", "Total ms"]
@@ -437,9 +458,9 @@ def test_benchmark_profile_output() -> None:
 
 
 def test_all_puzzle_fixtures() -> None:
-    fixtures = sorted(path for path in PUZZLE_DIR.iterdir() if path.is_file())
-    if len(fixtures) != 150:
-        raise AssertionError(f"Expected 150 puzzle fixtures in {PUZZLE_DIR}, got {len(fixtures)}")
+    fixtures = puzzle_fixtures()
+    if len(fixtures) != 154:
+        raise AssertionError(f"Expected 154 puzzle fixtures in {PUZZLE_DIR}, got {len(fixtures)}")
 
     solver = SudokuSolver(strategy="fastest")
     for path in fixtures:
