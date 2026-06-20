@@ -58,6 +58,15 @@ The code is organized to keep the command-line interface thin, the library API i
 `test/`
 : In-process CLI tests, technique fixture tests, puzzle fixture tests, visualization tests, timing tests, and benchmark checks.
 
+`pyproject.toml`
+: Package metadata, console script entry point, development extras, and tool configuration.
+
+`.github/workflows/`
+: GitHub Actions automation for PR/push CI and scheduled full fixture validation.
+
+`.github/dependabot.yml`
+: Dependency update automation for GitHub Actions and Python packaging.
+
 ## Solver Flow
 
 1. A puzzle is parsed into `SudokuState`, whose 81 cells are represented as candidate bitmasks.
@@ -181,12 +190,12 @@ The pytest suite lives in `test/run_tests.py`. It is intentionally layered rathe
 Run the standard checks after meaningful changes:
 
 ```sh
-make lint
-make typecheck
-make test
+make check
 ```
 
-Use `make test-all` before releases, broad refactors, strategy-order changes, search changes, or changes to shared candidate propagation. Regular `make test` skips tests marked `slow` so day-to-day feedback stays fast.
+`make check` compiles the Python modules, runs Ruff linting, runs mypy, and executes the regular pytest suite. Use `make format-check` when you specifically want to verify Ruff formatting. Use `make test-all` or `make check-all` before releases, broad refactors, strategy-order changes, search changes, or changes to shared candidate propagation. Regular `make test` skips tests marked `slow` so day-to-day feedback stays fast.
+
+GitHub Actions mirrors the local gates: `.github/workflows/ci.yml` runs `make ci` and a benchmark smoke check on pull requests and pushes to `main`, while `.github/workflows/slow-tests.yml` runs the full slow suite on a weekly schedule and on manual dispatch.
 
 ### Test Layers
 

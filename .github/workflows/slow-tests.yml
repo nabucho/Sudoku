@@ -1,0 +1,30 @@
+name: Slow Tests
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-all:
+    name: Full fixture validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: pip
+
+      - name: Install package and development tools
+        run: make install-dev PYTHON=python
+
+      - name: Run full slow suite
+        run: make test-all PYTHON=python

@@ -1,5 +1,1 @@
-black
-coverage
-mypy
-pytest
-ruff
+.[dev]

@@ -6,28 +6,34 @@ The solver accepts puzzles as an 81-character string or a text file. Empty cells
 
 ## Quick Start
 
+Install the package:
+
+```sh
+python3 -m pip install .
+```
+
 Run the default puzzle:
 
 ```sh
-python3 sudoku.py
+sudoku-solver
 ```
 
 Solve a puzzle from a file:
 
 ```sh
-python3 sudoku.py --file test/puzzles/hard_01
+sudoku-solver --file test/puzzles/hard_01
 ```
 
 Solve an inline puzzle string:
 
 ```sh
-python3 sudoku.py "...8....3..8.61...14.37..2...4.8...7...7...4.9.6.5..1.2......9..1.......5......3."
+sudoku-solver "...8....3..8.61...14.37..2...4.8...7...7...4.9.6.5..1.2......9..1.......5......3."
 ```
 
 Print text steps without progress boards:
 
 ```sh
-python3 sudoku.py --file test/puzzles/diabolical_01 --no-progress --no-pause
+sudoku-solver --file test/puzzles/diabolical_01 --no-progress --no-pause
 ```
 
 Run the regular automated tests:
@@ -50,7 +56,7 @@ python3 test/benchmark.py --strategy human --profile-slowest 10
 
 ## Development
 
-Install development tools:
+The project supports Python 3.9 and newer. Install the package for normal use with `make install`, or install it with development tools:
 
 ```sh
 make install-dev
@@ -65,18 +71,23 @@ make coverage
 make typecheck
 make lint
 make check
+make check-all
 ```
 
-Regular tests skip exhaustive fixture coverage marked with `slow`; use `make test-all` before larger releases or broad solver changes. Coverage reports use `coverage.py`; `make coverage` prints a terminal report and `make coverage-html` writes `htmlcov/`. Type checking uses `mypy` with project settings from `pyproject.toml`.
+Regular tests skip exhaustive fixture coverage marked with `slow`; use `make test-all` or `make check-all` before larger releases or broad solver changes. Coverage reports use `coverage.py`; `make coverage` prints a terminal report and `make coverage-html` writes `htmlcov/`. Type checking uses `mypy` with project settings from `pyproject.toml`.
+
+GitHub Actions runs `make ci` on pull requests and pushes to `main`, plus a benchmark smoke check. A separate scheduled and manually runnable workflow runs the full slow suite with `make test-all`.
 
 See [Developer Notes](doc/developer-notes.md) for code structure, solver flow, style guidelines, and maintenance conventions.
 
 ## CLI Usage
 
 ```text
-python3 sudoku.py [PUZZLE] [--file PATH] [--strategy STRATEGY] [--step-style STYLE]
-                  [--logic-only] [--no-steps] [--no-progress] [--no-color] [--no-pause]
+sudoku-solver [PUZZLE] [--file PATH] [--strategy STRATEGY] [--step-style STYLE]
+              [--logic-only] [--no-steps] [--no-progress] [--no-color] [--no-pause]
 ```
+
+Running `python3 sudoku.py` is still supported as a compatibility entry point.
 
 ## Library Usage
 
@@ -289,13 +300,19 @@ Benchmark options:
 : Text and colored progress rendering.
 
 `pyproject.toml`
-: Project metadata plus Black, Ruff, coverage, mypy, and pytest configuration.
+: Project metadata plus Ruff, coverage, mypy, and pytest configuration.
+
+`.github/workflows/`
+: GitHub Actions workflows for CI checks and scheduled slow tests.
+
+`.github/dependabot.yml`
+: Dependabot updates for GitHub Actions and Python dependencies.
 
 `requirements-dev.txt`
-: Development tool dependencies for formatting, linting, coverage, and type checking.
+: Compatibility install file that installs the package with the `dev` extra.
 
 `Makefile`
-: Common development commands for tests, coverage, type checking, linting, formatting, and cleanup.
+: Common development commands for installation, tests, coverage, type checking, linting, formatting, and cleanup.
 
 `sudoku_solver/techniques/`
 : Human-style solving technique implementations and shared model helpers.

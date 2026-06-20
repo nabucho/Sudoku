@@ -17,8 +17,3 @@
 - Add prefilters for `Avoidable Rectangle`: current benchmark shows one use but high average scan cost. Precompute non-given rectangles and solved-corner patterns before trying every digit pair.
 - Review remaining `ALS-XZ` pair scans: it is much faster now but still a top cost. Consider indexing ALS groups by candidate mask/shared digits so pairs with no restricted-common possibility are never visited.
 - Consider a low-risk `Nishio` benchmark before coding: because it is high-yield, compare optimized variants against full soundness and `--logic-only` behavior before changing strategy order.
-
-## Project Tooling
-
-- Add CI configuration for lint, type checking, tests, and benchmark smoke checks.
-- Improve packaging metadata so the solver can be installed and imported cleanly in more environments.

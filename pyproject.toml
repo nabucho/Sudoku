@@ -1,16 +1,35 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "sudoku-solver"
 version = "0.1.0"
 description = "A command-line Sudoku solver with human-style techniques, explanations, and timing."
-requires-python = ">=3.10"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
 
-[tool.black]
-line-length = 120
-target-version = ["py310"]
+[project.scripts]
+sudoku-solver = "cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "coverage",
+    "mypy",
+    "pytest",
+    "ruff",
+]
+
+[tool.setuptools]
+py-modules = ["cli", "sudoku"]
+
+[tool.setuptools.packages.find]
+include = ["sudoku_solver*"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py39"
 src = ["."]
 extend-exclude = [
     ".git",
@@ -32,7 +51,7 @@ select = [
     "W",  # pycodestyle warnings
 ]
 ignore = [
-    "E501",  # Black-compatible line wrapping is preferred over manual wrapping.
+    "E501",  # Formatter-compatible line wrapping is preferred over manual wrapping.
 ]
 fixable = ["ALL"]
 
@@ -73,7 +92,7 @@ skip_covered = true
 directory = "htmlcov"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.9"
 files = [
     "sudoku_solver",
     "cli.py",
