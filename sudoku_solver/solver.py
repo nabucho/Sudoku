@@ -65,6 +65,21 @@ class SudokuSolver:
         self._timing_for(move.technique).record_use()
         return move
 
+    def _record_implied_step_uses(self, before: SudokuState, after: SudokuState, move: Move) -> None:
+        """Record display-only propagation and forced-single steps."""
+        selected_placements = {(placement.cell, placement.digit) for placement in move.placements}
+        for step in explanation_steps(before, after, move, detailed_steps=True):
+            if step.technique == "Propagation" and step.eliminations:
+                timing = self._timing_for("Propagation")
+                timing.record_run(0.0, True)
+                timing.record_use()
+            elif step.technique == "Naked Single":
+                placements = {(placement.cell, placement.digit) for placement in step.placements}
+                if placements and not placements <= selected_placements:
+                    timing = self._timing_for("Naked Single")
+                    timing.record_run(0.0, True)
+                    timing.record_use()
+
     def _record_guess_run(self, move: Move, elapsed_ms: float, successful: bool) -> None:
         """Record timing for one speculative MRV guess."""
         move.timing_ms = elapsed_ms
@@ -154,11 +169,13 @@ class SudokuSolver:
             if move is None:
                 return False, steps
 
-            before = state.clone() if explain else None
+            before = state.clone()
             if not state.apply_move(move):
                 return False, steps
 
-            if explain and before is not None:
+            self._record_implied_step_uses(before, state, move)
+
+            if explain:
                 steps.extend(explanation_steps(before, state, move, detailed_steps))
 
         return True, steps

@@ -373,6 +373,18 @@ def test_timing_measurements() -> None:
     if hidden_stats.success_percent < 0 or hidden_stats.success_percent > 100:
         raise AssertionError(f"Invalid success percent: {hidden_stats.success_percent}")
 
+    propagation_state = SudokuState.from_board((PUZZLE_DIR / "diabolical_03").read_text(encoding="utf-8"))
+    propagation_solver = SudokuSolver(strategy="human")
+    result, _ = propagation_solver.solve_with_search(propagation_state, explain=False)
+    if result is None:
+        raise AssertionError("Expected human strategy to solve diabolical_03 for propagation timing test")
+    naked_stats = propagation_solver.timing_stats.get("Naked Single")
+    if naked_stats is None or naked_stats.used <= 2:
+        raise AssertionError(f"Expected propagated naked singles to be counted, got {naked_stats}")
+    propagation_stats = propagation_solver.timing_stats.get("Propagation")
+    if propagation_stats is None or propagation_stats.used == 0:
+        raise AssertionError(f"Expected propagation steps to be counted, got {propagation_stats}")
+
 
 def test_visualization_directly() -> None:
     placement_move = Move(
