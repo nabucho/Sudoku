@@ -5,6 +5,8 @@ from typing import List
 from .common import (
     DIGIT_VALUES,
     PEERS,
+    CellGroup,
+    EliminationKey,
     Move,
     SudokuState,
     Technique,
@@ -23,6 +25,8 @@ from .common import (
     strong_links_for_digit,
     trivalue_candidate_cells,
 )
+
+XYChainSeenKey = tuple[int, int, CellGroup, EliminationKey]
 
 
 class XYWing(Technique):
@@ -143,7 +147,7 @@ class XYZWing(Technique):
                                 eliminations=eliminations,
                                 cause_cells=[pivot, xz_pincer, yz_pincer],
                             )
-                            )
+                        )
 
         return moves
 
@@ -162,9 +166,7 @@ class XYChain(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen: set[tuple[int, int, tuple[int, ...], tuple[tuple[int, int], ...]]] = set[
-            tuple[int, int, tuple[int, ...], tuple[tuple[int, int], ...]]
-        ]()
+        seen: set[XYChainSeenKey] = set[XYChainSeenKey]()
         bivalue = bivalue_candidate_cells(state)
         bivalue_set = set[int](bivalue)
 
@@ -195,7 +197,7 @@ class XYChain(Technique):
         needed_digit: int,
         path: List[int],
         bivalue_cell_set: set[int],
-        seen: set[tuple[int, int, tuple[int, ...], tuple[tuple[int, int], ...]]],
+        seen: set[XYChainSeenKey],
         moves: List[Move],
     ) -> None:
         if len(path) >= self.max_length:
@@ -221,7 +223,7 @@ class XYChain(Technique):
                 key = (
                     eliminated_digit,
                     min(start, next_cell),
-                    tuple[int, ...](sorted(next_path)),
+                    CellGroup(sorted(next_path)),
                     elimination_key(eliminations),
                 )
                 if key in seen:

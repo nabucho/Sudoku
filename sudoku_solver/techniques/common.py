@@ -13,6 +13,12 @@ from typing import Iterable, Iterator, List, Optional, Sequence, Tuple, TypeVar,
 
 T = TypeVar("T")
 U = TypeVar("U")
+CellGroup = tuple[int, ...]
+CellPair = tuple[int, int]
+CellDigit = tuple[int, int]
+IndexDigit = tuple[int, int]
+IndexedCellGroup = tuple[int, CellGroup]
+MaskTransition = tuple[int, int]
 
 # ============================================================
 # Bitmask helpers
@@ -159,6 +165,9 @@ BOX_OF = [((cell // 9) // 3) * 3 + ((cell % 9) // 3) for cell in CELL_INDICES]
 # Candidate lookup helpers
 # ============================================================
 
+UnitCandidateCacheKey = tuple[CellGroup, bool]
+
+
 class UnitCandidateCache:
     """Per-state cache of candidate positions in units.
 
@@ -168,11 +177,11 @@ class UnitCandidateCache:
 
     def __init__(self, state: "SudokuState"):
         self.state = state
-        self._positions: dict[tuple[tuple[int, ...], bool], dict[int, List[int]]] = {}
+        self._positions: dict[UnitCandidateCacheKey, dict[int, List[int]]] = {}
 
     def candidate_positions(self, unit: Sequence[int], *, include_solved: bool = True) -> dict[int, List[int]]:
         """Return candidate cells by digit for one unit."""
-        key = (tuple[int, ...](unit), include_solved)
+        key = (CellGroup(unit), include_solved)
         if key not in self._positions:
             positions: dict[int, List[int]] = {digit: [] for digit in DIGIT_VALUES}
             for cell in unit:
@@ -197,10 +206,10 @@ def strong_links_for_digit(
     state: "SudokuState",
     digit: int,
     candidate_cache: UnitCandidateCache | None = None,
-) -> List[Tuple[int, int]]:
+) -> List[CellPair]:
     """Return conjugate-pair strong links for one candidate digit."""
     cache = candidate_cache or UnitCandidateCache(state)
-    links: set[tuple[int, int]] = set[tuple[int, int]]()
+    links: set[CellPair] = set[CellPair]()
     for unit in ALL_UNITS:
         cells = cache.unsolved_cells_with_candidate(unit, digit)
         if len(cells) == 2:
@@ -364,13 +373,13 @@ class Move:
 # Move key and candidate simulation helpers
 # ============================================================
 
-EliminationKey = tuple[tuple[int, int], ...]
+EliminationKey = tuple[CellDigit, ...]
 
 
 def elimination_key(eliminations: Sequence[Elimination], *, sorted_key: bool = False) -> EliminationKey:
     """Return a typed, hashable key for a sequence of eliminations."""
     pairs = ((elimination.cell, elimination.digit) for elimination in eliminations)
-    return tuple[tuple[int, int], ...](sorted(pairs) if sorted_key else pairs)
+    return tuple[CellDigit, ...](sorted(pairs) if sorted_key else pairs)
 
 
 def candidate_totals(candidates: Sequence[int]) -> tuple[int, int]:

@@ -10,7 +10,10 @@ from .common import (
     DIGIT_VALUES,
     ROW_OF,
     ROW_UNITS,
+    CellGroup,
     Elimination,
+    EliminationKey,
+    IndexedCellGroup,
     Move,
     SudokuState,
     Technique,
@@ -21,12 +24,20 @@ from .common import (
 )
 
 LINE_MASK = (1 << 9) - 1
+FinnedFishSeenKey = tuple[
+    str,
+    int,
+    CellGroup,
+    CellGroup,
+    CellGroup,
+    EliminationKey,
+]
 BOX_COL_CELLS = [
-    [tuple[int, ...](cell for cell in BOX_UNITS[box] if COL_OF[cell] == col) for col in range(9)]
+    [CellGroup(cell for cell in BOX_UNITS[box] if COL_OF[cell] == col) for col in range(9)]
     for box in range(9)
 ]
 BOX_ROW_CELLS = [
-    [tuple[int, ...](cell for cell in BOX_UNITS[box] if ROW_OF[cell] == row) for row in range(9)]
+    [CellGroup(cell for cell in BOX_UNITS[box] if ROW_OF[cell] == row) for row in range(9)]
     for box in range(9)
 ]
 BOX_COL_MASKS = [
@@ -39,9 +50,9 @@ BOX_ROW_MASKS = [
 ]
 
 
-def _indexes_from_mask(mask: int) -> tuple[int, ...]:
+def _indexes_from_mask(mask: int) -> CellGroup:
     """Return zero-based row/column indexes represented by a bit mask."""
-    return tuple[int, ...](index for index in range(9) if mask & (1 << index))
+    return CellGroup(index for index in range(9) if mask & (1 << index))
 
 
 def _mask_combinations(mask: int, size: int):
@@ -84,11 +95,11 @@ class Fish(Technique):
 
         for digit in DIGIT_VALUES:
             # Row-based fish
-            row_patterns: list[tuple[int, tuple[int, ...]]] = []
+            row_patterns: list[IndexedCellGroup] = []
             for row in range(9):
                 candidate_cols = [col for col in range(9) if state.can_place(rc_to_i(row, col), digit)]
                 if 2 <= len(candidate_cols) <= self.size:
-                    row_patterns.append((row, tuple[int, ...](candidate_cols)))
+                    row_patterns.append((row, CellGroup(candidate_cols)))
 
             for combo in sized_combinations(row_patterns, self.size):
                 fish_rows = [row for row, _ in combo]
@@ -121,11 +132,11 @@ class Fish(Technique):
                     )
 
             # Column-based fish
-            col_patterns: list[tuple[int, tuple[int, ...]]] = []
+            col_patterns: list[IndexedCellGroup] = []
             for col in range(9):
                 candidate_rows = [row for row in range(9) if state.can_place(rc_to_i(row, col), digit)]
                 if 2 <= len(candidate_rows) <= self.size:
-                    col_patterns.append((col, tuple[int, ...](candidate_rows)))
+                    col_patterns.append((col, CellGroup(candidate_rows)))
 
             for combo in sized_combinations(col_patterns, self.size):
                 fish_cols = [col for col, _ in combo]
@@ -301,11 +312,7 @@ class FinnedSwordfish(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen: set[
-            tuple[str, int, tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[tuple[int, int], ...]]
-        ] = set[
-            tuple[str, int, tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[tuple[int, int], ...]]
-        ]()
+        seen: set[FinnedFishSeenKey] = set[FinnedFishSeenKey]()
 
         for digit in DIGIT_VALUES:
             row_masks, col_masks = _candidate_line_masks(state, digit)
@@ -368,9 +375,9 @@ class FinnedSwordfish(Technique):
                         key = (
                             "row",
                             digit,
-                            tuple[int, ...](rows),
-                            tuple[int, ...](fish_cols),
-                            tuple[int, ...](sorted(fins)),
+                            CellGroup(rows),
+                            CellGroup(fish_cols),
+                            CellGroup(sorted(fins)),
                             elimination_key(eliminations, sorted_key=True),
                         )
                         if key in seen:
@@ -448,9 +455,9 @@ class FinnedSwordfish(Technique):
                         key = (
                             "col",
                             digit,
-                            tuple[int, ...](cols),
-                            tuple[int, ...](fish_rows),
-                            tuple[int, ...](sorted(fins)),
+                            CellGroup(cols),
+                            CellGroup(fish_rows),
+                            CellGroup(sorted(fins)),
                             elimination_key(eliminations, sorted_key=True),
                         )
                         if key in seen:

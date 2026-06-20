@@ -73,6 +73,8 @@ Use `UnitCandidateCache` when a technique repeatedly asks where a digit can appe
 
 Use `shared_peer_eliminations()` for common-peer candidate removals, and `elimination_key()` for deduplication keys. This keeps tuple-key construction consistent and typed.
 
+Use shared structural aliases from `common.py` when a tuple shape appears in more than one module. Current shared aliases include `CellGroup`, `CellPair`, `CellDigit`, `IndexDigit`, `IndexedCellGroup`, `MaskTransition`, and `EliminationKey`.
+
 Use `pair_combinations()`, `sized_combinations()`, and `zip_pairs()` instead of direct `itertools.combinations()` or `zip()` when the iterator shape matters to type checking. The casts are centralized in `common.py`.
 
 Use `apply_move_to_candidates()`, `place_digit_in_candidates()`, `eliminate_digit_from_candidates()`, and `candidates_consistency_ok()` for local candidate-mask simulation. These helpers are shared by move scoring and Nishio-style speculative checks so behavior stays aligned with `SudokuState` propagation.
@@ -91,18 +93,22 @@ Do not use `int.bit_count()` directly; the project keeps compatibility through t
 
 ## Typing And Style
 
-The code intentionally uses explicit collection typing in places where it improves IDE and mypy clarity. Examples include `set[int](...)`, `tuple[int, ...](...)`, `enumerate[int](...)`, and typed helper wrappers around iterators.
+The code intentionally uses explicit collection typing in places where it improves IDE and mypy clarity. Examples include `set[int](...)`, `CellGroup(...)`, `enumerate[int](...)`, and typed helper wrappers around iterators.
 
 Prefer:
 
 - Explicit return types on public helpers and technique methods.
 - Typed empty collections, for example `moves: List[Move] = []` or `seen: set[SeenKey] = set[SeenKey]()`.
-- Module-level type aliases for long deduplication key shapes when they are reused.
-- Shared helpers for repeated typed tuple construction.
+- Shared aliases from `common.py` for repeated structural tuple shapes, such as groups of cells or `(cell, digit)` pairs.
+- Technique-local `SeenKey` aliases for long deduplication key shapes that only make sense within one technique.
+- Precise alias names for pairs. Use `CellPair` only for two cells, `CellDigit` for `(cell, digit)`, `IndexDigit` for `(index, digit)`, and `MaskTransition` for `(before_mask, after_mask)`.
+- Shared helpers and aliases for repeated typed tuple construction.
 
 Avoid:
 
-- Repeating complex tuple constructors at call sites when a named helper explains the intent.
+- Repeating complex tuple constructors at call sites when a named helper or alias explains the intent.
+- Creating local aliases for structural tuple shapes already covered by `common.py`.
+- Using a broad alias such as `CellPair` for non-cell-pair data just because the runtime shape is `tuple[int, int]`.
 - Over-defensive guards that hide impossible states instead of preserving solver invariants.
 - Technique-to-technique dependencies unless the dependency is clearly technique-specific. General helpers should live in `common.py`.
 

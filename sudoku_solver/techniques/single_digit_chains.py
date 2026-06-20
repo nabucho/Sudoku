@@ -11,7 +11,9 @@ from .common import (
     PEERS,
     ROW_OF,
     ROW_UNITS,
+    CellGroup,
     Elimination,
+    EliminationKey,
     Move,
     SudokuState,
     Technique,
@@ -23,6 +25,8 @@ from .common import (
     shared_peer_eliminations,
     strong_links_for_digit,
 )
+
+TurbotSeenKey = tuple[int, CellGroup, EliminationKey]
 
 
 class TurbotFish(Technique):
@@ -36,9 +40,7 @@ class TurbotFish(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen: set[tuple[int, tuple[int, ...], tuple[tuple[int, int], ...]]] = set[
-            tuple[int, tuple[int, ...], tuple[tuple[int, int], ...]]
-        ]()
+        seen: set[TurbotSeenKey] = set[TurbotSeenKey]()
         candidate_cache = UnitCandidateCache(state)
 
         for digit in DIGIT_VALUES:
@@ -63,7 +65,7 @@ class TurbotFish(Technique):
 
                         key = (
                             digit,
-                            tuple[int, ...](cause_cells),
+                            CellGroup(cause_cells),
                             elimination_key(eliminations, sorted_key=True),
                         )
                         if key in seen:

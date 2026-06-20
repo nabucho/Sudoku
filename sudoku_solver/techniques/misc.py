@@ -6,7 +6,9 @@ from .common import (
     BOX_UNITS,
     COL_UNITS,
     ROW_UNITS,
+    CellGroup,
     Elimination,
+    EliminationKey,
     Move,
     SudokuState,
     Technique,
@@ -17,6 +19,9 @@ from .common import (
     is_single,
     sized_combinations,
 )
+
+SueDeCoqSeenKey = tuple[CellGroup, CellGroup, CellGroup, EliminationKey]
+IntersectingLine = tuple[str, int, list[int]]
 
 
 class SueDeCoq(Technique):
@@ -30,11 +35,7 @@ class SueDeCoq(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen: set[
-            tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[tuple[int, int], ...]]
-        ] = set[
-            tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[tuple[int, int], ...]]
-        ]()
+        seen: set[SueDeCoqSeenKey] = set[SueDeCoqSeenKey]()
 
         for box_index, box in enumerate[list[int]](BOX_UNITS):
             for line_name, line_index, line in self._intersecting_lines(box_index):
@@ -97,9 +98,9 @@ class SueDeCoq(Technique):
                             continue
 
                         key = (
-                            tuple[int, ...](intersection),
-                            tuple[int, ...](line_companions),
-                            tuple[int, ...](box_companions),
+                            CellGroup(intersection),
+                            CellGroup(line_companions),
+                            CellGroup(box_companions),
                             elimination_key(eliminations),
                         )
                         if key in seen:
@@ -123,7 +124,7 @@ class SueDeCoq(Technique):
 
         return moves
 
-    def _intersecting_lines(self, box_index: int) -> list[tuple[str, int, list[int]]]:
+    def _intersecting_lines(self, box_index: int) -> list[IntersectingLine]:
         box_row = box_index // 3
         box_col = box_index % 3
         rows = [
@@ -141,7 +142,7 @@ class SueDeCoq(Technique):
         state: SudokuState,
         cells: Sequence[int],
         intersection_mask: int,
-    ) -> list[tuple[int, ...]]:
+    ) -> list[CellGroup]:
         return [
             combo
             for combo in sized_combinations(cells, 1)

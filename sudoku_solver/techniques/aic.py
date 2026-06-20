@@ -9,7 +9,10 @@ from .common import (
     COL_OF,
     DIGIT_VALUES,
     ROW_OF,
+    CellDigit,
+    CellGroup,
     Elimination,
+    EliminationKey,
     Move,
     SudokuState,
     Technique,
@@ -22,9 +25,12 @@ from .common import (
     zip_pairs,
 )
 
-CandidateNode = tuple[int, int]
-GroupedNode = tuple[int, tuple[int, ...]]
+CandidateNode = CellDigit
+GroupedNode = tuple[int, CellGroup]
 LinkNode = TypeVar("LinkNode", CandidateNode, GroupedNode)
+LinkSeenKey = tuple[tuple[LinkNode, ...], EliminationKey]
+CandidateSeenKey = tuple[tuple[CandidateNode, ...], EliminationKey]
+GroupedSeenKey = tuple[tuple[GroupedNode, ...], EliminationKey]
 CELL_BIT_MASKS = [1 << cell for cell in CELL_INDICES]
 UNIT_CELL_MASKS = [
     sum(CELL_BIT_MASKS[cell] for cell in unit)
@@ -38,13 +44,13 @@ def _add_link(links: dict[LinkNode, set[LinkNode]], left: LinkNode, right: LinkN
     links.setdefault(right, set[LinkNode]()).add(left)
 
 
-def _cells_mask(cells: tuple[int, ...]) -> int:
+def _cells_mask(cells: CellGroup) -> int:
     """Return a bit mask for a tuple of cells."""
     return sum(CELL_BIT_MASKS[cell] for cell in cells)
 
 
 def _is_duplicate_elimination(
-    seen: set[tuple[tuple[LinkNode, ...], tuple[tuple[int, int], ...]]],
+    seen: set[LinkSeenKey],
     path: list[LinkNode],
     eliminations: List[Elimination],
 ) -> bool:
@@ -70,8 +76,8 @@ def _candidate_common_peer_eliminations(
 
 def _grouped_common_peer_eliminations(
     state: SudokuState,
-    start_cells: tuple[int, ...],
-    end_cells: tuple[int, ...],
+    start_cells: CellGroup,
+    end_cells: CellGroup,
     digit: int,
 ) -> List[Elimination]:
     grouped_cells = (*start_cells, *end_cells)
@@ -97,9 +103,7 @@ class AIC(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         strong_links, weak_links = self._build_links(state)
         moves: List[Move] = []
-        seen: set[tuple[tuple[CandidateNode, ...], tuple[tuple[int, int], ...]]] = set[
-            tuple[tuple[CandidateNode, ...], tuple[tuple[int, int], ...]]
-        ]()
+        seen: set[CandidateSeenKey] = set[CandidateSeenKey]()
 
         for start in sorted(strong_links):
             self._extend_chain(
@@ -158,7 +162,7 @@ class AIC(Technique):
         edge_types: List[str],
         strong_links: dict[CandidateNode, set[CandidateNode]],
         weak_links: dict[CandidateNode, set[CandidateNode]],
-        seen: set[tuple[tuple[CandidateNode, ...], tuple[tuple[int, int], ...]]],
+        seen: set[CandidateSeenKey],
         moves: List[Move],
     ) -> None:
         if len(edge_types) >= self.max_edges:
@@ -194,7 +198,7 @@ class AIC(Technique):
         state: SudokuState,
         path: List[CandidateNode],
         edge_types: List[str],
-        seen: set[tuple[tuple[CandidateNode, ...], tuple[tuple[int, int], ...]]],
+        seen: set[CandidateSeenKey],
         moves: List[Move],
     ) -> None:
         start_cell, start_digit = path[0]
@@ -275,7 +279,7 @@ class XChain(AIC):
         state: SudokuState,
         path: List[CandidateNode],
         edge_types: List[str],
-        seen: set[tuple[tuple[CandidateNode, ...], tuple[tuple[int, int], ...]]],
+        seen: set[CandidateSeenKey],
         moves: List[Move],
     ) -> None:
         start_cell, digit = path[0]
@@ -329,9 +333,7 @@ class GroupedAIC(Technique):
             candidate_cache=candidate_cache,
         )
         moves: List[Move] = []
-        seen: set[tuple[tuple[GroupedNode, ...], tuple[tuple[int, int], ...]]] = set[
-            tuple[tuple[GroupedNode, ...], tuple[tuple[int, int], ...]]
-        ]()
+        seen: set[GroupedSeenKey] = set[GroupedSeenKey]()
 
         for start in sorted(strong_links):
             if len(moves) >= self.max_moves:
@@ -417,13 +419,13 @@ class GroupedAIC(Technique):
             for box in BOX_UNITS:
                 box_candidates = candidate_cache.unsolved_cells_with_candidate(box, digit)
                 for row in sorted({ROW_OF[cell] for cell in box}):
-                    cells = tuple[int, ...](sorted(cell for cell in box_candidates if ROW_OF[cell] == row))
+                    cells = CellGroup(sorted(cell for cell in box_candidates if ROW_OF[cell] == row))
                     if len(cells) > 1:
                         node = (digit, cells)
                         nodes_by_digit[digit].add(node)
                         node_masks[node] = _cells_mask(cells)
                 for col in sorted({COL_OF[cell] for cell in box}):
-                    cells = tuple[int, ...](sorted(cell for cell in box_candidates if COL_OF[cell] == col))
+                    cells = CellGroup(sorted(cell for cell in box_candidates if COL_OF[cell] == col))
                     if len(cells) > 1:
                         node = (digit, cells)
                         nodes_by_digit[digit].add(node)
@@ -440,7 +442,7 @@ class GroupedAIC(Technique):
         edge_types: List[str],
         strong_links: dict[GroupedNode, set[GroupedNode]],
         weak_links: dict[GroupedNode, set[GroupedNode]],
-        seen: set[tuple[tuple[GroupedNode, ...], tuple[tuple[int, int], ...]]],
+        seen: set[GroupedSeenKey],
         moves: List[Move],
     ) -> None:
         if len(edge_types) >= self.max_edges or len(moves) >= self.max_moves:
@@ -477,7 +479,7 @@ class GroupedAIC(Technique):
         state: SudokuState,
         path: List[GroupedNode],
         edge_types: List[str],
-        seen: set[tuple[tuple[GroupedNode, ...], tuple[tuple[int, int], ...]]],
+        seen: set[GroupedSeenKey],
         moves: List[Move],
     ) -> None:
         start_digit, start_cells = path[0]

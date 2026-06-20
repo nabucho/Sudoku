@@ -6,7 +6,9 @@ from .common import (
     CELL_INDICES,
     DIGIT_VALUES,
     PEERS,
+    CellGroup,
     Elimination,
+    EliminationKey,
     Move,
     SudokuState,
     Technique,
@@ -16,6 +18,8 @@ from .common import (
     pair_combinations,
     strong_links_for_digit,
 )
+
+MultiColoringSeenKey = tuple[int, CellGroup, CellGroup, int, int, EliminationKey]
 
 
 class SimpleColoring(Technique):
@@ -122,11 +126,7 @@ class MultiColoring(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen: set[
-            tuple[int, tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]
-        ] = set[
-            tuple[int, tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]
-        ]()
+        seen: set[MultiColoringSeenKey] = set[MultiColoringSeenKey]()
         candidate_cache = UnitCandidateCache(state)
 
         for digit in DIGIT_VALUES:
@@ -192,8 +192,8 @@ class MultiColoring(Technique):
 
                             key = (
                                 digit,
-                                tuple[int, ...](sorted(left_component)),
-                                tuple[int, ...](sorted(right_component)),
+                                CellGroup(sorted(left_component)),
+                                CellGroup(sorted(right_component)),
                                 left_color,
                                 right_color,
                                 elimination_key(eliminations),

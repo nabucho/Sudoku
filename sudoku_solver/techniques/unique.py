@@ -13,7 +13,9 @@ from .common import (
     DIGIT_VALUES,
     ROW_OF,
     ROW_UNITS,
+    CellGroup,
     Elimination,
+    EliminationKey,
     Move,
     Placement,
     SudokuState,
@@ -62,6 +64,8 @@ RECTANGLES = [
     )
     == 2
 ]
+UniqueRectangleType3SeenKey = tuple[CellGroup, CellGroup, int, int, EliminationKey]
+AvoidableRectangleSeenKey = tuple[CellGroup, int, int]
 
 
 class UniqueRectangleType1(Technique):
@@ -198,9 +202,7 @@ class UniqueRectangleType3(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen: set[tuple[tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]] = set[
-            tuple[tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]
-        ]()
+        seen: set[UniqueRectangleType3SeenKey] = set[UniqueRectangleType3SeenKey]()
 
         for cells, _, _, _, _ in RECTANGLES:
             masks = {cell: state.candidate_mask(cell) for cell in cells}
@@ -252,8 +254,8 @@ class UniqueRectangleType3(Technique):
                             continue
 
                         key = (
-                            tuple[int, ...](cells),
-                            tuple[int, ...](sorted(helpers)),
+                            CellGroup(cells),
+                            CellGroup(sorted(helpers)),
                             unit_index,
                             extra_mask,
                             elimination_key(eliminations),
@@ -353,7 +355,7 @@ class AvoidableRectangle(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen: set[tuple[tuple[int, ...], int, int]] = set[tuple[tuple[int, ...], int, int]]()
+        seen: set[AvoidableRectangleSeenKey] = set[AvoidableRectangleSeenKey]()
 
         for cells, _, _, _, _ in RECTANGLES:
             if any(cell in state.given_cells for cell in cells):
@@ -386,7 +388,7 @@ class AvoidableRectangle(Technique):
                     if not state.can_place(target, target_digit):
                         continue
 
-                    key = (tuple[int, ...](cells), target, target_digit)
+                    key = (CellGroup(cells), target, target_digit)
                     if key in seen:
                         continue
                     seen.add(key)

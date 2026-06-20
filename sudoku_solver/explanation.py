@@ -7,8 +7,10 @@ from collections.abc import Iterable, Sequence
 
 from .techniques.common import (
     PEERS,
+    CellDigit,
     Elimination,
     ExplanationStep,
+    MaskTransition,
     Move,
     Placement,
     SudokuState,
@@ -46,7 +48,7 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
     """Return a compact explanation step plus implied solved singles."""
     changed_cells = {
         cell
-        for cell, (before_mask, after_mask) in enumerate[tuple[int, int]](
+        for cell, (before_mask, after_mask) in enumerate[MaskTransition](
             zip_pairs(before.candidates, after.candidates)
         )
         if before_mask != after_mask
@@ -63,7 +65,7 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
     full_move.timing_ms = move.timing_ms
 
     known_eliminations = {(elimination.cell, elimination.digit) for elimination in full_move.eliminations}
-    for cell, (before_mask, after_mask) in enumerate[tuple[int, int]](
+    for cell, (before_mask, after_mask) in enumerate[MaskTransition](
         zip_pairs(before.candidates, after.candidates)
     ):
         removed_mask = before_mask & ~after_mask
@@ -76,7 +78,7 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
     steps = [ExplanationStep(full_move, after.candidates[:], sorted(changed_cells))]
     placed_cells = {placement.cell for placement in full_move.placements}
 
-    for cell, (before_mask, after_mask) in enumerate[tuple[int, int]](
+    for cell, (before_mask, after_mask) in enumerate[MaskTransition](
         zip_pairs(before.candidates, after.candidates)
     ):
         if cell in placed_cells:
@@ -111,7 +113,7 @@ class StepExpander:
         self.move = move
         self.replay = before.clone()
         self.steps: list[ExplanationStep] = []
-        self.forced_queue = deque[tuple[int, int]]()
+        self.forced_queue = deque[CellDigit]()
         self.queued_forced: set[int] = set[int]()
 
     def expanded_steps(self) -> list[ExplanationStep]:

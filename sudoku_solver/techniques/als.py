@@ -6,7 +6,10 @@ from typing import List
 from .common import (
     ALL_UNITS,
     PEERS,
+    CellGroup,
     Elimination,
+    EliminationKey,
+    IndexDigit,
     Move,
     SudokuState,
     Technique,
@@ -21,18 +24,29 @@ from .common import (
 )
 
 PEER_MASKS = [sum(1 << peer for peer in PEERS[cell]) for cell in range(81)]
+ALSXZSeenKey = tuple[CellGroup, CellGroup, int, int, EliminationKey]
+ALSGroupKey = tuple[CellGroup, int]
+ALSWingSeenKey = tuple[
+    CellGroup,
+    CellGroup,
+    CellGroup,
+    int,
+    int,
+    int,
+    EliminationKey,
+]
 
 
 @dataclass(frozen=True)
 class ALSGroup:
     """Almost Locked Set with precomputed lookup data."""
 
-    cells: tuple[int, ...]
+    cells: CellGroup
     cell_set: frozenset[int]
     cell_mask: int
     mask: int
     unit_index: int
-    digit_cells: dict[int, tuple[int, ...]]
+    digit_cells: dict[int, CellGroup]
     digit_cell_masks: dict[int, int]
     digit_peer_masks: dict[int, int]
 
@@ -51,11 +65,7 @@ class ALSXZ(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen: set[
-            tuple[tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]
-        ] = set[
-            tuple[tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]
-        ]()
+        seen: set[ALSXZSeenKey] = set[ALSXZSeenKey]()
         als_groups = self._als_groups(state)
 
         for left_index, left in enumerate[ALSGroup](als_groups):
@@ -111,7 +121,7 @@ class ALSXZ(Technique):
 
     def _als_groups(self, state: SudokuState) -> List[ALSGroup]:
         groups: List[ALSGroup] = []
-        seen: set[tuple[tuple[int, ...], int]] = set[tuple[tuple[int, ...], int]]()
+        seen: set[ALSGroupKey] = set[ALSGroupKey]()
 
         for unit_index, unit in enumerate[list[int]](ALL_UNITS):
             masks_by_cell = {cell: state.candidate_mask(cell) for cell in unit}
@@ -132,7 +142,7 @@ class ALSXZ(Technique):
                         continue
                     seen.add(key)
                     digit_cells = {
-                        digit: tuple[int, ...](
+                        digit: CellGroup(
                             cell for cell in cells if masks_by_cell[cell] & (1 << (digit - 1))
                         )
                         for digit in bits(union_mask)
@@ -160,7 +170,7 @@ class ALSXZ(Technique):
 
         return groups
 
-    def _shared_peer_mask(self, cells: tuple[int, ...]) -> int:
+    def _shared_peer_mask(self, cells: CellGroup) -> int:
         """Return bit mask of cells that see every cell in the tuple."""
         if not cells:
             return 0
@@ -228,25 +238,7 @@ class ALSWing(ALSXZ):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen: set[
-            tuple[
-                tuple[int, ...],
-                tuple[int, ...],
-                tuple[int, ...],
-                int,
-                int,
-                int,
-                tuple[tuple[int, int], ...],
-            ]
-        ] = set[tuple[
-            tuple[int, ...],
-            tuple[int, ...],
-            tuple[int, ...],
-            int,
-            int,
-            int,
-            tuple[tuple[int, int], ...],
-        ]]()
+        seen: set[ALSWingSeenKey] = set[ALSWingSeenKey]()
         als_groups = self._als_groups(state)
         restricted_links = self._restricted_links(als_groups)
 
@@ -317,8 +309,8 @@ class ALSWing(ALSXZ):
     def _restricted_links(
         self,
         als_groups: List[ALSGroup],
-    ) -> dict[int, List[tuple[int, int]]]:
-        links: dict[int, List[tuple[int, int]]] = {}
+    ) -> dict[int, List[IndexDigit]]:
+        links: dict[int, List[IndexDigit]] = {}
 
         for left_index, left in enumerate[ALSGroup](als_groups):
             for right_index, right in enumerate[ALSGroup](als_groups[left_index + 1:], start=left_index + 1):
