@@ -5,6 +5,7 @@ from typing import List
 
 from .common import (
     ALL_UNITS,
+    MASK_DIGITS,
     PEERS,
     CellGroup,
     Elimination,
@@ -13,7 +14,6 @@ from .common import (
     Move,
     SudokuState,
     Technique,
-    bits,
     cell_text,
     elimination_key,
     is_single,
@@ -24,7 +24,6 @@ from .common import (
 )
 
 PEER_MASKS = [sum(1 << peer for peer in PEERS[cell]) for cell in range(81)]
-DIGITS_BY_MASK = [tuple(bits(mask)) for mask in range(1 << 9)]
 ALSXZSeenKey = tuple[CellGroup, CellGroup, int, int, EliminationKey]
 ALSGroupKey = tuple[CellGroup, int]
 ALSWingSeenKey = tuple[
@@ -75,7 +74,7 @@ class ALSXZ(Technique):
                     continue
 
                 common_mask = left.mask & right.mask
-                common_digits = DIGITS_BY_MASK[common_mask]
+                common_digits = MASK_DIGITS[common_mask]
                 if len(common_digits) < 2:
                     continue
 
@@ -155,7 +154,7 @@ class ALSXZ(Technique):
                     for cell, mask in entries:
                         union_mask |= mask
                         cell_mask |= 1 << cell
-                    union_digits = DIGITS_BY_MASK[union_mask]
+                    union_digits = MASK_DIGITS[union_mask]
                     if len(union_digits) != size + 1:
                         continue
 
@@ -268,8 +267,10 @@ class ALSWing(ALSXZ):
                 if left.cell_mask & right.cell_mask:
                     continue
 
-                endpoint_digits = set[int](bits(left.mask & right.mask)) - {left_digit, right_digit}
-                for eliminated_digit in sorted(endpoint_digits):
+                endpoint_digits = MASK_DIGITS[left.mask & right.mask]
+                for eliminated_digit in endpoint_digits:
+                    if eliminated_digit in (left_digit, right_digit):
+                        continue
                     eliminations = self._eliminations_for_digit(
                         state,
                         left,
@@ -347,7 +348,7 @@ class ALSWing(ALSXZ):
                     continue
 
                 common_mask = left.mask & right.mask
-                common_digits = DIGITS_BY_MASK[common_mask]
+                common_digits = MASK_DIGITS[common_mask]
                 if not common_digits:
                     continue
                 for digit in self._restricted_common_digits(left, right, common_digits):
