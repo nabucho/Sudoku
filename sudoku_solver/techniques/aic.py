@@ -44,6 +44,14 @@ def _add_link(links: dict[LinkNode, set[LinkNode]], left: LinkNode, right: LinkN
     links.setdefault(right, set[LinkNode]()).add(left)
 
 
+def _sorted_link_map(links: dict[LinkNode, set[LinkNode]]) -> dict[LinkNode, tuple[LinkNode, ...]]:
+    """Return a deterministic adjacency map sorted once before chain search."""
+    return {
+        node: tuple(sorted(neighbors))
+        for node, neighbors in links.items()
+    }
+
+
 def _cells_mask(cells: CellGroup) -> int:
     """Return a bit mask for a tuple of cells."""
     return sum(CELL_BIT_MASKS[cell] for cell in cells)
@@ -347,15 +355,17 @@ class GroupedAIC(Technique):
 
     def _find_grouped_moves(self, state: SudokuState, *, include_cell_links: bool) -> List[Move]:
         candidate_cache = UnitCandidateCache(state)
-        strong_links, weak_links = self._build_links(
+        strong_links, weak_links, node_masks = self._build_links(
             state,
             include_cell_links=include_cell_links,
             candidate_cache=candidate_cache,
         )
+        sorted_strong_links = _sorted_link_map(strong_links)
+        sorted_weak_links = _sorted_link_map(weak_links)
         moves: List[Move] = []
         seen: set[GroupedSeenKey] = set[GroupedSeenKey]()
 
-        for start in sorted(strong_links):
+        for start in sorted(sorted_strong_links):
             if len(moves) >= self.max_moves:
                 break
             self._extend_chain(
@@ -364,8 +374,10 @@ class GroupedAIC(Technique):
                 "strong",
                 [start],
                 [],
-                strong_links,
-                weak_links,
+                sorted_strong_links,
+                sorted_weak_links,
+                node_masks[start],
+                node_masks,
                 seen,
                 moves,
             )
@@ -378,7 +390,7 @@ class GroupedAIC(Technique):
         *,
         include_cell_links: bool,
         candidate_cache: UnitCandidateCache,
-    ) -> tuple[dict[GroupedNode, set[GroupedNode]], dict[GroupedNode, set[GroupedNode]]]:
+    ) -> tuple[dict[GroupedNode, set[GroupedNode]], dict[GroupedNode, set[GroupedNode]], dict[GroupedNode, int]]:
         nodes_by_digit, node_masks = self._grouped_nodes_by_digit(state, candidate_cache)
         strong_links: dict[GroupedNode, set[GroupedNode]] = {}
         weak_links: dict[GroupedNode, set[GroupedNode]] = {}
@@ -417,7 +429,7 @@ class GroupedAIC(Technique):
                     if len(cell_nodes) == 2:
                         _add_link(strong_links, left, right)
 
-        return strong_links, weak_links
+        return strong_links, weak_links, node_masks
 
     def _grouped_nodes_by_digit(
         self,
@@ -460,8 +472,10 @@ class GroupedAIC(Technique):
         next_link_type: str,
         path: List[GroupedNode],
         edge_types: List[str],
-        strong_links: dict[GroupedNode, set[GroupedNode]],
-        weak_links: dict[GroupedNode, set[GroupedNode]],
+        strong_links: dict[GroupedNode, tuple[GroupedNode, ...]],
+        weak_links: dict[GroupedNode, tuple[GroupedNode, ...]],
+        path_cell_mask: int,
+        node_masks: dict[GroupedNode, int],
         seen: set[GroupedSeenKey],
         moves: List[Move],
     ) -> None:
@@ -471,7 +485,7 @@ class GroupedAIC(Technique):
         links = strong_links if next_link_type == "strong" else weak_links
         following_link_type = _next_link_type(next_link_type)
 
-        for next_node in sorted(links.get(current, set[GroupedNode]())):
+        for next_node in links.get(current, ()):
             if len(moves) >= self.max_moves:
                 return
             if next_node in path:
@@ -479,8 +493,10 @@ class GroupedAIC(Technique):
 
             next_path = path + [next_node]
             next_edge_types = edge_types + [next_link_type]
+            next_path_cell_mask = path_cell_mask | node_masks[next_node]
+
             if next_link_type == "strong" and len(next_edge_types) >= 3:
-                self._append_eliminations(state, next_path, next_edge_types, seen, moves)
+                self._append_eliminations(state, next_path, next_edge_types, next_path_cell_mask, seen, moves)
 
             self._extend_chain(
                 state,
@@ -490,6 +506,8 @@ class GroupedAIC(Technique):
                 next_edge_types,
                 strong_links,
                 weak_links,
+                next_path_cell_mask,
+                node_masks,
                 seen,
                 moves,
             )
@@ -499,6 +517,7 @@ class GroupedAIC(Technique):
         state: SudokuState,
         path: List[GroupedNode],
         edge_types: List[str],
+        path_cell_mask: int,
         seen: set[GroupedSeenKey],
         moves: List[Move],
     ) -> None:
@@ -507,12 +526,11 @@ class GroupedAIC(Technique):
         eliminations: List[Elimination] = []
 
         if start_digit == end_digit and set[int](start_cells) != set[int](end_cells):
-            path_cells = {cell for _, cells in path for cell in cells}
             eliminations = _grouped_common_peer_eliminations(state, start_cells, end_cells, start_digit)
             eliminations = [
                 elimination
                 for elimination in eliminations
-                if elimination.cell not in path_cells
+                if not (path_cell_mask & CELL_BIT_MASKS[elimination.cell])
             ]
         elif len(start_cells) == 1 and start_cells == end_cells and start_digit != end_digit:
             endpoint_digits = {start_digit, end_digit}
