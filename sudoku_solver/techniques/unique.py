@@ -11,6 +11,8 @@ from .common import (
     COL_OF,
     COL_UNITS,
     DIGIT_VALUES,
+    MASK_BIT_COUNTS,
+    MASK_DIGITS,
     ROW_OF,
     ROW_UNITS,
     CellGroup,
@@ -21,10 +23,8 @@ from .common import (
     SudokuState,
     Technique,
     UnitCandidateCache,
-    bit_count,
     candidates_consistency_ok,
     cell_text,
-    digits_from_mask,
     elimination_key,
     is_single,
     pair_combinations,
@@ -83,7 +83,7 @@ class UniqueRectangleType1(Technique):
 
         for cells, r1, r2, c1, c2 in RECTANGLES:
             masks = [state.candidate_mask(cell) for cell in cells]
-            bivalue_masks = [m for m in masks if bit_count(m) == 2]
+            bivalue_masks = [m for m in masks if MASK_BIT_COUNTS[m] == 2]
             if len(bivalue_masks) < 3:
                 continue
 
@@ -93,7 +93,7 @@ class UniqueRectangleType1(Technique):
 
             pair_mask = None
             for m, cnt in counts.items():
-                if cnt >= 3 and bit_count(m) == 2:
+                if cnt >= 3 and MASK_BIT_COUNTS[m] == 2:
                     pair_mask = m
                     break
 
@@ -113,7 +113,7 @@ class UniqueRectangleType1(Technique):
             if odd_mask == pair_mask:
                 continue
 
-            pair_digits = digits_from_mask(pair_mask)
+            pair_digits = MASK_DIGITS[pair_mask]
             eliminations = [
                 Elimination(odd_cell, d)
                 for d in pair_digits
@@ -152,7 +152,7 @@ class UniqueRectangleType2(Technique):
 
         for cells, _, _, _, _ in RECTANGLES:
             masks = {cell: state.candidate_mask(cell) for cell in cells}
-            for pair_mask in {mask for mask in masks.values() if bit_count(mask) == 2}:
+            for pair_mask in {mask for mask in masks.values() if MASK_BIT_COUNTS[mask] == 2}:
                 pair_cells = [cell for cell in cells if masks[cell] == pair_mask]
                 extra_cells = [
                     cell
@@ -163,7 +163,7 @@ class UniqueRectangleType2(Technique):
                     continue
 
                 extra_masks = [masks[cell] & ~pair_mask for cell in extra_cells]
-                if any(bit_count(mask) != 1 for mask in extra_masks):
+                if any(MASK_BIT_COUNTS[mask] != 1 for mask in extra_masks):
                     continue
                 if extra_masks[0] != extra_masks[1]:
                     continue
@@ -176,7 +176,7 @@ class UniqueRectangleType2(Technique):
                     blocked=cells,
                 )
                 if eliminations:
-                    pair_digits = digits_from_mask(pair_mask)
+                    pair_digits = MASK_DIGITS[pair_mask]
                     moves.append(
                         Move(
                             technique=self.name,
@@ -212,7 +212,7 @@ class UniqueRectangleType3(Technique):
 
         for cells, _, _, _, _ in RECTANGLES:
             masks = {cell: state.candidate_mask(cell) for cell in cells}
-            for pair_mask in {mask for mask in masks.values() if bit_count(mask) == 2}:
+            for pair_mask in {mask for mask in masks.values() if MASK_BIT_COUNTS[mask] == 2}:
                 pair_cells = [cell for cell in cells if masks[cell] == pair_mask]
                 floor_cells = [
                     cell
@@ -228,7 +228,8 @@ class UniqueRectangleType3(Technique):
                     if floor_cells[0] in unit and floor_cells[1] in unit
                 ]
                 extra_mask = (masks[floor_cells[0]] | masks[floor_cells[1]]) & ~pair_mask
-                subset_size = bit_count(extra_mask)
+                extra_digits = MASK_DIGITS[extra_mask]
+                subset_size = len(extra_digits)
                 if subset_size < 2:
                     continue
 
@@ -253,7 +254,7 @@ class UniqueRectangleType3(Technique):
                             Elimination(cell, digit)
                             for cell in unit
                             if cell not in subset_cells
-                            for digit in digits_from_mask(extra_mask)
+                            for digit in extra_digits
                             if state.can_place(cell, digit)
                         ]
                         if not eliminations:
@@ -276,13 +277,13 @@ class UniqueRectangleType3(Technique):
                                 difficulty=self.difficulty,
                                 reason=(
                                     f"Unique Rectangle Type 3 on {', '.join(cell_text(cell) for cell in cells)}: "
-                                    f"extra digits {digits_from_mask(extra_mask)} form a naked subset in {unit_text(unit_index)}."
+                                    f"extra digits {list(extra_digits)} form a naked subset in {unit_text(unit_index)}."
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=sorted({*cells, *helpers}),
                                 source_digit_roles=source_digit_roles_for_cells(
                                     sorted({*floor_cells, *helpers}),
-                                    digits_from_mask(extra_mask),
+                                    extra_digits,
                                 ),
                             )
                         )
@@ -305,8 +306,8 @@ class UniqueRectangleType4(Technique):
 
         for cells, _, _, _, _ in RECTANGLES:
             masks = {cell: state.candidate_mask(cell) for cell in cells}
-            for pair_mask in {mask for mask in masks.values() if bit_count(mask) == 2}:
-                pair_digits = digits_from_mask(pair_mask)
+            for pair_mask in {mask for mask in masks.values() if MASK_BIT_COUNTS[mask] == 2}:
+                pair_digits = MASK_DIGITS[pair_mask]
                 pair_cells = [cell for cell in cells if masks[cell] == pair_mask]
                 floor_cells = [
                     cell
@@ -441,10 +442,10 @@ class BUGPlusOne(Technique):
         if not unsolved:
             return moves
 
-        tri_cells = [cell for cell in unsolved if bit_count(state.candidate_mask(cell)) == 3]
+        tri_cells = [cell for cell in unsolved if MASK_BIT_COUNTS[state.candidate_mask(cell)] == 3]
         other_bad = [
             cell for cell in unsolved
-            if bit_count(state.candidate_mask(cell)) not in (2, 3)
+            if MASK_BIT_COUNTS[state.candidate_mask(cell)] not in (2, 3)
         ]
 
         if len(tri_cells) != 1 or other_bad:
@@ -495,7 +496,7 @@ class Nishio(Technique):
             if is_single(cell_mask):
                 continue
 
-            for digit in digits_from_mask(cell_mask):
+            for digit in MASK_DIGITS[cell_mask]:
                 candidates = state.candidates[:]
                 if place_digit_in_candidates(candidates, cell, digit) and candidates_consistency_ok(candidates):
                     continue
