@@ -8,16 +8,16 @@ from .common import (
     COL_OF,
     COL_UNITS,
     DIGIT_VALUES,
+    MASK_BIT_COUNTS,
+    MASK_INDEXES,
     ROW_OF,
     ROW_UNITS,
     CellGroup,
     Elimination,
     EliminationKey,
-    IndexedCellGroup,
     Move,
     SudokuState,
     Technique,
-    bit_count,
     elimination_key,
     rc_to_i,
     sized_combinations,
@@ -53,12 +53,12 @@ BOX_ROW_MASKS = [
 
 def _indexes_from_mask(mask: int) -> CellGroup:
     """Return zero-based row/column indexes represented by a bit mask."""
-    return CellGroup(index for index in range(9) if mask & (1 << index))
+    return CellGroup(MASK_INDEXES[mask])
 
 
 def _mask_combinations(mask: int, size: int):
     """Yield bit masks containing `size` selected bits from `mask`."""
-    if size < 0 or bit_count(mask) < size:
+    if size < 0 or MASK_BIT_COUNTS[mask] < size:
         return
     if size == 0:
         yield 0
@@ -95,23 +95,29 @@ class Fish(Technique):
         moves: List[Move] = []
 
         for digit in DIGIT_VALUES:
+            row_masks, col_masks = _candidate_line_masks(state, digit)
+
             # Row-based fish
-            row_patterns: list[IndexedCellGroup] = []
-            for row in range(9):
-                candidate_cols = [col for col in range(9) if state.can_place(rc_to_i(row, col), digit)]
-                if 2 <= len(candidate_cols) <= self.size:
-                    row_patterns.append((row, CellGroup(candidate_cols)))
+            row_patterns = [
+                (row, mask)
+                for row, mask in enumerate[int](row_masks)
+                if 2 <= MASK_BIT_COUNTS[mask] <= self.size
+            ]
 
             for combo in sized_combinations(row_patterns, self.size):
-                fish_rows = [row for row, _ in combo]
-                fish_cols = sorted(set[int](col for _, cols in combo for col in cols))
-                if len(fish_cols) != self.size:
+                fish_row_indexes = [row for row, _ in combo]
+                fish_rows_mask = sum(1 << row for row in fish_row_indexes)
+                fish_col_mask = 0
+                for _, col_mask in combo:
+                    fish_col_mask |= col_mask
+                if MASK_BIT_COUNTS[fish_col_mask] != self.size:
                     continue
+                fish_cols = _indexes_from_mask(fish_col_mask)
 
                 eliminations = []
                 for col in fish_cols:
                     for row in range(9):
-                        if row not in fish_rows:
+                        if not (fish_rows_mask & (1 << row)):
                             cell = rc_to_i(row, col)
                             if state.can_place(cell, digit):
                                 eliminations.append(Elimination(cell, digit))
@@ -119,14 +125,14 @@ class Fish(Technique):
                 if eliminations:
                     cause_cells = [
                         rc_to_i(row, col)
-                        for row, cols in combo
-                        for col in cols
+                        for row, col_mask in combo
+                        for col in _indexes_from_mask(col_mask)
                     ]
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
-                            reason=f"{self.name}: digit {digit} forms a row-based fish on rows {[row+1 for row in fish_rows]} and columns {[col+1 for col in fish_cols]}.",
+                            reason=f"{self.name}: digit {digit} forms a row-based fish on rows {[row+1 for row in fish_row_indexes]} and columns {[col+1 for col in fish_cols]}.",
                             eliminations=eliminations,
                             cause_cells=cause_cells,
                             source_digit_roles=source_digit_roles_for_cells(cause_cells, [digit]),
@@ -134,22 +140,26 @@ class Fish(Technique):
                     )
 
             # Column-based fish
-            col_patterns: list[IndexedCellGroup] = []
-            for col in range(9):
-                candidate_rows = [row for row in range(9) if state.can_place(rc_to_i(row, col), digit)]
-                if 2 <= len(candidate_rows) <= self.size:
-                    col_patterns.append((col, CellGroup(candidate_rows)))
+            col_patterns = [
+                (col, mask)
+                for col, mask in enumerate[int](col_masks)
+                if 2 <= MASK_BIT_COUNTS[mask] <= self.size
+            ]
 
             for combo in sized_combinations(col_patterns, self.size):
-                fish_cols = [col for col, _ in combo]
-                fish_rows = sorted(set[int](row for _, rows in combo for row in rows))
-                if len(fish_rows) != self.size:
+                fish_col_indexes = [col for col, _ in combo]
+                fish_cols_mask = sum(1 << col for col in fish_col_indexes)
+                fish_row_mask = 0
+                for _, row_mask in combo:
+                    fish_row_mask |= row_mask
+                if MASK_BIT_COUNTS[fish_row_mask] != self.size:
                     continue
+                fish_rows = _indexes_from_mask(fish_row_mask)
 
                 eliminations = []
                 for row in fish_rows:
                     for col in range(9):
-                        if col not in fish_cols:
+                        if not (fish_cols_mask & (1 << col)):
                             cell = rc_to_i(row, col)
                             if state.can_place(cell, digit):
                                 eliminations.append(Elimination(cell, digit))
@@ -157,14 +167,14 @@ class Fish(Technique):
                 if eliminations:
                     cause_cells = [
                         rc_to_i(row, col)
-                        for col, rows in combo
-                        for row in rows
+                        for col, row_mask in combo
+                        for row in _indexes_from_mask(row_mask)
                     ]
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
-                            reason=f"{self.name}: digit {digit} forms a column-based fish on columns {[col+1 for col in fish_cols]} and rows {[row+1 for row in fish_rows]}.",
+                            reason=f"{self.name}: digit {digit} forms a column-based fish on columns {[col+1 for col in fish_col_indexes]} and rows {[row+1 for row in fish_rows]}.",
                             eliminations=eliminations,
                             cause_cells=cause_cells,
                             source_digit_roles=source_digit_roles_for_cells(cause_cells, [digit]),
@@ -342,7 +352,7 @@ class FinnedSwordfish(Technique):
             row_patterns = [
                 (row, mask)
                 for row, mask in enumerate[int](row_masks)
-                if 2 <= bit_count(mask) <= self.size + 2
+                if 2 <= MASK_BIT_COUNTS[mask] <= self.size + 2
             ]
             for combo in sized_combinations(row_patterns, self.size):
                 rows = [row for row, _ in combo]
@@ -350,7 +360,7 @@ class FinnedSwordfish(Technique):
                 union_col_mask = 0
                 for _, col_mask in combo:
                     union_col_mask |= col_mask
-                if bit_count(union_col_mask) <= self.size:
+                if MASK_BIT_COUNTS[union_col_mask] <= self.size:
                     continue
 
                 for fin_box in range(9):
@@ -360,14 +370,14 @@ class FinnedSwordfish(Technique):
                     for row, col_mask in combo:
                         allowed_mask = allowed_fin_col_mask if allowed_fin_row_mask & (1 << row) else 0
                         required_fish_col_mask |= col_mask & ~allowed_mask
-                    if bit_count(required_fish_col_mask) > self.size:
+                    if MASK_BIT_COUNTS[required_fish_col_mask] > self.size:
                         continue
 
                     optional_col_mask = union_col_mask & ~required_fish_col_mask
-                    needed_cols = self.size - bit_count(required_fish_col_mask)
+                    needed_cols = self.size - MASK_BIT_COUNTS[required_fish_col_mask]
                     for extra_col_mask in _mask_combinations(optional_col_mask, needed_cols):
                         fish_col_mask = required_fish_col_mask | extra_col_mask
-                        if bit_count(fish_col_mask) != self.size:
+                        if MASK_BIT_COUNTS[fish_col_mask] != self.size:
                             continue
                         if any(not (col_mask & fish_col_mask) for _, col_mask in combo):
                             continue
@@ -423,7 +433,7 @@ class FinnedSwordfish(Technique):
             col_patterns = [
                 (col, mask)
                 for col, mask in enumerate[int](col_masks)
-                if 2 <= bit_count(mask) <= self.size + 2
+                if 2 <= MASK_BIT_COUNTS[mask] <= self.size + 2
             ]
             for combo in sized_combinations(col_patterns, self.size):
                 cols = [col for col, _ in combo]
@@ -431,7 +441,7 @@ class FinnedSwordfish(Technique):
                 union_row_mask = 0
                 for _, row_mask in combo:
                     union_row_mask |= row_mask
-                if bit_count(union_row_mask) <= self.size:
+                if MASK_BIT_COUNTS[union_row_mask] <= self.size:
                     continue
 
                 for fin_box in range(9):
@@ -441,14 +451,14 @@ class FinnedSwordfish(Technique):
                     for col, row_mask in combo:
                         allowed_mask = allowed_fin_row_mask if allowed_fin_col_mask & (1 << col) else 0
                         required_fish_row_mask |= row_mask & ~allowed_mask
-                    if bit_count(required_fish_row_mask) > self.size:
+                    if MASK_BIT_COUNTS[required_fish_row_mask] > self.size:
                         continue
 
                     optional_row_mask = union_row_mask & ~required_fish_row_mask
-                    needed_rows = self.size - bit_count(required_fish_row_mask)
+                    needed_rows = self.size - MASK_BIT_COUNTS[required_fish_row_mask]
                     for extra_row_mask in _mask_combinations(optional_row_mask, needed_rows):
                         fish_row_mask = required_fish_row_mask | extra_row_mask
-                        if bit_count(fish_row_mask) != self.size:
+                        if MASK_BIT_COUNTS[fish_row_mask] != self.size:
                             continue
                         if any(not (row_mask & fish_row_mask) for _, row_mask in combo):
                             continue
