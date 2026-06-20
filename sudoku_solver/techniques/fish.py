@@ -1,3 +1,5 @@
+"""Basic and finned fish techniques for row/column candidate patterns."""
+
 from __future__ import annotations
 
 from typing import List

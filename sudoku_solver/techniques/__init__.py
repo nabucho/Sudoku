@@ -1,3 +1,5 @@
+"""Public exports for all logical Sudoku solving techniques."""
+
 from .aic import AIC, GroupedAIC, GroupedXChain, XChain
 from .als import ALSXZ, ALSWing
 from .basic import HiddenSingle, HiddenSubset, LockedCandidates, NakedSingle, NakedSubset

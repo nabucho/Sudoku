@@ -1,3 +1,5 @@
+"""Single-digit chain and fish-like techniques using strong links."""
+
 from __future__ import annotations
 
 from typing import List

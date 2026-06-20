@@ -91,6 +91,10 @@ solver = SudokuSolver(strategy="human")
 result, steps = solver.solve_with_search(state)
 ```
 
+Solving methods mutate the `SudokuState` passed to them. Use `state.clone()` first if you need to preserve the original candidate grid.
+
+The compatibility wrapper also keeps `from sudoku import SudokuSolver` working for existing users.
+
 ## Parameters
 
 `PUZZLE`
@@ -106,7 +110,7 @@ result, steps = solver.solve_with_search(state)
 : Use logical techniques only. If logic gets stuck, the solver exits with `No solution found.` This cannot be combined with `--strategy search-first`.
 
 `--step-style {detailed,grouped,batched}`
-: Select how explanation steps are grouped. Defaults to `detailed`.
+: Select explanation replay and grouping style. Defaults to `detailed`.
 
 `--no-steps`
 : Print only the original and solved boards. Timing summary is still printed.
@@ -126,10 +130,12 @@ result, steps = solver.solve_with_search(state)
 : Shows individual placements, eliminations, and propagation steps.
 
 `grouped`
-: Groups consecutive naked singles while keeping other moves separate.
+: Uses coarser replay than `detailed`, then groups consecutive naked singles while keeping other moves separate.
 
 `batched`
-: Groups consecutive moves that use the same technique.
+: Uses coarser replay than `detailed`, then groups consecutive moves that use the same technique.
+
+Interactive progress boards also collapse consecutive propagation-only replay steps into a single progress screen to reduce visual noise.
 
 ## Strategies
 
@@ -143,7 +149,7 @@ result, steps = solver.solve_with_search(state)
 : Evaluates available logical moves and selects the one with the highest immediate impact.
 
 `fastest`
-: Uses a small set of cheap techniques before search: Hidden Single, Naked Single, Naked Pair, Locked Candidates, and Hidden Pair.
+: Uses a small ordered set of cheap techniques before search: Naked Single, Hidden Single, Naked Pair, Locked Candidates, and Hidden Pair.
 
 `balanced`
 : Uses cheap techniques plus selected wing techniques to avoid guesses more often while staying faster than the full `human` strategy.
@@ -189,7 +195,7 @@ Uniqueness
 : [Unique Rectangle Type 1](doc/unique-rectangle-type-1.md), [Type 2](doc/unique-rectangle-type-2.md), [Type 3](doc/unique-rectangle-type-3.md), [Type 4](doc/unique-rectangle-type-4.md), [Avoidable Rectangle](doc/avoidable-rectangle.md), and [BUG+1](doc/bug-plus-one.md) avoid deadly patterns or non-unique solutions.
 
 Subset Counting
-:: [Sue de Coq](doc/sue-de-coq.md) eliminates candidates by combining a box-line intersection with companion cells from the same line and box.
+: [Sue de Coq](doc/sue-de-coq.md) eliminates candidates by combining a box-line intersection with companion cells from the same line and box.
 
 Almost Locked Sets
 : [ALS-XZ](doc/als-xz.md) and [ALS-Wing](doc/als-wing.md) eliminate candidates using restricted common digits.
@@ -211,14 +217,17 @@ Color legend:
 
 - Original clues are bold white.
 - Solved values are green.
+- Unchanged candidates are pale blue.
 - Current-step selections use a green background.
 - Candidate changes use a blue background.
 - Elimination source cells use a yellow background.
+- Main source digits use dark blue on the source background.
+- Shared or secondary source digits use bright blue on the source background.
 - Eliminated candidates are red.
 
 ## Timing Summary
 
-Each technique call is timed in milliseconds. At the end of a solve, the timing summary reports:
+Each technique call is timed in milliseconds. At the end of a solve, the CLI timing summary prints techniques that were actually used, excluding display-only propagation rows. For those displayed techniques, it reports:
 
 - how many times a technique was used;
 - how many times it was attempted;
@@ -226,9 +235,13 @@ Each technique call is timed in milliseconds. At the end of a solve, the timing 
 - total elapsed time;
 - average elapsed time.
 
+The solver still records attempts for techniques that were scanned but not selected. This matters for strategies such as `fewest-steps`, where many techniques can be evaluated before one move is chosen. Use `test/benchmark.py` for fuller profiling views of attempted-but-unused techniques and propagation/application overhead.
+
 ## Benchmarking
 
 `test/benchmark.py` benchmarks strategies across all puzzle fixtures under `test/puzzles/`.
+
+When no `--strategy` is supplied, it benchmarks `human`, `human-fast`, `balanced`, `fastest`, and `search-first`. Pass `--strategy fewest-steps` explicitly to include the highest-impact selector.
 
 Examples:
 
@@ -238,6 +251,7 @@ python3 test/benchmark.py --strategy fastest
 python3 test/benchmark.py --strategy human --strategy balanced
 python3 test/benchmark.py --strategy fewest-steps --profile-buckets
 python3 test/benchmark.py --profile-slowest 20
+python3 test/benchmark.py --limit 10
 ```
 
 Benchmark options:
@@ -250,6 +264,9 @@ Benchmark options:
 
 `--profile-buckets`
 : Print aggregate wall-time buckets for technique discovery, move scoring, applying moves, and benchmark/solver overhead.
+
+`--limit N`
+: Benchmark only the first `N` puzzle fixtures.
 
 ## Project Layout
 

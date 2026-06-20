@@ -1,3 +1,5 @@
+"""Basic single, locked-candidate, and subset solving techniques."""
+
 from __future__ import annotations
 
 from typing import List

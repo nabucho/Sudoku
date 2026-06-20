@@ -1,3 +1,5 @@
+"""Wing and bivalue-chain techniques for multi-cell candidate relationships."""
+
 from __future__ import annotations
 
 from typing import List

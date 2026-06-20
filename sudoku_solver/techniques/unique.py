@@ -1,3 +1,5 @@
+"""Uniqueness-based techniques and Nishio contradiction checks."""
+
 from __future__ import annotations
 
 from typing import List

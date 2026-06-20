@@ -1,3 +1,5 @@
+"""Single-digit coloring techniques built from conjugate-link graphs."""
+
 from __future__ import annotations
 
 from typing import List
