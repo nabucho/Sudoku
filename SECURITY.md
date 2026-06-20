@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-This project is currently pre-1.0. Security fixes are applied to the latest `main` branch and to any public release series explicitly listed in release notes.
+Security fixes are applied to the latest `main` branch and the current public release series.
 
 ## Reporting a Vulnerability
 

@@ -10,13 +10,17 @@ The solver accepts puzzles as an 81-character string or a text file. Empty cells
 
 ## Quick Start
 
-Install the package:
+Install from a local checkout:
 
 ```sh
 python3 -m pip install .
 ```
 
-Run the default puzzle:
+The project is not currently published on PyPI. The distribution metadata uses
+the name `nabucho-sudoku` so a future package release does not conflict with the
+existing unrelated `sudoku-solver` package name.
+
+Run the default puzzle with the `sudoku-solver` command:
 
 ```sh
 sudoku-solver

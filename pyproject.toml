@@ -3,8 +3,8 @@ requires = ["setuptools>=82.0.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sudoku-solver"
-version = "0.1.0"
+name = "nabucho-sudoku"
+version = "1.0.0"
 description = "A command-line Sudoku solver with human-style techniques, explanations, and timing."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -13,7 +13,7 @@ authors = [
     { name = "Ivan Debnar" },
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",

@@ -2,9 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-This project follows a simple pre-1.0 changelog style. Dates use `YYYY-MM-DD`.
+Dates use `YYYY-MM-DD`.
 
 ## Unreleased
+
+No changes yet.
+
+## 1.0.0 - 2026-06-20
 
 ### Added
 
@@ -17,6 +21,7 @@ This project follows a simple pre-1.0 changelog style. Dates use `YYYY-MM-DD`.
 
 ### Changed
 
+- Distribution package name changed to `nabucho-sudoku` to avoid a future PyPI name collision; the `sudoku-solver` CLI command and `sudoku_solver` import package are unchanged.
 - Python support floor is Python 3.9.
 - Development installation now uses the package `dev` extra.
 - Formatting ownership moved from Black to Ruff.
