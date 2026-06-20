@@ -6,7 +6,7 @@ This document records the structure and conventions used while building the solv
 
 The project favors human-readable logical solving first, with search as a fallback. Techniques should return explainable `Move` objects, and the solver should be able to replay those moves into detailed progress steps without hiding candidate propagation.
 
-The code is organized to keep the command-line interface thin, the library API importable, and solving techniques independent enough to test directly. Shared behavior belongs in `sudoku_solver/techniques/common.py` when it is used by multiple techniques or by both techniques and the solver.
+The code is organized to keep the command-line interface thin, the library API importable, and solving techniques independent enough to test directly. Shared behavior belongs in the `sudoku_solver/techniques/common/` package when it is used by multiple techniques or by both techniques and the solver.
 
 ## Code Structure
 
@@ -28,8 +28,29 @@ The code is organized to keep the command-line interface thin, the library API i
 `sudoku_solver/visualization.py`
 : Text and ANSI progress rendering.
 
-`sudoku_solver/techniques/common.py`
-: Shared Sudoku model, grid topology, typed utility helpers, move dataclasses, candidate simulation, and the `Technique` base class.
+`sudoku_solver/techniques/common/`
+: Shared Sudoku model, grid topology, typed utility helpers, move dataclasses, candidate simulation, and the `Technique` base class. Its `__init__.py` is a compatibility facade for existing `sudoku_solver.techniques.common` imports.
+
+`sudoku_solver/techniques/common/bitmask.py`
+: Candidate mask helpers and precomputed 9-bit lookup tables.
+
+`sudoku_solver/techniques/common/grid.py`
+: Row, column, box, peer, and coordinate topology.
+
+`sudoku_solver/techniques/common/moves.py`
+: Move, placement, elimination, timing, and explanation-step dataclasses.
+
+`sudoku_solver/techniques/common/simulation.py`
+: Local candidate-list propagation and consistency helpers used by scoring and speculative checks.
+
+`sudoku_solver/techniques/common/state.py`
+: Mutable `SudokuState` implementation.
+
+`sudoku_solver/techniques/common/queries.py`
+: Candidate-position caches, strong links, shared-peer eliminations, and other state queries.
+
+`sudoku_solver/techniques/common/types.py`, `iter_utils.py`, and `technique.py`
+: Structural aliases, typed iterator wrappers, and the `Technique` base class.
 
 `sudoku_solver/techniques/*.py`
 : Logical technique implementations grouped by family: basics, fish, chains, wings, uniqueness, ALS, and miscellaneous techniques.
@@ -83,9 +104,9 @@ Use `UnitCandidateCache` when a technique repeatedly asks where a digit can appe
 
 Use `shared_peer_eliminations()` for common-peer candidate removals, and `elimination_key()` for deduplication keys. This keeps tuple-key construction consistent and typed.
 
-Use shared structural aliases from `common.py` when a tuple shape appears in more than one module. Current shared aliases include `CellGroup`, `CellPair`, `CellDigit`, `IndexDigit`, `IndexedCellGroup`, `MaskTransition`, and `EliminationKey`.
+Use shared structural aliases from `common/types.py` when a tuple shape appears in more than one module. Current shared aliases include `CellGroup`, `CellPair`, `CellDigit`, `IndexDigit`, `IndexedCellGroup`, `MaskTransition`, and `EliminationKey`.
 
-Use `pair_combinations()`, `sized_combinations()`, and `zip_pairs()` instead of direct `itertools.combinations()` or `zip()` when the iterator shape matters to type checking. The casts are centralized in `common.py`.
+Use `pair_combinations()`, `sized_combinations()`, and `zip_pairs()` instead of direct `itertools.combinations()` or `zip()` when the iterator shape matters to type checking. The casts are centralized in `common/iter_utils.py`.
 
 Use `apply_move_to_candidates()` when scoring a candidate `Move` without cloning a full `SudokuState`. Use `place_digit_in_candidates()` and `candidates_consistency_ok()` for Nishio-style speculative checks. `eliminate_digit_from_candidates()` is the low-level elimination primitive used by those helpers rather than a common direct technique API. Keeping local simulation on these helpers keeps move scoring, tests, and speculative checks aligned with `SudokuState` propagation.
 
@@ -132,7 +153,7 @@ Prefer:
 
 - Explicit return types on public helpers and technique methods.
 - Typed empty collections, for example `moves: List[Move] = []` or `seen: set[SeenKey] = set[SeenKey]()`.
-- Shared aliases from `common.py` for repeated structural tuple shapes, such as groups of cells or `(cell, digit)` pairs.
+- Shared aliases from `common/types.py` for repeated structural tuple shapes, such as groups of cells or `(cell, digit)` pairs.
 - Technique-local `SeenKey` aliases for long deduplication key shapes that only make sense within one technique.
 - Precise alias names for pairs. Use `CellPair` only for two cells, `CellDigit` for `(cell, digit)`, `IndexDigit` for `(index, digit)`, and `MaskTransition` for `(before_mask, after_mask)`.
 - Shared helpers and aliases for repeated typed tuple construction.
@@ -140,10 +161,10 @@ Prefer:
 Avoid:
 
 - Repeating complex tuple constructors at call sites when a named helper or alias explains the intent.
-- Creating local aliases for structural tuple shapes already covered by `common.py`.
+- Creating local aliases for structural tuple shapes already covered by `common/types.py`.
 - Using a broad alias such as `CellPair` for non-cell-pair data just because the runtime shape is `tuple[int, int]`.
 - Over-defensive guards that hide impossible states instead of preserving solver invariants.
-- Technique-to-technique dependencies unless the dependency is clearly technique-specific. General helpers should live in `common.py`.
+- Technique-to-technique dependencies unless the dependency is clearly technique-specific. General helpers should live in `sudoku_solver/techniques/common/`.
 
 ## Comments And Docstrings
 
@@ -151,7 +172,7 @@ Use docstrings for modules, classes, public helpers, and technique classes. Tech
 
 Use comments sparingly. Good comments explain a Sudoku concept, an invariant, or a non-obvious optimization. Avoid comments that restate the next line of code, such as “remove digit from peers” immediately before a loop that does exactly that.
 
-Section comments are useful in large shared modules like `common.py`, where related constants, helpers, model classes, and base classes are grouped.
+Section comments are useful in larger shared modules, where related constants, helpers, model classes, and base classes are grouped.
 
 ## Testing Guidelines
 
