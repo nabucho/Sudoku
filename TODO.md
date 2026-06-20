@@ -11,7 +11,6 @@
 ## Code Quality
 
 - Continue optimizing high-cost techniques based on full-fixture benchmark data, prioritizing changes that preserve move ordering and explanations.
-- Optimize `ALS-XZ`: it remains both expensive and productive. Improve ALS enumeration caching, restricted-common lookup indexing, and repeated compatibility checks without changing emitted explanations.
 - Optimize `Nishio`: it is costly but high-yield, so preserve ordering and behavior while reducing speculative search overhead and repeated candidate-state validation.
 - Add prefilters for `Grouped X-Chain`, `Avoidable Rectangle`, and large fish variants so zero- or low-yield scans can be skipped when candidate distribution cannot support the pattern.
 - Review unique rectangle type ordering and prechecks: Type 4 currently yields moves while Type 2/3 are often scanned without success.

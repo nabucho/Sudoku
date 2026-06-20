@@ -13,7 +13,6 @@ from .common import (
     Move,
     SudokuState,
     Technique,
-    bit_count,
     bits,
     cell_text,
     elimination_key,
@@ -25,6 +24,7 @@ from .common import (
 )
 
 PEER_MASKS = [sum(1 << peer for peer in PEERS[cell]) for cell in range(81)]
+DIGITS_BY_MASK = [tuple(bits(mask)) for mask in range(1 << 9)]
 ALSXZSeenKey = tuple[CellGroup, CellGroup, int, int, EliminationKey]
 ALSGroupKey = tuple[CellGroup, int]
 ALSWingSeenKey = tuple[
@@ -75,8 +75,14 @@ class ALSXZ(Technique):
                     continue
 
                 common_mask = left.mask & right.mask
-                for restricted_digit in self._restricted_common_digits(left, right, common_mask):
-                    for eliminated_digit in sorted(set[int](bits(common_mask)) - {restricted_digit}):
+                common_digits = DIGITS_BY_MASK[common_mask]
+                if len(common_digits) < 2:
+                    continue
+
+                for restricted_digit in self._restricted_common_digits(left, right, common_digits):
+                    for eliminated_digit in common_digits:
+                        if eliminated_digit == restricted_digit:
+                            continue
                         eliminations = self._eliminations_for_digit(
                             state,
                             left,
@@ -149,7 +155,8 @@ class ALSXZ(Technique):
                     for cell, mask in entries:
                         union_mask |= mask
                         cell_mask |= 1 << cell
-                    if bit_count(union_mask) != size + 1:
+                    union_digits = DIGITS_BY_MASK[union_mask]
+                    if len(union_digits) != size + 1:
                         continue
 
                     cells = CellGroup(cell for cell, _ in entries)
@@ -161,7 +168,7 @@ class ALSXZ(Technique):
                         digit: CellGroup(
                             cell for cell, mask in entries if mask & (1 << (digit - 1))
                         )
-                        for digit in bits(union_mask)
+                        for digit in union_digits
                     }
                     digit_cell_masks = {
                         digit: sum(1 << cell for cell in digit_cell_group)
@@ -199,10 +206,10 @@ class ALSXZ(Technique):
         self,
         left: ALSGroup,
         right: ALSGroup,
-        common_mask: int,
+        common_digits: tuple[int, ...],
     ) -> List[int]:
         digits: List[int] = []
-        for digit in bits(common_mask):
+        for digit in common_digits:
             if (
                 (right.digit_cell_masks[digit] & ~left.digit_peer_masks[digit]) == 0
                 and (left.digit_cell_masks[digit] & ~right.digit_peer_masks[digit]) == 0
@@ -340,7 +347,10 @@ class ALSWing(ALSXZ):
                     continue
 
                 common_mask = left.mask & right.mask
-                for digit in self._restricted_common_digits(left, right, common_mask):
+                common_digits = DIGITS_BY_MASK[common_mask]
+                if not common_digits:
+                    continue
+                for digit in self._restricted_common_digits(left, right, common_digits):
                     links.setdefault(left_index, []).append((right_index, digit))
                     links.setdefault(right_index, []).append((left_index, digit))
 
