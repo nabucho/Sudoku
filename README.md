@@ -30,10 +30,16 @@ Print text steps without progress boards:
 python3 sudoku.py --file test/puzzles/diabolical_01 --no-progress --no-pause
 ```
 
-Run the automated tests:
+Run the regular automated tests:
 
 ```sh
-python3 -m pytest
+make test
+```
+
+Run exhaustive fixture coverage:
+
+```sh
+make test-all
 ```
 
 Run benchmark timing:
@@ -54,13 +60,14 @@ Common checks:
 
 ```sh
 make test
+make test-all
 make coverage
 make typecheck
 make lint
 make check
 ```
 
-Coverage reports use `coverage.py`; `make coverage` prints a terminal report and `make coverage-html` writes `htmlcov/`. Type checking uses `mypy` with project settings from `pyproject.toml`.
+Regular tests skip exhaustive fixture coverage marked with `slow`; use `make test-all` before larger releases or broad solver changes. Coverage reports use `coverage.py`; `make coverage` prints a terminal report and `make coverage-html` writes `htmlcov/`. Type checking uses `mypy` with project settings from `pyproject.toml`.
 
 See [Developer Notes](doc/developer-notes.md) for code structure, solver flow, style guidelines, and maintenance conventions.
 
@@ -92,8 +99,8 @@ result, steps = solver.solve_with_search(state)
 `-f, --file PATH`
 : Read the puzzle from a text file. Use either `PUZZLE` or `--file`, not both.
 
-`--strategy {human,fewest-steps,fastest,balanced,search-first}`
-: Select how moves are chosen. Defaults to `human`.
+`--strategy {human,human-fast,fewest-steps,fastest,balanced,search-first}`
+: Select how moves are chosen. Defaults to `human-fast`.
 
 `--logic-only`
 : Use logical techniques only. If logic gets stuck, the solver exits with `No solution found.` This cannot be combined with `--strategy search-first`.
@@ -129,6 +136,9 @@ result, steps = solver.solve_with_search(state)
 `human`
 : Uses the full ordered set of logical techniques, from simple singles through advanced chain and uniqueness methods. If logic is exhausted, search is used unless `--logic-only` is set.
 
+`human-fast`
+: Uses a broad practical subset of human-style techniques while skipping the most expensive late techniques before search.
+
 `fewest-steps`
 : Evaluates available logical moves and selects the one with the highest immediate impact.
 
@@ -143,7 +153,7 @@ result, steps = solver.solve_with_search(state)
 
 ## Techniques
 
-The solver implements the techniques below. The `human` and `fewest-steps` strategies can use the full logical set, `fastest` and `balanced` use smaller subsets, and `search-first` starts with MRV backtracking. See [Technique Documentation](doc/index.md) for one page per implemented logical technique with references to HoDoKu, SudokuWiki, and Sudopedia.
+The solver implements the techniques below. The `human` and `fewest-steps` strategies can use the full logical set, `human-fast`, `fastest`, and `balanced` use smaller subsets, and `search-first` starts with MRV backtracking. See [Technique Documentation](doc/index.md) for one page per implemented logical technique with references to HoDoKu, SudokuWiki, and Sudopedia.
 
 [`Naked Single`](doc/naked-single.md)
 : Places a digit when a cell has only one candidate.

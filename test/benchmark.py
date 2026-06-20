@@ -16,7 +16,7 @@ from sudoku_solver.solver import MoveScore, SudokuSolver
 from sudoku_solver.techniques.common import ExplanationStep, Move, SudokuState
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_STRATEGIES = ["human", "balanced", "fastest", "search-first"]
+DEFAULT_STRATEGIES = ["human", "human-fast", "balanced", "fastest", "search-first"]
 PUZZLE_DIR = ROOT / "test" / "puzzles"
 
 
@@ -253,8 +253,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--strategy",
         action="append",
-        choices=("human", "fewest-steps", "fastest", "balanced", "search-first"),
-        help="Strategy to benchmark. Can be passed multiple times. Defaults to human, balanced, fastest, search-first.",
+        choices=("human", "human-fast", "fewest-steps", "fastest", "balanced", "search-first"),
+        help=(
+            "Strategy to benchmark. Can be passed multiple times. "
+            "Defaults to human, human-fast, balanced, fastest, search-first."
+        ),
     )
     parser.add_argument(
         "--profile-slowest",
@@ -268,6 +271,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print wall-time buckets for technique discovery, move scoring, applying moves, and overhead.",
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Benchmark only the first N fixtures. Defaults to all fixtures.",
+    )
     return parser
 
 
@@ -276,6 +286,8 @@ def main() -> int:
     args = build_arg_parser().parse_args()
 
     paths = fixture_paths()
+    if args.limit > 0:
+        paths = paths[:args.limit]
     if not paths:
         raise SystemExit("No fixtures found.")
 

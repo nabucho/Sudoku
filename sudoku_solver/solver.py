@@ -34,7 +34,7 @@ class SudokuSolver:
         strategy: Strategy name used by `strategies.techniques_for_strategy`.
     """
 
-    def __init__(self, techniques: list[Technique] | None = None, strategy: str = "human"):
+    def __init__(self, techniques: list[Technique] | None = None, strategy: str = "human-fast"):
         self.strategy = strategy
         self.timing_stats: dict[str, TechniqueTiming] = {}
         if techniques is not None:

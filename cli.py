@@ -111,13 +111,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--strategy",
-        choices=("human", "fewest-steps", "fastest", "balanced", "search-first"),
-        default="human",
+        choices=("human", "human-fast", "fewest-steps", "fastest", "balanced", "search-first"),
+        default="human-fast",
         help=(
-            "Choose how moves are selected. human uses easy techniques first, "
-            "fewest-steps picks the largest-impact logical move, fastest uses cheap "
-            "logic before search, balanced adds a few cheap guess-reducing techniques, "
-            "and search-first starts with MRV backtracking."
+            "Choose how moves are selected. human uses the full explanatory technique set, "
+            "human-fast skips costly low-yield techniques before search, fewest-steps picks "
+            "the largest-impact logical move, fastest uses cheap logic before search, "
+            "balanced adds a few cheap guess-reducing techniques, and search-first starts "
+            "with MRV backtracking."
         ),
     )
     return parser

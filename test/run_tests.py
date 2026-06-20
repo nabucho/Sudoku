@@ -8,6 +8,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from cli import main as cli_main, pretty_puzzle, read_puzzle_argument
@@ -50,8 +52,24 @@ ROOT = Path(__file__).resolve().parents[1]
 PUZZLE_DIR = ROOT / "test" / "puzzles"
 SYNTHETIC_DIR = ROOT / "test" / "synthetic"
 ONLINE_DIR = ROOT / "test" / "online"
-STRATEGIES = ["human", "fewest-steps", "fastest", "balanced", "search-first"]
+STRATEGIES = ["human", "human-fast", "fewest-steps", "fastest", "balanced", "search-first"]
 STEP_STYLES = ["detailed", "grouped", "batched"]
+REPRESENTATIVE_PUZZLE_NAMES = [
+    "diabolical_34",
+    "hard_30",
+    "diabolical_54",
+    "diabolical_39",
+    "diabolical_15",
+    "hard_33",
+    "hard_10",
+    "hard_44",
+    "diabolical_53",
+    "diabolical_46",
+    "diabolical_48",
+    "puzzle4",
+]
+LOGIC_ONLY_SOLVED_NAMES = ["easy_01", "medium_01", "hard_01"]
+LOGIC_ONLY_UNSOLVED_NAME = "diabolical_51"
 EXPECTED_SOUNDNESS_TECHNIQUES = {
     "AIC",
     "ALS-Wing",
@@ -92,7 +110,7 @@ EXPECTED_SOUNDNESS_TECHNIQUES = {
 class SoundnessCheckingSolver(SudokuSolver):
     """Validate every emitted logical move against the current search branch."""
 
-    def __init__(self, puzzle_name: str, strategy: str = "human"):
+    def __init__(self, puzzle_name: str, strategy: str = "human-fast"):
         super().__init__(strategy=strategy)
         self.puzzle_name = puzzle_name
         self._solution_cache: dict[tuple[tuple[int, ...], tuple[int, int, bool]], bool] = {}
@@ -178,6 +196,17 @@ def progress(message: str) -> None:
 
 def puzzle_fixtures() -> list[Path]:
     return sorted(path for path in PUZZLE_DIR.iterdir() if path.is_file())
+
+
+def puzzle_fixture(name: str) -> Path:
+    path = PUZZLE_DIR / name
+    if not path.is_file():
+        raise AssertionError(f"Expected puzzle fixture {path}")
+    return path
+
+
+def puzzle_fixture_subset(names: list[str]) -> list[Path]:
+    return [puzzle_fixture(name) for name in names]
 
 
 def fixture_arg(path: Path) -> str:
@@ -315,26 +344,17 @@ def test_direct_strategies() -> None:
 
 
 def test_human_logic_only() -> None:
-    logic_solved = []
-    logic_unsolved = None
-    for fixture in puzzle_fixtures():
+    for fixture in puzzle_fixture_subset(LOGIC_ONLY_SOLVED_NAMES):
         progress(f"logic-only human solve probe {fixture.name}")
-        result = run_command(["--file", fixture_arg(fixture), "--strategy", "human", "--logic-only", "--no-steps"])
-        if result.returncode == 0:
-            logic_solved.append(fixture)
-            if len(logic_solved) == 3 and logic_unsolved is not None:
-                break
-        elif result.returncode == 1 and result.stderr.strip() == "No solution found.":
-            logic_unsolved = fixture
-            if len(logic_solved) == 3:
-                break
-        else:
-            raise AssertionError(f"Unexpected logic-only result for {fixture}: {result.returncode}: {result.stderr}")
+        assert_success(["--file", fixture_arg(fixture), "--strategy", "human", "--logic-only", "--no-steps"])
 
-    if len(logic_solved) < 3:
-        raise AssertionError("Expected at least three fixtures to solve with human logic-only")
-    if logic_unsolved is None:
-        raise AssertionError("Expected at least one fixture to be unsolved with human logic-only")
+    unsolved_fixture = puzzle_fixture(LOGIC_ONLY_UNSOLVED_NAME)
+    progress(f"logic-only human failure probe {unsolved_fixture.name}")
+    result = run_command(["--file", fixture_arg(unsolved_fixture), "--strategy", "human", "--logic-only", "--no-steps"])
+    if result.returncode != 1 or result.stderr.strip() != "No solution found.":
+        raise AssertionError(
+            f"Expected logic-only failure for {unsolved_fixture}, got {result.returncode}: {result.stderr}"
+        )
 
 
 def test_step_styles() -> None:
@@ -388,11 +408,7 @@ def test_cli_helpers_in_process() -> None:
     if "Original puzzle:" not in stdout.getvalue() or "Solved board:" not in stdout.getvalue():
         raise AssertionError(f"Unexpected in-process CLI output: {stdout.getvalue()}")
 
-    unsolved_fixture = next(
-        fixture
-        for fixture in puzzle_fixtures()
-        if run_command(["--file", fixture_arg(fixture), "--strategy", "human", "--logic-only", "--no-steps"]).returncode == 1
-    )
+    unsolved_fixture = puzzle_fixture(LOGIC_ONLY_UNSOLVED_NAME)
     stdout = io.StringIO()
     stderr = io.StringIO()
     progress(f"running in-process CLI logic-only failure for {unsolved_fixture.name}")
@@ -750,7 +766,7 @@ def test_visualization_directly() -> None:
 
 def test_benchmark_profile_output() -> None:
     progress("running benchmark smoke with profile buckets")
-    result = run_benchmark_command(["--strategy", "fastest", "--profile-slowest", "3", "--profile-buckets"])
+    result = run_benchmark_command(["--strategy", "fastest", "--limit", "4", "--profile-slowest", "3", "--profile-buckets"])
     if result.returncode != 0:
         raise AssertionError(f"Expected benchmark success, got {result.returncode}: {result.stderr.strip()}")
     required = ["Strategy: fastest", "Profile buckets for fastest", "Slowest technique runs by puzzle", "Technique", "Total ms"]
@@ -760,11 +776,11 @@ def test_benchmark_profile_output() -> None:
 
 
 def test_technique_soundness_oracle() -> None:
-    """Validate emitted logical moves against current-state solution existence."""
+    """Validate representative emitted logical moves against current-state solution existence."""
     coverage: Counter[str] = Counter()
     examples: dict[str, str] = {}
 
-    for path in puzzle_fixtures():
+    for path in puzzle_fixture_subset(REPRESENTATIVE_PUZZLE_NAMES):
         progress(f"soundness oracle validating {path.name}")
         state = SudokuState.from_board(path.read_text(encoding="utf-8"))
         solver = SoundnessCheckingSolver(path.name, strategy="human")
@@ -790,6 +806,55 @@ def test_technique_soundness_oracle() -> None:
     progress(f"soundness oracle covered {len(coverage)} techniques")
 
 
+def test_representative_puzzle_fixtures() -> None:
+    solver = SudokuSolver(strategy="fastest")
+    for path in puzzle_fixture_subset(REPRESENTATIVE_PUZZLE_NAMES):
+        progress(f"fastest strategy representative-fixture solve {path.name}")
+        lines = path.read_text(encoding="utf-8").splitlines()
+        if len(lines) != 9 or any(len(line) != 9 for line in lines):
+            raise AssertionError(f"Expected 9x9 grid in {path}")
+        if any(ch not in ".123456789" for line in lines for ch in line):
+            raise AssertionError(f"Unexpected character in {path}")
+
+        state = SudokuState.from_board(path.read_text(encoding="utf-8"))
+        solver.reset_timing()
+        result, _ = solver.solve_with_search(state, explain=False)
+        if result is None:
+            raise AssertionError(f"Expected {path} to solve")
+
+
+@pytest.mark.slow
+def test_technique_soundness_oracle_all_fixtures() -> None:
+    """Run the soundness oracle across every puzzle fixture."""
+    coverage: Counter[str] = Counter()
+    examples: dict[str, str] = {}
+
+    for path in puzzle_fixtures():
+        progress(f"full soundness oracle validating {path.name}")
+        state = SudokuState.from_board(path.read_text(encoding="utf-8"))
+        solver = SoundnessCheckingSolver(path.name, strategy="human")
+        result, _ = solver.solve_with_search(state, explain=False)
+        if result is None:
+            raise AssertionError(f"Expected {path} to solve while running soundness oracle")
+        coverage.update(solver.soundness_coverage)
+        for technique, example in solver.soundness_examples.items():
+            examples.setdefault(technique, example)
+
+    missing = EXPECTED_SOUNDNESS_TECHNIQUES - set(coverage)
+    if missing:
+        counts = ", ".join(f"{technique}={coverage[technique]}" for technique in sorted(coverage))
+        raise AssertionError(
+            f"Full soundness oracle did not cover expected techniques {sorted(missing)}. "
+            f"Covered counts: {counts}"
+        )
+
+    unexpected = set(coverage) - EXPECTED_SOUNDNESS_TECHNIQUES
+    if unexpected:
+        examples_text = ", ".join(f"{technique}: {examples[technique]}" for technique in sorted(unexpected))
+        raise AssertionError(f"Full soundness oracle covered new techniques; update expected coverage: {examples_text}")
+
+
+@pytest.mark.slow
 def test_all_puzzle_fixtures() -> None:
     fixtures = puzzle_fixtures()
     if len(fixtures) != 154:

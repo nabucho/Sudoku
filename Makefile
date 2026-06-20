@@ -1,11 +1,12 @@
 PYTHON ?= python3
 
-.PHONY: help install-dev test coverage coverage-html typecheck lint format check benchmark clean
+.PHONY: help install-dev test test-all coverage coverage-html typecheck lint format check benchmark clean
 
 help:
 	@echo "Available targets:"
 	@echo "  install-dev   Install development dependencies"
-	@echo "  test          Run automated tests"
+	@echo "  test          Run regular automated tests"
+	@echo "  test-all      Run regular and slow automated tests"
 	@echo "  coverage      Run tests with terminal coverage report"
 	@echo "  coverage-html Run tests with HTML coverage report"
 	@echo "  typecheck     Run mypy type checking"
@@ -19,14 +20,17 @@ install-dev:
 	$(PYTHON) -m pip install -r requirements-dev.txt
 
 test:
+	$(PYTHON) -m pytest -vv -s -m "not slow"
+
+test-all:
 	$(PYTHON) -m pytest -vv -s
 
 coverage:
-	$(PYTHON) -m coverage run -m pytest -vv -s
+	$(PYTHON) -m coverage run -m pytest -vv -s -m "not slow"
 	$(PYTHON) -m coverage report
 
 coverage-html:
-	$(PYTHON) -m coverage run -m pytest -vv -s
+	$(PYTHON) -m coverage run -m pytest -vv -s -m "not slow"
 	$(PYTHON) -m coverage html
 
 typecheck:

@@ -48,6 +48,9 @@ known-first-party = [
 pythonpath = ["."]
 testpaths = ["test"]
 python_files = ["run_tests.py", "test_*.py"]
+markers = [
+    "slow: exhaustive fixture coverage intended for pre-release or deeper verification",
+]
 
 [tool.coverage.run]
 branch = true

@@ -8,7 +8,6 @@
 
 ## Strategy Improvements
 
-- Split full human-style completeness from faster practical solving. Keep `human` as the complete explanatory strategy, and consider adding a `human-fast` or `advanced-fast` strategy that skips very expensive low-yield techniques before search.
 - Add structured move diagnostics with technique name, cause cells, changed cells, candidate-count delta, solved-cell delta, and selection score. This should make `fewest-steps` decisions easier to inspect.
 
 ## Code Quality
