@@ -5,6 +5,7 @@ import io
 import itertools
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -51,6 +52,100 @@ SYNTHETIC_DIR = ROOT / "test" / "synthetic"
 ONLINE_DIR = ROOT / "test" / "online"
 STRATEGIES = ["human", "fewest-steps", "fastest", "balanced", "search-first"]
 STEP_STYLES = ["detailed", "grouped", "batched"]
+EXPECTED_SOUNDNESS_TECHNIQUES = {
+    "AIC",
+    "ALS-Wing",
+    "ALS-XZ",
+    "Avoidable Rectangle",
+    "Empty Rectangle",
+    "Finned Jellyfish",
+    "Finned Swordfish",
+    "Finned X-Wing",
+    "Grouped AIC",
+    "Grouped X-Chain",
+    "Hidden Pair",
+    "Hidden Single",
+    "Hidden Triple",
+    "Locked Candidates",
+    "Multi-Coloring",
+    "Naked Pair",
+    "Naked Single",
+    "Naked Triple",
+    "Nishio",
+    "Simple Coloring",
+    "Skyscraper",
+    "Sue de Coq",
+    "Swordfish",
+    "Turbot Fish",
+    "Two-String Kite",
+    "Unique Rectangle Type 1",
+    "Unique Rectangle Type 4",
+    "W-Wing",
+    "X-Chain",
+    "X-Wing",
+    "XY-Chain",
+    "XY-Wing",
+    "XYZ-Wing",
+}
+
+
+class SoundnessCheckingSolver(SudokuSolver):
+    """Validate every emitted logical move against the current search branch."""
+
+    def __init__(self, puzzle_name: str, strategy: str = "human"):
+        super().__init__(strategy=strategy)
+        self.puzzle_name = puzzle_name
+        self._solution_cache: dict[tuple[tuple[int, ...], tuple[int, int, bool]], bool] = {}
+        self.soundness_coverage: Counter[str] = Counter()
+        self.soundness_examples: dict[str, str] = {}
+
+    def _find_moves_timed(self, technique: Technique, state: SudokuState) -> list[Move]:
+        moves = super()._find_moves_timed(technique, state)
+        for move in moves:
+            self._assert_move_sound(state, move)
+        return moves
+
+    def _assert_move_sound(self, state: SudokuState, move: Move) -> None:
+        for placement in move.placements:
+            if self._has_solution_with_digit_removed(state, placement.cell, placement.digit):
+                raise AssertionError(
+                    f"{self.puzzle_name}: {move.technique} placed {cell_text(placement.cell)}={placement.digit}, "
+                    f"but another solution remains if that digit is removed. Move: {move.summary()}"
+                )
+
+        for elimination in move.eliminations:
+            if self._has_solution_with_digit_placed(state, elimination.cell, elimination.digit):
+                raise AssertionError(
+                    f"{self.puzzle_name}: {move.technique} removed candidate "
+                    f"{cell_text(elimination.cell)}!={elimination.digit}, but a solution still exists with it. "
+                    f"Move: {move.summary()}"
+                )
+
+        if move.placements or move.eliminations:
+            self.soundness_coverage[move.technique] += 1
+            self.soundness_examples.setdefault(move.technique, move.summary())
+
+    def _has_solution_with_digit_removed(self, state: SudokuState, cell: int, digit: int) -> bool:
+        return self._has_solution_with_constraint(state, cell, digit, place_digit=False)
+
+    def _has_solution_with_digit_placed(self, state: SudokuState, cell: int, digit: int) -> bool:
+        return self._has_solution_with_constraint(state, cell, digit, place_digit=True)
+
+    def _has_solution_with_constraint(self, state: SudokuState, cell: int, digit: int, *, place_digit: bool) -> bool:
+        key = (tuple(state.candidates), (cell, digit, place_digit))
+        if key not in self._solution_cache:
+            constrained = state.clone()
+            applied = (
+                constrained.place_digit(cell, digit)
+                if place_digit
+                else constrained.eliminate_digit(cell, digit)
+            )
+            if not applied or not constrained.consistency_ok():
+                self._solution_cache[key] = False
+            else:
+                result, _ = SudokuSolver(strategy="search-first").solve_search_first(constrained, explain=False)
+                self._solution_cache[key] = result is not None
+        return self._solution_cache[key]
 
 
 def run_command(args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -649,6 +744,35 @@ def test_benchmark_profile_output() -> None:
         raise AssertionError(f"Benchmark output missing {missing}: {result.stdout}")
 
 
+def test_technique_soundness_oracle() -> None:
+    """Validate emitted logical moves against current-state solution existence."""
+    coverage: Counter[str] = Counter()
+    examples: dict[str, str] = {}
+
+    for path in puzzle_fixtures():
+        state = SudokuState.from_board(path.read_text(encoding="utf-8"))
+        solver = SoundnessCheckingSolver(path.name, strategy="human")
+        result, _ = solver.solve_with_search(state, explain=False)
+        if result is None:
+            raise AssertionError(f"Expected {path} to solve while running soundness oracle")
+        coverage.update(solver.soundness_coverage)
+        for technique, example in solver.soundness_examples.items():
+            examples.setdefault(technique, example)
+
+    missing = EXPECTED_SOUNDNESS_TECHNIQUES - set(coverage)
+    if missing:
+        counts = ", ".join(f"{technique}={coverage[technique]}" for technique in sorted(coverage))
+        raise AssertionError(
+            f"Soundness oracle did not cover expected techniques {sorted(missing)}. "
+            f"Covered counts: {counts}"
+        )
+
+    unexpected = set(coverage) - EXPECTED_SOUNDNESS_TECHNIQUES
+    if unexpected:
+        examples_text = ", ".join(f"{technique}: {examples[technique]}" for technique in sorted(unexpected))
+        raise AssertionError(f"Soundness oracle covered new techniques; update expected coverage: {examples_text}")
+
+
 def test_all_puzzle_fixtures() -> None:
     fixtures = puzzle_fixtures()
     if len(fixtures) != 154:
@@ -685,6 +809,7 @@ def main() -> int:
         test_fewest_steps_avoids_internal_chain_eliminations,
         test_visualization_directly,
         test_benchmark_profile_output,
+        test_technique_soundness_oracle,
         test_all_puzzle_fixtures,
     ]
 

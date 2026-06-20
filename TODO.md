@@ -1,10 +1,5 @@
 # TODO
 
-## Highest Priority
-
-- Add a technique soundness oracle over all puzzle fixtures. For every emitted move, compare placements and eliminations against a trusted solved grid and fail if a move places the wrong digit or removes the true digit.
-- Add per-technique validity tests from real solve paths. Log moves produced during fixture solves, replay them against solved grids, and keep regressions for any unsound logical move.
-
 ## Benchmarking and Profiling
 
 - Add `--repeat N` to `test/benchmark.py` and report median, min, and max timings so small optimizations can be judged more reliably.
