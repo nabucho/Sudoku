@@ -5,6 +5,8 @@ from typing import List, Sequence
 from .common import (
     BOX_UNITS,
     COL_UNITS,
+    MASK_BIT_COUNTS,
+    MASK_DIGITS,
     ROW_UNITS,
     CellGroup,
     Elimination,
@@ -12,9 +14,7 @@ from .common import (
     Move,
     SudokuState,
     Technique,
-    bit_count,
     cells_text,
-    digits_from_mask,
     elimination_key,
     is_single,
     sized_combinations,
@@ -51,7 +51,7 @@ class SueDeCoq(Technique):
                 intersection_mask = self._union_mask(state, intersection)
                 if len(intersection) not in (2, 3):
                     continue
-                if bit_count(intersection_mask) != len(intersection) + 2:
+                if MASK_BIT_COUNTS[intersection_mask] != len(intersection) + 2:
                     continue
 
                 line_cells = [
@@ -75,24 +75,26 @@ class SueDeCoq(Technique):
 
                         pattern_cells = [*intersection, *line_companions, *box_companions]
                         pattern_mask = intersection_mask | line_mask | box_mask
-                        if bit_count(pattern_mask) != len(pattern_cells):
+                        if MASK_BIT_COUNTS[pattern_mask] != len(pattern_cells):
                             continue
 
                         line_elimination_mask = line_mask | (intersection_mask & ~box_mask)
                         box_elimination_mask = box_mask | (intersection_mask & ~line_mask)
+                        line_elimination_digits = MASK_DIGITS[line_elimination_mask]
+                        box_elimination_digits = MASK_DIGITS[box_elimination_mask]
 
                         eliminations = [
                             *self._eliminations(
                                 state,
                                 line,
                                 {*intersection, *line_companions},
-                                line_elimination_mask,
+                                line_elimination_digits,
                             ),
                             *self._eliminations(
                                 state,
                                 box,
                                 {*intersection, *box_companions},
-                                box_elimination_mask,
+                                box_elimination_digits,
                             ),
                         ]
                         if not eliminations:
@@ -115,14 +117,14 @@ class SueDeCoq(Technique):
                                 reason=(
                                     f"Sue de Coq at box {box_index + 1} and {line_name} {line_index + 1}: "
                                     f"intersection {cells_text(intersection)} has candidates "
-                                    f"{digits_from_mask(intersection_mask)}, with line companions "
+                                    f"{list(MASK_DIGITS[intersection_mask])}, with line companions "
                                     f"{cells_text(line_companions)} and box companions {cells_text(box_companions)}."
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=sorted(pattern_cells),
                                 source_digit_roles=source_digit_roles_for_cells(
                                     sorted(pattern_cells),
-                                    digits_from_mask(pattern_mask),
+                                    MASK_DIGITS[pattern_mask],
                                 ),
                             )
                         )
@@ -151,7 +153,7 @@ class SueDeCoq(Technique):
         return [
             combo
             for combo in sized_combinations(cells, 1)
-            if bit_count(state.candidate_mask(combo[0])) == 2
+            if MASK_BIT_COUNTS[state.candidate_mask(combo[0])] == 2
             and (state.candidate_mask(combo[0]) & ~intersection_mask) == 0
         ]
 
@@ -166,12 +168,12 @@ class SueDeCoq(Technique):
         state: SudokuState,
         unit: Sequence[int],
         blocked: set[int],
-        mask: int,
+        digits: Sequence[int],
     ) -> List[Elimination]:
         return [
             Elimination(cell, digit)
             for cell in unit
             if cell not in blocked and not is_single(state.candidate_mask(cell))
-            for digit in digits_from_mask(mask)
+            for digit in digits
             if state.can_place(cell, digit)
         ]
