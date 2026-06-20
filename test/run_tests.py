@@ -513,10 +513,10 @@ def test_visualization_directly() -> None:
 
 
 def test_benchmark_profile_output() -> None:
-    result = run_benchmark_command(["--strategy", "fastest", "--profile-slowest", "3"])
+    result = run_benchmark_command(["--strategy", "fastest", "--profile-slowest", "3", "--profile-buckets"])
     if result.returncode != 0:
         raise AssertionError(f"Expected benchmark success, got {result.returncode}: {result.stderr.strip()}")
-    required = ["Strategy: fastest", "Slowest technique runs by puzzle", "Technique", "Total ms"]
+    required = ["Strategy: fastest", "Profile buckets for fastest", "Slowest technique runs by puzzle", "Technique", "Total ms"]
     missing = [text for text in required if text not in result.stdout]
     if missing:
         raise AssertionError(f"Benchmark output missing {missing}: {result.stdout}")

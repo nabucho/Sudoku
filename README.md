@@ -226,6 +226,7 @@ Examples:
 python3 test/benchmark.py
 python3 test/benchmark.py --strategy fastest
 python3 test/benchmark.py --strategy human --strategy balanced
+python3 test/benchmark.py --strategy fewest-steps --profile-buckets
 python3 test/benchmark.py --profile-slowest 20
 ```
 
@@ -236,6 +237,9 @@ Benchmark options:
 
 `--profile-slowest N`
 : Print the `N` slowest per-puzzle technique timing rows across selected strategies.
+
+`--profile-buckets`
+: Print aggregate wall-time buckets for technique discovery, move scoring, applying moves, and benchmark/solver overhead.
 
 ## Project Layout
 
