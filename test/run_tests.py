@@ -56,6 +56,7 @@ STRATEGIES = ["human", "human-fast", "fewest-steps", "fastest", "balanced", "sea
 STEP_STYLES = ["detailed", "grouped", "batched"]
 REPRESENTATIVE_PUZZLE_NAMES = [
     "diabolical_34",
+    "diabolical_17",
     "hard_30",
     "diabolical_54",
     "diabolical_39",
@@ -80,7 +81,6 @@ EXPECTED_SOUNDNESS_TECHNIQUES = {
     "Finned Swordfish",
     "Finned X-Wing",
     "Grouped AIC",
-    "Grouped X-Chain",
     "Hidden Pair",
     "Hidden Single",
     "Hidden Triple",

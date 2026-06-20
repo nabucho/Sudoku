@@ -66,26 +66,26 @@ def default_techniques() -> list[Technique]:
         TurbotFish(),
         WWing(),
         RemotePairs(),
-        Fish(3),   # Swordfish
-        FinnedSwordfish(),
         XYWing(),
-        Fish(4),   # Jellyfish
-        FinnedJellyfish(),
         XYZWing(),
         XYChain(),
         EmptyRectangle(),
+        Fish(3),   # Swordfish
+        FinnedSwordfish(),
         UniqueRectangleType1(),
         UniqueRectangleType2(),
         UniqueRectangleType3(),
         UniqueRectangleType4(),
-        AvoidableRectangle(),
         SueDeCoq(),
         ALSXZ(),
         ALSWing(),
         XChain(),
-        GroupedXChain(),
         AIC(),
         GroupedAIC(),
+        Fish(4),   # Jellyfish
+        FinnedJellyfish(),
+        AvoidableRectangle(),
+        GroupedXChain(),
         BUGPlusOne(),
         Nishio(),
     ]
@@ -112,12 +112,12 @@ def human_fast_techniques() -> list[Technique]:
         TurbotFish(),
         WWing(),
         RemotePairs(),
-        Fish(3),   # Swordfish
-        FinnedSwordfish(),
         XYWing(),
         XYZWing(),
         XYChain(),
         EmptyRectangle(),
+        Fish(3),   # Swordfish
+        FinnedSwordfish(),
         UniqueRectangleType1(),
         UniqueRectangleType2(),
         UniqueRectangleType3(),
