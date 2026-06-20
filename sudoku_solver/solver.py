@@ -96,42 +96,59 @@ class SudokuSolver:
         for technique in self.techniques:
             moves = self._find_moves_timed(technique, state)
             if moves:
-                return self._record_move_use(self._best_move(moves))
+                return self._record_move_use(self._best_move(state, moves))
         return None
 
-    def _best_move(self, moves: list[Move]) -> Move:
+    def _best_move(self, state: SudokuState, moves: list[Move]) -> Move:
         """Choose the most useful move from one technique result set."""
-        return min(
-            moves,
-            key=lambda move: (
-                -len(move.placements) - len(move.eliminations),
-                move.difficulty,
-                move.technique,
-            ),
+        scored_moves = [
+            (score, move)
+            for move in moves
+            if (score := self._move_score(state, move)) is not None
+        ]
+        if not scored_moves:
+            return min(
+                moves,
+                key=lambda move: (
+                    -len(move.placements) - len(move.eliminations),
+                    move.difficulty,
+                    move.technique,
+                    move.reason,
+                ),
+            )
+        return max(scored_moves, key=lambda item: item[0])[1]
+
+    def _move_score(self, state: SudokuState, move: Move) -> tuple[int, int, int, int, int, str, str] | None:
+        """Return a deterministic board-impact score for a candidate move."""
+        child = state.clone()
+        if not child.apply_move(move):
+            return None
+
+        before_solved = sum(1 for mask in state.candidates if is_single(mask))
+        after_solved = sum(1 for mask in child.candidates if is_single(mask))
+        before_candidates = sum(bit_count(mask) for mask in state.candidates)
+        after_candidates = sum(bit_count(mask) for mask in child.candidates)
+
+        return (
+            after_solved - before_solved,
+            before_candidates - after_candidates,
+            len(move.placements),
+            len(move.eliminations),
+            -move.difficulty,
+            move.technique,
+            move.reason,
         )
 
     def _highest_impact_move(self, state: SudokuState) -> Move | None:
         """Evaluate all logical moves and return the one with best impact."""
         best_move: Move | None = None
-        best_score: tuple[int, int, int, int] | None = None
-
-        before_solved = sum(1 for mask in state.candidates if is_single(mask))
-        before_candidates = sum(bit_count(mask) for mask in state.candidates)
+        best_score: tuple[int, int, int, int, int, str, str] | None = None
 
         for technique in self.techniques:
             for move in self._find_moves_timed(technique, state):
-                child = state.clone()
-                if not child.apply_move(move):
+                score = self._move_score(state, move)
+                if score is None:
                     continue
-
-                after_solved = sum(1 for mask in child.candidates if is_single(mask))
-                after_candidates = sum(bit_count(mask) for mask in child.candidates)
-                score = (
-                    after_solved - before_solved,
-                    before_candidates - after_candidates,
-                    len(move.placements) + len(move.eliminations),
-                    -move.difficulty,
-                )
 
                 if best_score is None or score > best_score:
                     best_score = score

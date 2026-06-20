@@ -386,6 +386,34 @@ def test_timing_measurements() -> None:
         raise AssertionError(f"Expected propagation steps to be counted, got {propagation_stats}")
 
 
+def test_best_move_uses_board_impact() -> None:
+    solver = SudokuSolver(techniques=[])
+    state = state_with_candidates(
+        {
+            rc_to_i(0, 0): bit(1) | bit(2),
+            rc_to_i(0, 1): bit(1) | bit(3),
+            rc_to_i(0, 2): bit(2) | bit(3),
+            rc_to_i(8, 8): bit(4) | bit(5) | bit(6) | bit(7),
+        }
+    )
+    propagating_move = Move(
+        technique="Test",
+        difficulty=1,
+        reason="Place 1 and create a naked single through propagation.",
+        placements=[Placement(rc_to_i(0, 0), 1)],
+    )
+    larger_explicit_move = Move(
+        technique="Test",
+        difficulty=1,
+        reason="Remove two candidates without solving a cell.",
+        eliminations=[Elimination(rc_to_i(8, 8), 4), Elimination(rc_to_i(8, 8), 5)],
+    )
+
+    best_move = solver._best_move(state, [larger_explicit_move, propagating_move])
+    if best_move is not propagating_move:
+        raise AssertionError(f"Expected propagated board impact to win, got {best_move}")
+
+
 def test_visualization_directly() -> None:
     placement_move = Move(
         technique="Naked Single",
@@ -500,6 +528,7 @@ def main() -> int:
         test_synthetic_technique_fixtures,
         test_online_technique_fixtures,
         test_timing_measurements,
+        test_best_move_uses_board_impact,
         test_visualization_directly,
         test_benchmark_profile_output,
         test_all_puzzle_fixtures,
