@@ -210,17 +210,17 @@ def print_summary(
 def print_bucket_profile(strategy: str, profile: StrategyProfile) -> None:
     """Print high-level wall-time buckets for one strategy."""
     print(f"Profile buckets for {strategy}:")
-    print("Bucket         Total ms  Share")
-    print("------------  --------  ------")
+    print("View                 Total ms  Share")
+    print("-------------------  --------  ------")
     rows = [
-        ("technique", profile.technique_ms),
-        ("score", profile.score_ms),
-        ("apply", profile.apply_ms),
+        ("discovery", profile.technique_ms),
+        ("move scoring", profile.score_ms),
+        ("applying moves", profile.apply_ms),
         ("overhead", profile.overhead_ms),
     ]
-    for bucket, elapsed_ms in rows:
+    for view, elapsed_ms in rows:
         share = elapsed_ms / profile.wall_ms * 100.0 if profile.wall_ms else 0.0
-        print(f"{bucket[:12]:12}  {elapsed_ms:8.2f}  {share:5.1f}%")
+        print(f"{view[:19]:19}  {elapsed_ms:8.2f}  {share:5.1f}%")
     print()
 
 

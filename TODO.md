@@ -3,7 +3,6 @@
 ## Benchmarking and Profiling
 
 - Add `--repeat N` to `test/benchmark.py` and report median, min, and max timings so small optimizations can be judged more reliably.
-- Keep separate benchmark views for technique discovery, move scoring, applying moves, and overhead.
 
 ## Strategy Improvements
 
