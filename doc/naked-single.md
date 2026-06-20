@@ -16,6 +16,12 @@ After placement, the digit is propagated to peers: the same digit is removed fro
 
 The solver's `NakedSingle` technique scans every unsolved cell for a one-bit candidate mask. It emits a placement move with the standard forced-cell explanation. Detailed progress mode then shows the placement and the peer eliminations caused by propagation.
 
+## Implementation Notes
+
+`NakedSingle` intentionally returns the first forced placement it finds rather than every naked single on the board. Singles are extremely frequent, and applying one placement can immediately change many peer candidates, so this keeps the main solve loop simple and cheap.
+
+When detailed explanation is enabled, implied singles created by propagation are still shown as replay steps. The timing summary may therefore show naked-single usage both from direct technique selection and from detailed replay of forced consequences.
+
 ## References
 
 - [HoDoKu: Singles](https://hodoku.sourceforge.net/en/tech_singles.php)

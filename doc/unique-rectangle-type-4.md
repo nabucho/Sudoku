@@ -12,6 +12,12 @@ To keep the puzzle unique, the rectangle cannot resolve into a swappable pair. I
 
 `UniqueRectangleType4` searches for strong-link style restrictions on one rectangle digit and removes the opposite rectangle digit from the relevant corners.
 
+## Implementation Notes
+
+This technique relies on the unique-solution convention used by human Sudoku solvers. It should not be treated as a proof for arbitrary multi-solution grids.
+
+Type 4 is ordered before Types 2 and 3 because it is relatively cheap and benchmark data showed it was worth checking earlier. The implementation uses precomputed rectangle shapes plus mask lookup tables for repeated pair and extra-candidate checks.
+
 ## References
 
 - [HoDoKu: Uniqueness](https://hodoku.sourceforge.net/en/tech_ur.php)

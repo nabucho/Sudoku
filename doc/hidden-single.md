@@ -16,6 +16,12 @@ Hidden Singles are often found by scanning one digit at a time across a unit. Th
 
 The solver's `HiddenSingle` technique scans every unit and digit. When exactly one cell in the unit can still hold that digit, it emits a placement move whose explanation names the unit that proves the selection.
 
+## Implementation Notes
+
+`HiddenSingle` intentionally returns the first forced placement it finds rather than every hidden single on the board. This matches the step-by-step human-style solving loop: place one proven digit, propagate its consequences, then rescan from the start of the strategy.
+
+This is a performance and explanation tradeoff. It makes `fewest-steps` less exhaustive for singles than a technique that returns all placements, but it avoids spending time scoring many placements that may become stale after the first one is applied.
+
 ## References
 
 - [HoDoKu: Singles](https://hodoku.sourceforge.net/en/tech_singles.php)

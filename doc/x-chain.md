@@ -16,6 +16,12 @@ Closed or near-closed forms are often called X-Cycles in SudokuWiki terminology.
 
 `XChain` specializes the AIC search to one digit at a time, looking for endpoint eliminations on shared peers.
 
+## Implementation Notes
+
+X-Chain shares the bounded-chain philosophy used by AIC. The limit favors common explanatory chains and predictable timing over exhaustive enumeration of every possible longer chain.
+
+Because this is a single-digit technique, it remains cheaper than general AIC and grouped chains, but it should still be benchmarked when changing link construction, endpoint checks, or chain depth.
+
 ## References
 
 - [SudokuWiki: Alternating Inference Chains](https://www.sudokuwiki.org/Alternating_Inference_Chains)

@@ -16,6 +16,12 @@ Any target seeing both endpoints is eliminated regardless of which endpoint is t
 
 `XYChain` builds alternating relationships between bivalue cells and searches for endpoint pairs with the same digit. It then removes that digit from common peers of the endpoints.
 
+## Implementation Notes
+
+XY-Chain is intentionally ordered before larger fish and late advanced techniques in the main human strategies. It is often cheaper than ALS or grouped-chain scans and can prevent unnecessary search on hard puzzles.
+
+The implementation keeps source-cell metadata for progress highlighting. When changing chain construction, preserve the distinction between endpoint digits, internal chain cells, and eliminated candidates so detailed step visualization stays useful.
+
 ## References
 
 - [HoDoKu: Wings](https://hodoku.sourceforge.net/en/tech_wings.php)

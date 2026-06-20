@@ -14,6 +14,12 @@ The three base rows each need one placement of the fish digit. Since all legal p
 
 The solver implements Swordfish through `Fish(3)`. It searches both row-base and column-base forms and groups all resulting cover-set eliminations into a single step.
 
+## Implementation Notes
+
+Basic fish use row and column bitmasks for candidate positions. The implementation filters masks with precomputed bit counts and converts fish base and cover masks through lookup tables, avoiding repeated list/set construction in hot scans.
+
+Swordfish remains in `human-fast`, but it runs after cheaper wings and chains because benchmark data showed those often produce progress before larger fish need to be checked.
+
 ## References
 
 - [HoDoKu: Basic Fish](https://hodoku.sourceforge.net/en/tech_fishb.php)

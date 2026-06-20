@@ -16,6 +16,12 @@ AICs generalize many named patterns, including X-Chains, XY-Chains, and some Emp
 
 `AIC` builds candidate-node links from bivalue cells and bilocation units, searches alternating chains, and emits eliminations proved by compatible endpoints.
 
+## Implementation Notes
+
+The implementation intentionally bounds chain length. Unrestricted AIC enumeration grows quickly and can dominate solve time, especially under strategies that repeatedly scan advanced techniques. The cap preserves predictable CLI performance while still finding common useful chains.
+
+The chain search uses candidate-node link maps and deterministic ordering so explanations remain stable across runs. If the cap is raised, benchmark both `human` and `fewest-steps` because those strategies pay the discovery cost differently.
+
 ## References
 
 - [SudokuWiki: Alternating Inference Chains](https://www.sudokuwiki.org/Alternating_Inference_Chains)

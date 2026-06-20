@@ -14,6 +14,12 @@ The rectangle must be prevented by at least one extra candidate in the two speci
 
 `UniqueRectangleType3` looks for rectangle extra-candidate corners that can combine with ordinary cells into a subset. It emits eliminations from the rest of the affected unit.
 
+## Implementation Notes
+
+This technique relies on the unique-solution convention used by human Sudoku solvers. It should not be treated as a proof for arbitrary multi-solution grids.
+
+Type 3 is more expensive than the direct rectangle types because it combines deadly-pattern detection with subset searches. The implementation uses candidate masks and precomputed digit tuples for the rectangle checks, then only builds subset combinations after the virtual-cell condition is present.
+
 ## References
 
 - [HoDoKu: Uniqueness](https://hodoku.sourceforge.net/en/tech_ur.php)

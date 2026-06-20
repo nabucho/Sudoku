@@ -12,6 +12,12 @@ There are two possibilities: the fin is false and the Swordfish operates normall
 
 `FinnedSwordfish` searches size-three finned fish. It keeps the eliminations conservative by requiring target cells to be visible from the fin region.
 
+## Implementation Notes
+
+Finned fish scans are more expensive than ordinary fish because they must track both the almost-fish cover sets and the fin region. The implementation uses bit-count lookups for base and cover masks and deduplicates equivalent eliminations.
+
+Finned Swordfish remains in `human-fast`, but it is ordered after cheaper pattern families so the solver usually avoids this scan when simpler moves are available.
+
 ## References
 
 - [HoDoKu: Basic Fish](https://hodoku.sourceforge.net/en/tech_fishb.php)

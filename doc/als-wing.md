@@ -14,6 +14,12 @@ If the shared elimination digit is not locked in one wing ALS, the restricted co
 
 `ALSWing` builds on the ALS-XZ helper logic and searches triples of ALS groups with two different restricted common candidates and a shared wing digit.
 
+## Implementation Notes
+
+ALS-Wing reuses the ALS group discovery and restricted-common logic used by ALS-XZ. It is capped by a maximum emitted move count because ALS triples can produce many equivalent eliminations on dense candidate grids.
+
+The implementation favors clear endpoint and wing-role metadata for progress highlighting. Optimizations should keep the central ALS, wing ALS groups, restricted common digits, and eliminated digit distinguishable in the generated `Move`.
+
 ## References
 
 - [HoDoKu: ALS](https://hodoku.sourceforge.net/en/tech_als.php)

@@ -14,6 +14,14 @@ The chain still alternates strong and weak inference. A grouped node is true if 
 
 `GroupedAIC` constructs both single candidate nodes and grouped candidate nodes, links them through strong and weak relationships, then emits eliminations supported by the endpoint visibility rules.
 
+## Implementation Notes
+
+Grouped AIC is one of the most expensive discovery techniques in the full `human` strategy. The solver keeps it late in the order and limits both chain depth and the number of emitted moves so interactive solves do not spend most of their time enumerating equivalent grouped paths.
+
+The implementation precomputes grouped node masks, sorts link adjacency once, and carries mutable path state during search to avoid repeated list and set construction. These optimizations are intentionally local to the search loop; the surrounding code keeps the grouped-node logic explicit because correctness is more important than squeezing every allocation out of an advanced technique.
+
+The tradeoff is completeness: very long grouped chains or chains beyond the move cap may be skipped. That is acceptable for this solver because MRV search remains available unless `--logic-only` is requested.
+
 ## References
 
 - [SudokuWiki: Grouped X-Cycles](https://www.sudokuwiki.org/Print_Grouped_X_Cycles)

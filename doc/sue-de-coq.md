@@ -16,6 +16,12 @@ This is a special case of subset counting and is closely related to Almost Locke
 
 `SueDeCoq` implements the basic HoDoKu-style variant: two intersection cells with four candidates or three intersection cells with five candidates, plus one bivalue companion in the line and one bivalue companion in the box. It verifies that the companion candidates are drawn from the intersection and split disjointly, then removes line-locked candidates from the rest of the line and box-locked candidates from the rest of the box.
 
+## Implementation Notes
+
+This is a deliberately conservative Sue de Coq implementation. It covers the common compact pattern shape rather than every generalized ALS/subset-counting variant.
+
+The implementation uses precomputed mask-to-digits and mask bit-count lookups in the intersection and companion checks. It also caches the line and box elimination digit tuples before generating eliminations, which keeps the inner loops allocation-light without changing the explanation shape.
+
 ## References
 
 - [HoDoKu: Sue de Coq](https://hodoku.sourceforge.net/en/tech_misc.php)

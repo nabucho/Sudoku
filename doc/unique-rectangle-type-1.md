@@ -14,6 +14,12 @@ If the fourth corner were also reduced to only the rectangle pair, the four cell
 
 `UniqueRectangleType1` identifies near-deadly rectangles and eliminates the rectangle digits from the only corner that has additional candidates.
 
+## Implementation Notes
+
+This technique relies on the unique-solution convention used by human Sudoku solvers. It should not be treated as a proof for arbitrary multi-solution grids.
+
+The implementation precomputes valid rectangle shapes and uses candidate-mask lookups to keep the scan cheap. Type 1 is kept early among uniqueness techniques because it is simpler, common enough to be useful, and usually produces a direct elimination with clear highlighting.
+
 ## References
 
 - [HoDoKu: Uniqueness](https://hodoku.sourceforge.net/en/tech_ur.php)

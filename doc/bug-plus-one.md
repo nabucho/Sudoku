@@ -14,6 +14,12 @@ If the tri-value cell were reduced to either of its two BUG-compatible candidate
 
 `BUGPlusOne` verifies the near-BUG structure and places the digit in the single tri-value cell that breaks the pattern.
 
+## Implementation Notes
+
+This technique relies on the unique-solution convention used by human Sudoku solvers. It should not be treated as a proof for arbitrary multi-solution grids.
+
+BUG+1 is cheap once the grid is close to solved because it mainly counts candidate appearances in units. It is included in `human-fast` even though it is rare, because the runtime cost is low compared with larger chains and ALS scans.
+
 ## References
 
 - [HoDoKu: Uniqueness](https://hodoku.sourceforge.net/en/tech_ur.php)

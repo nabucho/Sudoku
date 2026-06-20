@@ -14,6 +14,12 @@ Every digit must appear once in the unit. If two digits are limited to two cells
 
 The solver uses `HiddenSubset(size)` for sizes 2, 3, and 4. It scans each unit for digit combinations whose possible cells match the subset size, then removes all non-subset candidates from those cells.
 
+## Implementation Notes
+
+Hidden subsets are implemented generically for pairs, triples, and quads using cached candidate positions per unit. This avoids repeatedly rebuilding digit-to-cell maps while keeping the proof easy to follow.
+
+Hidden quads are included for completeness but are rare in normal solve paths. They remain in the full `human` strategy; faster strategies rely on cheaper subsets plus search fallback instead.
+
 ## References
 
 - [HoDoKu: Hidden Subsets](https://hodoku.sourceforge.net/en/tech_hidden.php)

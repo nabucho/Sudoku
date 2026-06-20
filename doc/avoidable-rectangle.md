@@ -14,6 +14,12 @@ When the solved rectangle values are not givens, they could be exchanged with th
 
 `AvoidableRectangle` applies conservative rectangle checks involving givens and solved cells, then removes candidates that would complete an avoidable uniqueness pattern.
 
+## Implementation Notes
+
+This technique relies on the unique-solution convention and on the distinction between original givens and values solved later. It should not be treated as a proof for arbitrary multi-solution grids or for grids where given-cell metadata has been lost.
+
+Avoidable Rectangle is intentionally late in the full `human` strategy and omitted from `human-fast`. It has a relatively high scan cost and low observed yield, so future optimization should focus on prefiltering non-given rectangle shapes and solved-corner patterns before testing candidate pairs.
+
 ## References
 
 - [HoDoKu: Uniqueness](https://hodoku.sourceforge.net/en/tech_ur.php)

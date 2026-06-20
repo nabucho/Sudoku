@@ -14,6 +14,12 @@ The selected `N` cells must be filled by `N` digits. If their combined candidate
 
 The solver uses the generic `NakedSubset(size)` implementation for sizes 2, 3, and 4. Strategy output names them as Naked Pair, Naked Triple, or Naked Quad depending on size. Eliminations from the subset are grouped into one move.
 
+## Implementation Notes
+
+The subset implementation uses candidate masks and combination helpers to keep pair, triple, and quad logic shared. Quads are included in the full human-style technique list for completeness, but they are naturally lower-yield and later than cheaper subset sizes.
+
+When optimizing this family, preserve the generic size-based implementation unless benchmark data shows a specific size needs specialized handling.
+
 ## References
 
 - [HoDoKu: Naked Subsets](https://hodoku.sourceforge.net/en/tech_naked.php)
