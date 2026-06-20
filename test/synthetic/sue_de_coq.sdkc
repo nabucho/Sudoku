@@ -1,0 +1,18 @@
+technique: Sue de Coq
+source: https://hodoku.sourceforge.net/en/show_example.php?file=sdc02&tech=Sue+de+Coq+%28basic+variant%29
+source_step: online
+reason: Sue de Coq: r789c9 - {24567} (r2c9 - {56}, r9c7 - {27}) => r79c8<>2, r4c9,r9c8<>4, r14c9<>5, r1c9<>6
+placements: none
+eliminations: r7c8!=2, r9c8!=2, r4c9!=4, r9c8!=4, r1c9!=5, r4c9!=5, r1c9!=6
+fixed: none
+given: none
+candidates:
+39 3569 359 7 2 8 4 1 356
+1 456 2 9 3 456 8 7 56
+348 34567 34578 1 46 456 25 2356 9
+6 8 34579 23 147 12347 2579 2345 23457
+234 23457 3457 238 478 9 6 2345 1
+2349 1 3479 236 5 23467 279 234 8
+7 239 389 4 689 236 1 2568 256
+248 24 6 5 178 127 3 9 247
+5 2349 1 2368 6789 2367 27 2468 2467

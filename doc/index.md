@@ -49,6 +49,7 @@ The descriptions are original summaries based on established Sudoku references, 
 
 ## ALS And AIC
 
+- [Sue de Coq](sue-de-coq.md)
 - [ALS-XZ](als-xz.md)
 - [ALS-Wing](als-wing.md)
 - [X-Chain](x-chain.md)

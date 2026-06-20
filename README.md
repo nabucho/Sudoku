@@ -176,6 +176,9 @@ Wings And Bivalue Chains
 Uniqueness
 : [Unique Rectangle Type 1](doc/unique-rectangle-type-1.md), [Type 2](doc/unique-rectangle-type-2.md), [Type 3](doc/unique-rectangle-type-3.md), [Type 4](doc/unique-rectangle-type-4.md), [Avoidable Rectangle](doc/avoidable-rectangle.md), and [BUG+1](doc/bug-plus-one.md) avoid deadly patterns or non-unique solutions.
 
+Subset Counting
+:: [Sue de Coq](doc/sue-de-coq.md) eliminates candidates by combining a box-line intersection with companion cells from the same line and box.
+
 Almost Locked Sets
 : [ALS-XZ](doc/als-xz.md) and [ALS-Wing](doc/als-wing.md) eliminate candidates using restricted common digits.
 

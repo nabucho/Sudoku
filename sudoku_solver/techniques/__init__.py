@@ -3,6 +3,7 @@ from .als import ALSXZ, ALSWing
 from .basic import HiddenSingle, HiddenSubset, LockedCandidates, NakedSingle, NakedSubset
 from .coloring import MultiColoring, SimpleColoring
 from .fish import FinnedJellyfish, FinnedSwordfish, FinnedXWing, Fish
+from .misc import SueDeCoq
 from .single_digit_chains import EmptyRectangle, Skyscraper, TurbotFish, TwoStringKite
 from .unique import (
     AvoidableRectangle,
@@ -38,6 +39,7 @@ __all__ = [
     "RemotePairs",
     "SimpleColoring",
     "Skyscraper",
+    "SueDeCoq",
     "TurbotFish",
     "TwoStringKite",
     "UniqueRectangleType1",
