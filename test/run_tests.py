@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from cli import main as cli_main, pretty_puzzle, read_puzzle_argument
 from sudoku_solver.solver import SudokuSolver
+from sudoku_solver.strategies import default_techniques
 from sudoku_solver.techniques.basic import HiddenSingle, LockedCandidates, NakedSingle
 from sudoku_solver.techniques.common import (
     ALL_DIGITS_MASK,
@@ -20,6 +21,7 @@ from sudoku_solver.techniques.common import (
     Move,
     Placement,
     SudokuState,
+    Technique,
     TechniqueTiming,
     bit,
     cell_text,
@@ -39,6 +41,8 @@ from sudoku_solver.visualization import (
 ROOT = Path(__file__).resolve().parents[1]
 PUZZLE_FILES = ["puzzle", "puzzle2", "puzzle3", "puzzle4"]
 PUZZLE_DIR = ROOT / "test" / "puzzles"
+SYNTHETIC_DIR = ROOT / "test" / "synthetic"
+ONLINE_DIR = ROOT / "test" / "online"
 STRATEGIES = ["human", "fewest-steps", "fastest", "balanced", "search-first"]
 STEP_STYLES = ["detailed", "grouped", "batched"]
 
@@ -87,6 +91,107 @@ def state_with_candidates(overrides: dict[int, int], fixed_cells: set[int] | Non
     for cell, mask in overrides.items():
         candidates[cell] = mask
     return SudokuState(candidates, fixed_cells=fixed_cells or set())
+
+
+def parse_cell_reference(text: str) -> int:
+    col_marker = text.index("c")
+    row = int(text[1:col_marker]) - 1
+    col = int(text[col_marker + 1:]) - 1
+    return rc_to_i(row, col)
+
+
+def parse_candidate_mask(text: str) -> int:
+    mask = 0
+    for char in text:
+        mask |= bit(int(char))
+    return mask
+
+
+def parse_cell_list(text: str) -> set[int]:
+    if text == "none":
+        return set()
+    return {int(cell) for cell in text.split(",") if cell}
+
+
+def parse_expected_placements(text: str) -> set[tuple[int, int]]:
+    if text == "none":
+        return set()
+    placements = set()
+    for item in text.split(", "):
+        cell_text_value, digit = item.split("=")
+        placements.add((parse_cell_reference(cell_text_value), int(digit)))
+    return placements
+
+
+def parse_expected_eliminations(text: str) -> set[tuple[int, int]]:
+    if text == "none":
+        return set()
+    eliminations = set()
+    for item in text.split(", "):
+        cell_text_value, digit = item.split("!=")
+        eliminations.add((parse_cell_reference(cell_text_value), int(digit)))
+    return eliminations
+
+
+def load_synthetic_fixture(path: Path) -> tuple[str, SudokuState, set[tuple[int, int]], set[tuple[int, int]]]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    candidate_start = lines.index("candidates:")
+    metadata = {
+        key: value
+        for line in lines[:candidate_start]
+        for key, value in [line.split(": ", 1)]
+    }
+    candidate_rows = lines[candidate_start + 1:]
+    if len(candidate_rows) != 9:
+        raise AssertionError(f"Expected 9 candidate rows in {path}, got {len(candidate_rows)}")
+
+    candidates: list[int] = []
+    for row in candidate_rows:
+        row_cells = row.split()
+        if len(row_cells) != 9:
+            raise AssertionError(f"Expected 9 candidate cells in {path}: {row}")
+        candidates.extend(parse_candidate_mask(cell) for cell in row_cells)
+
+    return (
+        metadata["technique"],
+        SudokuState(
+            candidates,
+            fixed_cells=parse_cell_list(metadata["fixed"]),
+            given_cells=parse_cell_list(metadata["given"]),
+        ),
+        parse_expected_placements(metadata["placements"]),
+        parse_expected_eliminations(metadata["eliminations"]),
+    )
+
+
+def assert_technique_fixtures(
+    fixtures: list[Path],
+    techniques: dict[str, Technique],
+) -> set[str]:
+    fixture_names = set()
+    for path in fixtures:
+        technique_name, state, expected_placements, expected_eliminations = load_synthetic_fixture(path)
+        fixture_names.add(technique_name)
+        technique = techniques.get(technique_name)
+        if technique is None:
+            raise AssertionError(f"{path} references unknown technique {technique_name!r}")
+
+        moves = technique.find_moves(state)
+        expected = (expected_placements, expected_eliminations)
+        actual = [
+            (
+                {(placement.cell, placement.digit) for placement in move.placements},
+                {(elimination.cell, elimination.digit) for elimination in move.eliminations},
+            )
+            for move in moves
+        ]
+        if expected not in actual:
+            raise AssertionError(
+                f"{technique_name} fixture {path.name} did not produce expected move. "
+                f"Expected {expected}, got {actual}"
+            )
+
+    return fixture_names
 
 
 def test_direct_strategies() -> None:
@@ -208,6 +313,30 @@ def test_basic_techniques_directly() -> None:
         raise AssertionError(f"Expected pointing locked candidate move, got {[move.reason for move in locked_moves]}")
     if not any(elimination.cell == rc_to_i(0, 6) and elimination.digit == 9 for elimination in pointing_moves[0].eliminations):
         raise AssertionError(f"Expected elimination from r1c7, got {pointing_moves[0].eliminations}")
+
+
+def test_synthetic_technique_fixtures() -> None:
+    techniques: dict[str, Technique] = {technique.name: technique for technique in default_techniques()}
+    fixtures = sorted(SYNTHETIC_DIR.glob("*.sdkc"))
+
+    if not fixtures:
+        raise AssertionError(f"Expected synthetic technique fixtures in {SYNTHETIC_DIR}")
+
+    fixture_names = assert_technique_fixtures(fixtures, techniques)
+    missing = set(techniques) - fixture_names
+    extra = fixture_names - set(techniques)
+    if missing or extra:
+        raise AssertionError(f"Synthetic fixture mismatch: missing={sorted(missing)}, extra={sorted(extra)}")
+
+
+def test_online_technique_fixtures() -> None:
+    techniques: dict[str, Technique] = {technique.name: technique for technique in default_techniques()}
+    fixtures = sorted(ONLINE_DIR.glob("*.sdkc"))
+
+    if not fixtures:
+        raise AssertionError(f"Expected online technique fixtures in {ONLINE_DIR}")
+
+    assert_technique_fixtures(fixtures, techniques)
 
 
 def test_timing_measurements() -> None:
@@ -335,6 +464,8 @@ def main() -> int:
         test_cli_validation,
         test_cli_helpers_in_process,
         test_basic_techniques_directly,
+        test_synthetic_technique_fixtures,
+        test_online_technique_fixtures,
         test_timing_measurements,
         test_visualization_directly,
         test_benchmark_profile_output,

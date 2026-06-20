@@ -1,0 +1,19 @@
+technique: Skyscraper
+source: HoDoKu Skyscraper example
+source_url: https://hodoku.sourceforge.net/en/show_example.php?file=sk01&tech=Skyscraper
+source_step: online
+reason: Skyscraper: 1 in r1c6,r3c9 (connected by r5c69) => r1c78,r3c45<>1
+placements: none
+eliminations: r1c7!=1, r1c8!=1, r3c4!=1, r3c5!=1
+fixed: none
+given: none
+candidates:
+6 9 7 1345 13458 158 1458 148 2
+45 58 1 9 7 2 458 6 3
+245 258 3 145 1458 6 7 9 18
+9 1 2 345 3458 58 6 38 7
+3 7 4 2 6 18 9 5 18
+8 6 5 7 13 9 13 2 4
+1 4 8 6 9 3 2 7 5
+7 35 9 15 2 4 138 138 6
+25 235 6 8 15 7 134 134 9

@@ -1,0 +1,19 @@
+technique: ALS-XZ
+source: HoDoKu ALS-XZ example
+source_url: https://hodoku.sourceforge.net/en/show_example.php?file=axz01&tech=ALS-XZ
+source_step: online
+reason: Almost Locked Set XZ-Rule: A=r1c67 {679}, B=r3c289 {6789}, X=6, Z=7 => r3c56<>7
+placements: none
+eliminations: r3c5!=7, r3c6!=7
+fixed: none
+given: none
+candidates:
+679 2 5 1 8 79 69 3 4
+1479 189 14789 3 479 6 5 789 2
+36 89 346789 2 4579 4579 1 789 679
+379 4 2 68 369 1 679 5 6789
+1579 6 179 458 2 4589 3 14 789
+8 159 139 7 34569 459 2 14 69
+146 7 146 9 146 3 8 2 5
+2 3 689 4568 4567 4578 479 79 1
+1459 1589 1489 48 147 2 479 6 3

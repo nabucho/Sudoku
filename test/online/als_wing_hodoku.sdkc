@@ -1,0 +1,19 @@
+technique: ALS-Wing
+source: HoDoKu ALS-XY-Wing example
+source_url: https://hodoku.sourceforge.net/en/show_example.php?file=axy02&tech=ALS-XY-Wing
+source_step: online
+reason: Almost Locked Set XY-Wing: A=r1c78 {247}, B=r25c4 {679}, C=r259c9 {3467}, X,Y=4,6, Z=7 => r1c4<>7
+placements: none
+eliminations: r1c4!=7
+fixed: none
+given: none
+candidates:
+9 1467 16 4567 3 1567 247 27 8
+2 147 3 79 19 8 6 5 47
+8 467 5 2 46 67 3 9 1
+7 9 28 1 456 3 45 28 46
+16 5 4 679 2689 2679 278 1238 367
+16 3 28 4567 24568 2567 2457 17 9
+5 8 167 3 169 169 79 4 2
+3 2 9 8 7 4 1 6 5
+4 16 167 569 2569 12569 789 378 37

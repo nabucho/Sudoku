@@ -1,0 +1,18 @@
+technique: Empty Rectangle
+source: test/puzzles/diabolical_01
+source_step: 18
+reason: Empty Rectangle on digit 1: box 5 is covered by row 6 and column 4; strong row link r8c4-r8c9 eliminates 1 from r6c9.
+placements: none
+eliminations: r6c9!=1
+fixed: 1,2,3,4,7,8,12,14,15,16,17,19,20,21,25,26,27,30,31,32,33,37,40,41,43,47,48,49,54,59,60,61,65,67,68,69,70,73,76,78,79
+given: 1,2,4,7,12,15,19,20,21,26,31,32,33,37,43,47,48,49,54,59,60,61,65,68,73,76,78,79
+candidates:
+16 8 3 5 2 14 46 9 7
+4567 456 457 8 67 9 1 2 3
+167 2 9 3 167 147 46 5 8
+2 345 145 6 9 8 7 13 145
+489 7 148 12 5 3 28 6 149
+589 359 6 7 4 12 28 13 159
+3 45 457 124 17 6 9 8 12
+469 469 2 149 8 5 3 7 16
+6789 1 78 29 3 27 5 4 26

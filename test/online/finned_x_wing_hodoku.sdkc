@@ -1,0 +1,19 @@
+technique: Finned X-Wing
+source: HoDoKu Finned X-Wing example
+source_url: https://hodoku.sourceforge.net/en/show_example.php?file=fbf201&tech=Finned+X-Wing
+source_step: online
+reason: Finned X-Wing: 9 r24 c35 fr2c1 => r3c3<>9
+placements: none
+eliminations: r3c3!=9
+fixed: none
+given: none
+candidates:
+149 5 2 6 7 19 3 49 8
+149 3 189 148 489 5 6 2 7
+6 7 89 48 3 2 5 49 1
+2 8 39 47 49 6 1 37 5
+59 6 359 178 89 19 2 37 4
+7 1 4 5 2 3 8 6 9
+8 2 7 3 1 4 9 5 6
+15 9 15 2 6 7 4 8 3
+3 4 6 9 5 8 7 1 2

@@ -1,0 +1,19 @@
+technique: XY-Wing
+source: HoDoKu XY-Wing example
+source_url: https://hodoku.sourceforge.net/en/show_example.php?file=xy01&tech=XY-Wing
+source_step: online
+reason: XY-Wing: 5/7/2 in r1c36,r2c1 => r2c6<>2
+placements: none
+eliminations: r2c6!=2
+fixed: none
+given: none
+candidates:
+8 145 57 3 6 25 9 147 12
+27 45 9 47 1 25 8 6 3
+127 6 3 47 8 9 24 147 5
+9 2 4 6 7 3 1 5 8
+3 8 6 9 5 1 7 2 4
+5 7 1 8 2 4 3 9 6
+4 3 2 1 9 6 5 8 7
+6 9 8 5 3 7 24 14 12
+17 15 57 2 4 8 6 3 9

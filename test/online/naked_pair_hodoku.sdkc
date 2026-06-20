@@ -1,0 +1,19 @@
+technique: Naked Pair
+source: HoDoKu Naked Pair example
+source_url: https://hodoku.sourceforge.net/en/show_example.php?file=n202&tech=Naked+Pair
+source_step: online
+reason: Naked Pair: 8,9 in r4c5,r5c6 => r456c4,r56c5,r6c6<>8, r456c4,r56c5,r6c6<>9
+placements: none
+eliminations: r4c4!=8, r4c4!=9, r5c4!=8, r5c4!=9, r6c4!=8, r6c4!=9, r5c5!=8, r5c5!=9, r6c5!=8, r6c5!=9, r6c6!=8, r6c6!=9
+fixed: none
+given: none
+candidates:
+6 8 7 19 19 4 5 2 3
+9 5 3 78 78 2 6 1 4
+1 4 2 3 5 6 9 7 8
+3 1 589 589 89 7 2 4 6
+7 6 489 12489 12489 89 3 89 5
+458 2 4589 45689 34689 3589 7 89 1
+458 9 6 4578 478 1 48 3 2
+2 3 148 4689 4689 89 148 5 7
+458 7 1458 2458 2348 358 148 6 9
