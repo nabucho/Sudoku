@@ -20,6 +20,7 @@ from .common import (
     is_single,
     pair_combinations,
     sized_combinations,
+    source_digit_roles_for_cells,
     unit_text,
 )
 
@@ -115,6 +116,17 @@ class ALSXZ(Technique):
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=sorted(left.cell_set | right.cell_set),
+                                source_digit_roles={
+                                    **source_digit_roles_for_cells(
+                                        sorted(left.cell_set | right.cell_set),
+                                        [eliminated_digit],
+                                    ),
+                                    **source_digit_roles_for_cells(
+                                        sorted(left.cell_set | right.cell_set),
+                                        [restricted_digit],
+                                        "secondary",
+                                    ),
+                                },
                             )
                         )
 
@@ -293,6 +305,22 @@ class ALSWing(ALSXZ):
                             ),
                             eliminations=eliminations,
                             cause_cells=sorted(pivot.cell_set | left.cell_set | right.cell_set),
+                            source_digit_roles={
+                                **source_digit_roles_for_cells(
+                                    sorted(pivot.cell_set | left.cell_set | right.cell_set),
+                                    [eliminated_digit],
+                                ),
+                                **source_digit_roles_for_cells(
+                                    sorted(pivot.cell_set | left.cell_set),
+                                    [left_digit],
+                                    "secondary",
+                                ),
+                                **source_digit_roles_for_cells(
+                                    sorted(pivot.cell_set | right.cell_set),
+                                    [right_digit],
+                                    "secondary",
+                                ),
+                            },
                         )
                     )
                     if len(moves) >= self.max_moves:

@@ -62,6 +62,7 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
         eliminations=move.eliminations[:],
     )
     full_move.cause_cells = move.cause_cells[:]
+    full_move.source_digit_roles = move.source_digit_roles.copy()
     full_move.timing_ms = move.timing_ms
 
     known_eliminations = {(elimination.cell, elimination.digit) for elimination in full_move.eliminations}
@@ -199,6 +200,7 @@ class StepExpander:
                 eliminations=eliminations,
             )
             step.cause_cells = [source_cell]
+            step.source_digit_roles = {(source_cell, digit): "primary"}
             step.timing_ms = 0.0
             self.append_step(step, [elimination.cell for elimination in eliminations])
 
@@ -271,6 +273,7 @@ class StepExpander:
                 eliminations=applied,
             )
             step.cause_cells = sorted(set[int](cause_cells or []))
+            step.source_digit_roles = self.move.source_digit_roles.copy()
             step.timing_ms = self.move.timing_ms if technique == self.move.technique else 0.0
             self.append_step(step, changed_cells)
 

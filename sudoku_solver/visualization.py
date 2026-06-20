@@ -82,6 +82,11 @@ def combine_step_group(technique: str, moves: Sequence[ExplanationStep]) -> Expl
         for move in moves
         for cell in move.cause_cells
     }
+    source_digit_roles = {
+        cell_digit: role
+        for move in moves
+        for cell_digit, role in move.source_digit_roles.items()
+    }
     details = [placement_text(placement) for placement in placements]
     details.extend(elimination_text(elimination) for elimination in eliminations)
     change_count = len(details)
@@ -95,13 +100,52 @@ def combine_step_group(technique: str, moves: Sequence[ExplanationStep]) -> Expl
         eliminations=eliminations,
     )
     combined_move.cause_cells = sorted(cause_cells)
+    combined_move.source_digit_roles = source_digit_roles
     combined_move.timing_ms = sum(move.timing_ms for move in moves)
     after_candidates = moves[-1].after_candidates[:] if moves[-1].after_candidates is not None else None
     return ExplanationStep(combined_move, after_candidates, sorted(changed_cells))
 
 
+def combine_propagation_with_selection(selection: ExplanationStep, propagation: ExplanationStep) -> ExplanationStep:
+    """Attach a propagation step to the placement step that caused it."""
+    combined_move = Move(
+        technique=selection.technique,
+        difficulty=max(selection.difficulty, propagation.difficulty),
+        reason=selection.reason,
+        placements=selection.placements[:],
+        eliminations=selection.eliminations[:] + propagation.eliminations[:],
+    )
+    combined_move.cause_cells = sorted(set[int](selection.cause_cells) | set[int](propagation.cause_cells))
+    combined_move.source_digit_roles = {
+        **selection.source_digit_roles,
+        **propagation.source_digit_roles,
+    }
+    combined_move.timing_ms = selection.timing_ms + propagation.timing_ms
+    changed_cells = sorted(set[int](selection.changed_cells) | set[int](propagation.changed_cells))
+    after_candidates = propagation.after_candidates[:] if propagation.after_candidates is not None else None
+    return ExplanationStep(combined_move, after_candidates, changed_cells)
+
+
+def combine_propagation_steps(steps: Sequence[ExplanationStep]) -> List[ExplanationStep]:
+    """Merge propagation into the placement step whose selected cell caused it."""
+    combined: List[ExplanationStep] = []
+    for step in steps:
+        if step.technique != "Propagation" or not combined:
+            combined.append(step)
+            continue
+
+        previous = combined[-1]
+        placed_cells = {placement.cell for placement in previous.placements}
+        if placed_cells and any(cause_cell in placed_cells for cause_cell in step.cause_cells):
+            combined[-1] = combine_propagation_with_selection(previous, step)
+        else:
+            combined.append(step)
+    return combined
+
+
 def steps_for_style(steps: Sequence[ExplanationStep], style: str) -> List[ExplanationStep]:
     """Return steps transformed according to a CLI step style."""
+    steps = combine_propagation_steps(steps)
     if style == "detailed":
         return list[ExplanationStep](steps)
 
@@ -188,6 +232,63 @@ def ansi_text(text: str, *, fg: Optional[int] = None, bg: Optional[int] = None, 
     return f"\033[{';'.join(codes)}m{text}\033[0m"
 
 
+@dataclass(frozen=True)
+class RenderStyle:
+    """Foreground, background, and bold settings for rendered text."""
+
+    fg: Optional[int] = None
+    bg: Optional[int] = None
+    bold: bool = False
+
+
+ANSI_FG_BLACK = 30
+ANSI_FG_RED = 31
+ANSI_FG_GREEN = 32
+ANSI_FG_YELLOW = 33
+ANSI_FG_BLUE = 34
+ANSI_FG_MAGENTA = 35
+ANSI_FG_CYAN = 36
+ANSI_FG_WHITE = 37
+
+ANSI_FG_BRIGHT_BLACK = 90
+ANSI_FG_BRIGHT_RED = 91
+ANSI_FG_BRIGHT_GREEN = 92
+ANSI_FG_BRIGHT_YELLOW = 93
+ANSI_FG_BRIGHT_BLUE = 94
+ANSI_FG_BRIGHT_MAGENTA = 95
+ANSI_FG_BRIGHT_CYAN = 96
+ANSI_FG_BRIGHT_WHITE = 97
+
+ANSI_BG_BLACK = 40
+ANSI_BG_RED = 41
+ANSI_BG_GREEN = 42
+ANSI_BG_YELLOW = 43
+ANSI_BG_BLUE = 44
+ANSI_BG_MAGENTA = 45
+ANSI_BG_CYAN = 46
+ANSI_BG_WHITE = 47
+
+ANSI_BG_BRIGHT_BLACK = 100
+ANSI_BG_BRIGHT_RED = 101
+ANSI_BG_BRIGHT_GREEN = 102
+ANSI_BG_BRIGHT_YELLOW = 103
+ANSI_BG_BRIGHT_BLUE = 104
+ANSI_BG_BRIGHT_MAGENTA = 105
+ANSI_BG_BRIGHT_CYAN = 106
+ANSI_BG_BRIGHT_WHITE = 107
+
+STYLE_GIVEN = RenderStyle(fg=ANSI_FG_WHITE, bold=True)
+STYLE_SOLVED = RenderStyle(fg=ANSI_FG_GREEN)
+STYLE_CANDIDATE = RenderStyle(fg=ANSI_FG_CYAN)
+STYLE_SELECTED = RenderStyle(fg=ANSI_FG_BLACK, bg=ANSI_BG_GREEN, bold=True)
+STYLE_CHANGED = RenderStyle(fg=ANSI_FG_WHITE, bg=ANSI_BG_BLUE, bold=True)
+STYLE_SELECTED_CHANGED = RenderStyle(fg=ANSI_FG_BLACK, bg=ANSI_BG_GREEN, bold=True)
+STYLE_DECISION_SOURCE = RenderStyle(fg=ANSI_FG_BLACK, bg=ANSI_BG_YELLOW, bold=True)
+STYLE_REMOVED_CANDIDATE = RenderStyle(fg=ANSI_FG_RED, bold=True)
+STYLE_MAIN_SOURCE_DIGIT = RenderStyle(fg=ANSI_FG_BLUE, bold=True)
+STYLE_SHARED_SOURCE_DIGIT = RenderStyle(fg=ANSI_FG_BRIGHT_BLUE, bold=True)
+
+
 def styled_cell(
     segments: Sequence[Tuple[str, Optional[int], Optional[int], bool]],
     width: int,
@@ -212,7 +313,8 @@ def styled_cell(
 def candidate_cell_lines(
     mask: int,
     eliminated_digits: set[int],
-    fg: int,
+    source_digit_roles: dict[int, str],
+    fg: Optional[int],
     bold: bool,
     cell_width: int,
     use_color: bool,
@@ -223,14 +325,23 @@ def candidate_cell_lines(
     lines: list[str] = []
 
     for start in (1, 4, 7):
-        segments: list[tuple[str, int, Optional[int], bool]] = []
+        segments: list[tuple[str, Optional[int], Optional[int], bool]] = []
         for digit in range(start, start + 3):
             if digit != start:
                 segments.append((" ", fg, bg, bold))
             if digit in digits:
-                digit_fg = 31 if digit in eliminated_digits else fg
-                digit_bold = True if digit in eliminated_digits else bold
-                segments.append((str(digit), digit_fg, bg, digit_bold))
+                if digit in eliminated_digits:
+                    digit_style = STYLE_REMOVED_CANDIDATE
+                elif digit in source_digit_roles:
+                    digit_style = source_digit_style(source_digit_roles[digit])
+                else:
+                    digit_style = RenderStyle(fg=fg, bg=bg, bold=bold)
+                segments.append((
+                    str(digit),
+                    digit_style.fg,
+                    digit_style.bg if digit_style.bg is not None else bg,
+                    digit_style.bold,
+                ))
             else:
                 segments.append((" ", fg, bg, bold))
         lines.append(styled_cell(segments, cell_width, use_color, bg=bg))
@@ -240,56 +351,57 @@ def candidate_cell_lines(
 
 def solved_cell_lines(
     text: str,
-    fg: int,
+    fg: Optional[int],
     bold: bool,
     cell_width: int,
     use_color: bool,
     *,
     bg: Optional[int] = None,
+    source_digit_roles: dict[int, str] | None = None,
 ) -> List[str]:
+    if source_digit_roles and text.isdigit() and int(text) in source_digit_roles:
+        source_style = source_digit_style(source_digit_roles[int(text)])
+        fg = source_style.fg
+        bold = source_style.bold
     blank = ansi_text(" " * cell_width, bg=bg, enabled=use_color)
     value = ansi_text(text.center(cell_width), fg=fg, bg=bg, bold=bold, enabled=use_color)
     return [blank, value, blank]
 
 
-@dataclass(frozen=True)
-class CellRenderStyle:
-    """Foreground, background, and bold settings for one rendered cell."""
-
-    fg: int
-    bold: bool
-    bg: Optional[int] = None
+def source_digit_style(role: str) -> RenderStyle:
+    """Return the style for a decision-source digit role."""
+    if role == "secondary":
+        return STYLE_SHARED_SOURCE_DIGIT
+    return STYLE_MAIN_SOURCE_DIGIT
 
 
-def base_cell_style(cell: int, given_cells: set[int], solved_cells: set[int], display_as_solved: bool) -> CellRenderStyle:
+def base_cell_style(cell: int, given_cells: set[int], solved_cells: set[int], display_as_solved: bool) -> RenderStyle:
     """Return the base style for a clue, solved value, or candidate cell."""
     if not display_as_solved:
-        return CellRenderStyle(fg=36, bold=False)
+        return STYLE_CANDIDATE
     if cell in given_cells:
-        return CellRenderStyle(fg=37, bold=True)
+        return STYLE_GIVEN
     if cell in solved_cells:
-        return CellRenderStyle(fg=32, bold=False)
-    return CellRenderStyle(fg=36, bold=False)
+        return STYLE_SOLVED
+    return STYLE_CANDIDATE
 
 
 def highlighted_cell_style(
     cell: int,
-    base_style: CellRenderStyle,
+    base_style: RenderStyle,
     candidate_changed: set[int],
     selected: set[int],
     causes: set[int],
-) -> CellRenderStyle:
+) -> RenderStyle:
     """Apply selected, changed, or cause-cell highlighting to a base style."""
     if cell in candidate_changed and cell in selected:
-        return CellRenderStyle(fg=30, bold=True, bg=42)
-    if cell in candidate_changed and cell in causes:
-        return CellRenderStyle(fg=30, bold=True, bg=43)
-    if cell in candidate_changed:
-        return CellRenderStyle(fg=37, bold=True, bg=44)
+        return STYLE_SELECTED_CHANGED
     if cell in causes:
-        return CellRenderStyle(fg=30, bold=True, bg=43)
+        return STYLE_DECISION_SOURCE
+    if cell in candidate_changed:
+        return STYLE_CHANGED
     if cell in selected:
-        return CellRenderStyle(fg=30, bold=True, bg=42)
+        return STYLE_SELECTED
     return base_style
 
 
@@ -300,6 +412,7 @@ def render_progress_cell(
     solved_cells: set[int],
     selected: set[int],
     causes: set[int],
+    source_digit_roles_by_cell: dict[int, dict[int, str]],
     candidate_changed: set[int],
     candidate_eliminated_digits: dict[int, set[int]],
     cell_width: int,
@@ -310,6 +423,7 @@ def render_progress_cell(
     base_style = base_cell_style(cell, given_cells, solved_cells, display_as_solved)
     style = highlighted_cell_style(cell, base_style, candidate_changed, selected, causes)
     eliminated_digits = candidate_eliminated_digits.get(cell, set[int]())
+    source_digit_roles = source_digit_roles_by_cell.get(cell, {})
 
     if display_as_solved:
         return solved_cell_lines(
@@ -319,11 +433,13 @@ def render_progress_cell(
             cell_width,
             use_color,
             bg=style.bg,
+            source_digit_roles=source_digit_roles,
         )
 
     return candidate_cell_lines(
         mask,
         eliminated_digits,
+        source_digit_roles,
         style.fg,
         style.bold,
         cell_width,
@@ -340,6 +456,7 @@ def render_progress_grid(
     candidate_eliminations: Iterable[Elimination],
     cause_cells: Iterable[int],
     use_color: bool,
+    source_digit_roles: dict[tuple[int, int], str] | None = None,
 ) -> str:
     """Render a full 9x9 progress board with candidate mini-grids.
 
@@ -352,6 +469,16 @@ def render_progress_grid(
         candidate_eliminated_digits.setdefault(elimination.cell, set[int]()).add(elimination.digit)
     candidate_changed = set[int](candidate_eliminated_digits)
     causes = set[int](cause_cells)
+    if source_digit_roles is None:
+        decision_digits = {digit for digits in candidate_eliminated_digits.values() for digit in digits}
+        source_digit_roles = {
+            (cell, digit): "primary"
+            for cell in causes
+            for digit in decision_digits
+        }
+    source_digit_roles_by_cell: dict[int, dict[int, str]] = {}
+    for (cell, digit), role in source_digit_roles.items():
+        source_digit_roles_by_cell.setdefault(cell, {})[digit] = role
     lines: list[str] = []
     cell_width = 9
 
@@ -374,6 +501,7 @@ def render_progress_grid(
                 solved_cells,
                 selected,
                 causes,
+                source_digit_roles_by_cell,
                 candidate_changed,
                 candidate_eliminated_digits,
                 cell_width,
@@ -430,19 +558,58 @@ def print_progress_steps(
     print("Legend:")
     print(
         "  "
-        + ansi_text("original clue", fg=37, bold=True, enabled=use_color)
+        + ansi_text("original clue", fg=STYLE_GIVEN.fg, bold=STYLE_GIVEN.bold, enabled=use_color)
         + "  "
-        + ansi_text("solved value", fg=32, enabled=use_color)
+        + ansi_text("solved value", fg=STYLE_SOLVED.fg, bold=STYLE_SOLVED.bold, enabled=use_color)
         + "  "
-        + ansi_text("candidates", fg=36, enabled=use_color)
+        + ansi_text("candidates", fg=STYLE_CANDIDATE.fg, bold=STYLE_CANDIDATE.bold, enabled=use_color)
         + "  "
-        + ansi_text("selected this step", fg=30, bg=42, bold=True, enabled=use_color)
+        + ansi_text(
+            "selected this step",
+            fg=STYLE_SELECTED.fg,
+            bg=STYLE_SELECTED.bg,
+            bold=STYLE_SELECTED.bold,
+            enabled=use_color,
+        )
         + "  "
-        + ansi_text("candidates changed", fg=37, bg=44, bold=True, enabled=use_color)
+        + ansi_text(
+            "candidates changed",
+            fg=STYLE_CHANGED.fg,
+            bg=STYLE_CHANGED.bg,
+            bold=STYLE_CHANGED.bold,
+            enabled=use_color,
+        )
         + "  "
-        + ansi_text("elimination source", fg=30, bg=43, bold=True, enabled=use_color)
+        + ansi_text(
+            "decision source",
+            fg=STYLE_DECISION_SOURCE.fg,
+            bg=STYLE_DECISION_SOURCE.bg,
+            bold=STYLE_DECISION_SOURCE.bold,
+            enabled=use_color,
+        )
         + "  "
-        + ansi_text("eliminated candidate", fg=31, bold=True, enabled=use_color)
+        + ansi_text(
+            "main source digit",
+            fg=STYLE_MAIN_SOURCE_DIGIT.fg,
+            bg=STYLE_DECISION_SOURCE.bg,
+            bold=STYLE_MAIN_SOURCE_DIGIT.bold,
+            enabled=use_color,
+        )
+        + "  "
+        + ansi_text(
+            "shared source digit",
+            fg=STYLE_SHARED_SOURCE_DIGIT.fg,
+            bg=STYLE_DECISION_SOURCE.bg,
+            bold=STYLE_SHARED_SOURCE_DIGIT.bold,
+            enabled=use_color,
+        )
+        + "  "
+        + ansi_text(
+            "eliminated candidate",
+            fg=STYLE_REMOVED_CANDIDATE.fg,
+            bold=STYLE_REMOVED_CANDIDATE.bold,
+            enabled=use_color,
+        )
     )
     print()
 
@@ -470,6 +637,7 @@ def print_progress_steps(
                     step.eliminations,
                     [cell for cell in step.cause_cells if cell not in selected_cells],
                     use_color,
+                    step.source_digit_roles or None,
                 )
             )
         print()
@@ -486,7 +654,7 @@ def print_timing_summary(timing_stats: dict[str, TechniqueTiming]) -> None:
     rows = [
         (technique, stats)
         for technique, stats in timing_stats.items()
-        if stats.used
+        if stats.used and technique != "Propagation"
     ]
     if not rows:
         return

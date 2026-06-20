@@ -27,6 +27,7 @@ from .common import (
     is_single,
     single_digit,
     sized_combinations,
+    source_digit_roles_for_cells,
     unit_text,
 )
 
@@ -122,6 +123,7 @@ class LockedCandidates(Technique):
                                 reason=f"Pointing: digit {digit} in box {box_index+1} is confined to row {row+1}.",
                                 eliminations=eliminations,
                                 cause_cells=cells,
+                                source_digit_roles=source_digit_roles_for_cells(cells, [digit]),
                             )
                         )
 
@@ -140,6 +142,7 @@ class LockedCandidates(Technique):
                                 reason=f"Pointing: digit {digit} in box {box_index+1} is confined to column {col+1}.",
                                 eliminations=eliminations,
                                 cause_cells=cells,
+                                source_digit_roles=source_digit_roles_for_cells(cells, [digit]),
                             )
                         )
 
@@ -168,6 +171,7 @@ class LockedCandidates(Technique):
                                     reason=f"Claiming: digit {digit} in {family_name} {unit_index+1} is confined to box {box_index+1}.",
                                     eliminations=eliminations,
                                     cause_cells=cells,
+                                    source_digit_roles=source_digit_roles_for_cells(cells, [digit]),
                                 )
                             )
 
@@ -220,6 +224,7 @@ class NakedSubset(Technique):
                             reason=f"{self.name}: cells {cells_text(combo)} contain only digits {digits_text}.",
                             eliminations=eliminations,
                             cause_cells=list[int](combo),
+                            source_digit_roles=source_digit_roles_for_cells(combo, digits_text),
                         )
                     )
 
@@ -277,6 +282,7 @@ class HiddenSubset(Technique):
                             reason=f"{self.name}: digits {list[int](digits_combo)} are confined to cells {cells_text(cells)}.",
                             eliminations=eliminations,
                             cause_cells=cells,
+                            source_digit_roles=source_digit_roles_for_cells(cells, digits_combo),
                         )
                     )
 

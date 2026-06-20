@@ -21,6 +21,7 @@ from .common import (
     elimination_key,
     rc_to_i,
     sized_combinations,
+    source_digit_roles_for_cells,
 )
 
 LINE_MASK = (1 << 9) - 1
@@ -128,6 +129,7 @@ class Fish(Technique):
                             reason=f"{self.name}: digit {digit} forms a row-based fish on rows {[row+1 for row in fish_rows]} and columns {[col+1 for col in fish_cols]}.",
                             eliminations=eliminations,
                             cause_cells=cause_cells,
+                            source_digit_roles=source_digit_roles_for_cells(cause_cells, [digit]),
                         )
                     )
 
@@ -165,6 +167,7 @@ class Fish(Technique):
                             reason=f"{self.name}: digit {digit} forms a column-based fish on columns {[col+1 for col in fish_cols]} and rows {[row+1 for row in fish_rows]}.",
                             eliminations=eliminations,
                             cause_cells=cause_cells,
+                            source_digit_roles=source_digit_roles_for_cells(cause_cells, [digit]),
                         )
                     )
 
@@ -237,6 +240,16 @@ class FinnedXWing(Technique):
                                     rc_to_i(fin_row, col)
                                     for col in fin_cols
                                 ],
+                                source_digit_roles=source_digit_roles_for_cells(
+                                    [
+                                        rc_to_i(base_row, col)
+                                        for col in base_cols
+                                    ] + [
+                                        rc_to_i(fin_row, col)
+                                        for col in fin_cols
+                                    ],
+                                    [d],
+                                ),
                             )
                         )
 
@@ -293,6 +306,16 @@ class FinnedXWing(Technique):
                                     rc_to_i(row, fin_col)
                                     for row in fin_rows
                                 ],
+                                source_digit_roles=source_digit_roles_for_cells(
+                                    [
+                                        rc_to_i(row, base_col)
+                                        for row in base_rows
+                                    ] + [
+                                        rc_to_i(row, fin_col)
+                                        for row in fin_rows
+                                    ],
+                                    [d],
+                                ),
                             )
                         )
 
@@ -393,6 +416,7 @@ class FinnedSwordfish(Technique):
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=cause_cells,
+                                source_digit_roles=source_digit_roles_for_cells(cause_cells, [digit]),
                             )
                         )
 
@@ -473,6 +497,7 @@ class FinnedSwordfish(Technique):
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=cause_cells,
+                                source_digit_roles=source_digit_roles_for_cells(cause_cells, [digit]),
                             )
                         )
 

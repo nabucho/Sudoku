@@ -34,6 +34,7 @@ from .common import (
     shared_peer_eliminations,
     single_digit,
     sized_combinations,
+    source_digit_roles_for_cells,
     unit_text,
     unsolved_cells,
     zip_pairs,
@@ -130,6 +131,7 @@ class UniqueRectangleType1(Technique):
                         ),
                         eliminations=eliminations,
                         cause_cells=cells,
+                        source_digit_roles=source_digit_roles_for_cells(cells, pair_digits),
                     )
                 )
 
@@ -185,6 +187,10 @@ class UniqueRectangleType2(Technique):
                             ),
                             eliminations=eliminations,
                             cause_cells=cells,
+                            source_digit_roles={
+                                **source_digit_roles_for_cells(cells, pair_digits),
+                                **source_digit_roles_for_cells(extra_cells, [extra_digit], "secondary"),
+                            },
                         )
                     )
 
@@ -274,6 +280,10 @@ class UniqueRectangleType3(Technique):
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=sorted({*cells, *helpers}),
+                                source_digit_roles=source_digit_roles_for_cells(
+                                    sorted({*floor_cells, *helpers}),
+                                    digits_from_mask(extra_mask),
+                                ),
                             )
                         )
 
@@ -338,6 +348,10 @@ class UniqueRectangleType4(Technique):
                                     ),
                                     eliminations=eliminations,
                                     cause_cells=cells,
+                                    source_digit_roles={
+                                        **source_digit_roles_for_cells(cells, pair_digits),
+                                        **source_digit_roles_for_cells(floor_cells, [strong_digit], "secondary"),
+                                    },
                                 )
                             )
 
@@ -404,6 +418,7 @@ class AvoidableRectangle(Technique):
                             ),
                             eliminations=[Elimination(target, target_digit)],
                             cause_cells=cells,
+                            source_digit_roles=source_digit_roles_for_cells(cells, [digit_a, digit_b]),
                         )
                     )
 
@@ -456,6 +471,7 @@ class BUGPlusOne(Technique):
                         ),
                         placements=[Placement(cell, d)],
                         cause_cells=[cell],
+                        source_digit_roles=source_digit_roles_for_cells([cell], [d]),
                     )
                 )
 
@@ -494,6 +510,7 @@ class Nishio(Technique):
                         ),
                         eliminations=[Elimination(cell, digit)],
                         cause_cells=[cell],
+                        source_digit_roles=source_digit_roles_for_cells([cell], [digit]),
                     )
                 )
 

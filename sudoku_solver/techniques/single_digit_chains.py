@@ -23,6 +23,7 @@ from .common import (
     pair_combinations,
     rc_to_i,
     shared_peer_eliminations,
+    source_digit_roles_for_cells,
     strong_links_for_digit,
 )
 
@@ -83,6 +84,7 @@ class TurbotFish(Technique):
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=cause_cells,
+                                source_digit_roles=source_digit_roles_for_cells(cause_cells, [digit]),
                             )
                         )
 
@@ -139,6 +141,15 @@ class Skyscraper(Technique):
                                 rc_to_i(r2, b1),
                                 rc_to_i(r2, b2),
                             ],
+                            source_digit_roles=source_digit_roles_for_cells(
+                                [
+                                    rc_to_i(r1, a1),
+                                    rc_to_i(r1, a2),
+                                    rc_to_i(r2, b1),
+                                    rc_to_i(r2, b2),
+                                ],
+                                [digit],
+                            ),
                         )
                     )
 
@@ -180,6 +191,15 @@ class Skyscraper(Technique):
                                 rc_to_i(b1, c2),
                                 rc_to_i(b2, c2),
                             ],
+                            source_digit_roles=source_digit_roles_for_cells(
+                                [
+                                    rc_to_i(a1, c1),
+                                    rc_to_i(a2, c1),
+                                    rc_to_i(b1, c2),
+                                    rc_to_i(b2, c2),
+                                ],
+                                [digit],
+                            ),
                         )
                     )
 
@@ -238,6 +258,10 @@ class TwoStringKite(Technique):
                                         ),
                                         eliminations=eliminations,
                                         cause_cells=sorted({*row_cells, *col_cells}),
+                                        source_digit_roles=source_digit_roles_for_cells(
+                                            sorted({*row_cells, *col_cells}),
+                                            [digit],
+                                        ),
                                     )
                                 )
 
@@ -305,6 +329,10 @@ class EmptyRectangle(Technique):
                                     ),
                                     eliminations=[Elimination(target, digit)],
                                     cause_cells=sorted({*box_candidates, *row_cells}),
+                                    source_digit_roles=source_digit_roles_for_cells(
+                                        sorted({*box_candidates, *row_cells}),
+                                        [digit],
+                                    ),
                                 )
                             )
 
@@ -335,6 +363,10 @@ class EmptyRectangle(Technique):
                                     ),
                                     eliminations=[Elimination(target, digit)],
                                     cause_cells=sorted({*box_candidates, *col_cells}),
+                                    source_digit_roles=source_digit_roles_for_cells(
+                                        sorted({*box_candidates, *col_cells}),
+                                        [digit],
+                                    ),
                                 )
                             )
 

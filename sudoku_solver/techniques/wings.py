@@ -22,6 +22,7 @@ from .common import (
     pair_combinations,
     shared_peer_eliminations,
     single_digit,
+    source_digit_roles_for_cells,
     strong_links_for_digit,
     trivalue_candidate_cells,
 )
@@ -91,6 +92,14 @@ class XYWing(Technique):
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=[pivot, xz_pincer, yz_pincer],
+                                source_digit_roles={
+                                    (pivot, x): "primary",
+                                    (pivot, y): "primary",
+                                    (xz_pincer, x): "primary",
+                                    (yz_pincer, y): "primary",
+                                    (xz_pincer, z): "secondary",
+                                    (yz_pincer, z): "secondary",
+                                },
                             )
                         )
 
@@ -146,6 +155,15 @@ class XYZWing(Technique):
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=[pivot, xz_pincer, yz_pincer],
+                                source_digit_roles={
+                                    (pivot, x): "primary",
+                                    (pivot, y): "primary",
+                                    (pivot, z): "secondary",
+                                    (xz_pincer, x): "primary",
+                                    (yz_pincer, y): "primary",
+                                    (xz_pincer, z): "secondary",
+                                    (yz_pincer, z): "secondary",
+                                },
                             )
                         )
 
@@ -241,6 +259,11 @@ class XYChain(Technique):
                         ),
                         eliminations=eliminations,
                         cause_cells=next_path,
+                        source_digit_roles={
+                            (cell, digit): "primary"
+                            for cell in next_path
+                            for digit in state.candidate_digits(cell)
+                        },
                     )
                 )
                 continue
@@ -309,6 +332,17 @@ class WWing(Technique):
                                     ),
                                     eliminations=eliminations,
                                     cause_cells=sorted({first_wing_cell, second_wing_cell, first_link_cell, second_link_cell}),
+                                    source_digit_roles={
+                                        **source_digit_roles_for_cells(
+                                            [first_wing_cell, second_wing_cell],
+                                            pair_digits,
+                                        ),
+                                        **source_digit_roles_for_cells(
+                                            [first_link_cell, second_link_cell],
+                                            [link_digit],
+                                            "secondary",
+                                        ),
+                                    },
                                 )
                             )
 
@@ -384,6 +418,7 @@ class RemotePairs(Technique):
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=component,
+                                source_digit_roles=source_digit_roles_for_cells(component, pair_digits),
                             )
                         )
 

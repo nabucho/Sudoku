@@ -16,6 +16,8 @@ U = TypeVar("U")
 CellGroup = tuple[int, ...]
 CellPair = tuple[int, int]
 CellDigit = tuple[int, int]
+SourceDigitRole = str
+SourceDigitRoles = dict[CellDigit, SourceDigitRole]
 IndexDigit = tuple[int, int]
 IndexedCellGroup = tuple[int, CellGroup]
 MaskTransition = tuple[int, int]
@@ -348,6 +350,19 @@ def elimination_text(elimination: Elimination) -> str:
     return f"{cell_text(elimination.cell)}!={elimination.digit}"
 
 
+def source_digit_roles_for_cells(
+    cells: Iterable[int],
+    digits: Iterable[int],
+    role: SourceDigitRole = "primary",
+) -> SourceDigitRoles:
+    """Return source-digit metadata for every cell/digit combination."""
+    return {
+        (cell, digit): role
+        for cell in cells
+        for digit in digits
+    }
+
+
 @dataclass
 class Move:
     """A logical solver action before it is expanded for display.
@@ -363,6 +378,7 @@ class Move:
     eliminations: List[Elimination] = field(default_factory=list)
     difficulty: int = 0
     cause_cells: List[int] = field(default_factory=list, repr=False)
+    source_digit_roles: SourceDigitRoles = field(default_factory=dict, repr=False)
     timing_ms: float = field(default=0.0, repr=False)
 
     def summary(self) -> str:
@@ -536,6 +552,10 @@ class ExplanationStep:
     @property
     def cause_cells(self) -> List[int]:
         return self.move.cause_cells
+
+    @property
+    def source_digit_roles(self) -> SourceDigitRoles:
+        return self.move.source_digit_roles
 
     @property
     def timing_ms(self) -> float:

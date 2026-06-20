@@ -29,6 +29,12 @@ from sudoku_solver.techniques.common import (
     rc_to_i,
 )
 from sudoku_solver.visualization import (
+    STYLE_CHANGED,
+    STYLE_DECISION_SOURCE,
+    STYLE_MAIN_SOURCE_DIGIT,
+    STYLE_REMOVED_CANDIDATE,
+    STYLE_SELECTED,
+    STYLE_SHARED_SOURCE_DIGIT,
     ansi_text,
     format_steps,
     print_progress_steps,
@@ -65,6 +71,10 @@ def run_benchmark_command(args: list[str]) -> subprocess.CompletedProcess[str]:
         stderr=subprocess.PIPE,
         text=True,
     )
+
+
+def styled_fragment(text: str, *, fg: int | None = None, bg: int | None = None, bold: bool = False) -> str:
+    return ansi_text(text, fg=fg, bg=bg, bold=bold)
 
 
 def puzzle_fixtures() -> list[Path]:
@@ -475,6 +485,22 @@ def test_visualization_directly() -> None:
     if len(progress_steps) != 1 or progress_steps[0].technique != "Propagations":
         raise AssertionError(f"Expected grouped progress propagations, got {progress_steps}")
 
+    unrelated_move = Move(
+        technique="Propagation",
+        difficulty=1,
+        reason="r1c2=5 removes 5 from peers.",
+        eliminations=[Elimination(rc_to_i(0, 1), 5)],
+    )
+    unrelated_move.cause_cells = [rc_to_i(0, 2)]
+    unrelated_step = ExplanationStep(unrelated_move, [ALL_DIGITS_MASK] * 81, [rc_to_i(0, 1)])
+    combined_steps = steps_for_style([placement_step, unrelated_step], "detailed")
+    if len(combined_steps) != 2:
+        raise AssertionError(f"Expected unrelated propagation to remain separate, got {combined_steps}")
+
+    combined_steps = steps_for_style([placement_step, elimination_step], "detailed")
+    if len(combined_steps) != 1 or not combined_steps[0].placements or not combined_steps[0].eliminations:
+        raise AssertionError(f"Expected caused propagation to merge with placement, got {combined_steps}")
+
     candidates = [ALL_DIGITS_MASK] * 81
     candidates[rc_to_i(0, 0)] = bit(5)
     grid = render_progress_grid(
@@ -488,6 +514,98 @@ def test_visualization_directly() -> None:
     )
     if "5" not in grid or "|" not in grid or "1 2 3" not in grid:
         raise AssertionError(f"Unexpected progress grid output: {grid}")
+
+    colored_grid = render_progress_grid(
+        candidates,
+        given_cells={rc_to_i(0, 8)},
+        solved_cells=set(),
+        selected_cells=[rc_to_i(0, 0)],
+        candidate_eliminations=[Elimination(rc_to_i(0, 1), 5)],
+        cause_cells=[rc_to_i(0, 2)],
+        use_color=True,
+    )
+    selected_digit = styled_fragment("    5    ", fg=STYLE_SELECTED.fg, bg=STYLE_SELECTED.bg, bold=STYLE_SELECTED.bold)
+    removed_digit = styled_fragment(
+        "5",
+        fg=STYLE_REMOVED_CANDIDATE.fg,
+        bg=STYLE_CHANGED.bg,
+        bold=STYLE_REMOVED_CANDIDATE.bold,
+    )
+    source_digit = styled_fragment(
+        "5",
+        fg=STYLE_MAIN_SOURCE_DIGIT.fg,
+        bg=STYLE_DECISION_SOURCE.bg,
+        bold=STYLE_MAIN_SOURCE_DIGIT.bold,
+    )
+    pale_candidate = styled_fragment(
+        "1",
+        fg=STYLE_DECISION_SOURCE.fg,
+        bg=STYLE_DECISION_SOURCE.bg,
+        bold=STYLE_DECISION_SOURCE.bold,
+    )
+    if selected_digit not in colored_grid:
+        raise AssertionError(f"Expected selected digit to use selected style: {colored_grid}")
+    if removed_digit not in colored_grid:
+        raise AssertionError(f"Expected removed candidate to use removed style: {colored_grid}")
+    if source_digit not in colored_grid:
+        raise AssertionError(f"Expected decision source digit to use main source style: {colored_grid}")
+    if pale_candidate not in colored_grid:
+        raise AssertionError(f"Expected non-involved candidates to use decision source cell style: {colored_grid}")
+
+    xy_candidates = [ALL_DIGITS_MASK] * 81
+    pivot = rc_to_i(8, 2)
+    xz_pincer = rc_to_i(2, 2)
+    yz_pincer = rc_to_i(6, 0)
+    xy_candidates[pivot] = bit(1) | bit(6)
+    xy_candidates[xz_pincer] = bit(1) | bit(8)
+    xy_candidates[yz_pincer] = bit(6) | bit(8)
+    xy_grid = render_progress_grid(
+        xy_candidates,
+        given_cells=set(),
+        solved_cells=set(),
+        selected_cells=[],
+        candidate_eliminations=[Elimination(rc_to_i(0, 0), 8)],
+        cause_cells=[pivot, xz_pincer, yz_pincer],
+        use_color=True,
+        source_digit_roles={
+            (pivot, 1): "primary",
+            (pivot, 6): "primary",
+            (xz_pincer, 1): "primary",
+            (yz_pincer, 6): "primary",
+            (xz_pincer, 8): "secondary",
+            (yz_pincer, 8): "secondary",
+        },
+    )
+    primary_1 = styled_fragment(
+        "1",
+        fg=STYLE_MAIN_SOURCE_DIGIT.fg,
+        bg=STYLE_DECISION_SOURCE.bg,
+        bold=STYLE_MAIN_SOURCE_DIGIT.bold,
+    )
+    primary_6 = styled_fragment(
+        "6",
+        fg=STYLE_MAIN_SOURCE_DIGIT.fg,
+        bg=STYLE_DECISION_SOURCE.bg,
+        bold=STYLE_MAIN_SOURCE_DIGIT.bold,
+    )
+    secondary_8 = styled_fragment(
+        "8",
+        fg=STYLE_SHARED_SOURCE_DIGIT.fg,
+        bg=STYLE_DECISION_SOURCE.bg,
+        bold=STYLE_SHARED_SOURCE_DIGIT.bold,
+    )
+    primary_8 = styled_fragment(
+        "8",
+        fg=STYLE_MAIN_SOURCE_DIGIT.fg,
+        bg=STYLE_DECISION_SOURCE.bg,
+        bold=STYLE_MAIN_SOURCE_DIGIT.bold,
+    )
+    if primary_1 not in xy_grid or primary_6 not in xy_grid:
+        raise AssertionError(f"Expected XY-Wing pivot digits to use primary source color: {xy_grid}")
+    if secondary_8 not in xy_grid:
+        raise AssertionError(f"Expected XY-Wing shared pincer digit to use secondary source color: {xy_grid}")
+    if primary_8 in xy_grid:
+        raise AssertionError(f"Expected XY-Wing shared pincer digit to avoid primary source color: {xy_grid}")
 
     if ansi_text("x", fg=31, bold=True, enabled=False) != "x":
         raise AssertionError("Expected disabled ANSI output to return plain text")
@@ -504,6 +622,15 @@ def test_visualization_directly() -> None:
         print_timing_summary({"Naked Single": timing})
     if "Technique timing summary" not in stdout.getvalue():
         raise AssertionError(f"Unexpected timing summary: {stdout.getvalue()}")
+
+    propagation_timing = TechniqueTiming()
+    propagation_timing.record_run(0.0, True)
+    propagation_timing.record_use()
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+        print_timing_summary({"Propagation": propagation_timing, "Naked Single": timing})
+    if "Propagation" in stdout.getvalue():
+        raise AssertionError(f"Expected propagation to be hidden from timing summary: {stdout.getvalue()}")
 
     stdout = io.StringIO()
     with contextlib.redirect_stdout(stdout):

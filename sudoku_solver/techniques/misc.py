@@ -18,6 +18,7 @@ from .common import (
     elimination_key,
     is_single,
     sized_combinations,
+    source_digit_roles_for_cells,
 )
 
 SueDeCoqSeenKey = tuple[CellGroup, CellGroup, CellGroup, EliminationKey]
@@ -119,6 +120,10 @@ class SueDeCoq(Technique):
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=sorted(pattern_cells),
+                                source_digit_roles=source_digit_roles_for_cells(
+                                    sorted(pattern_cells),
+                                    digits_from_mask(pattern_mask),
+                                ),
                             )
                         )
 

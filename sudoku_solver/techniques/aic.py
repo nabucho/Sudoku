@@ -235,6 +235,10 @@ class AIC(Technique):
                 reason=f"AIC: strong-ended alternating chain {chain_text} proves at least one endpoint true.",
                 eliminations=eliminations,
                 cause_cells=sorted({cell for cell, _ in path}),
+                source_digit_roles={
+                    (cell, digit): "primary"
+                    for cell, digit in path
+                },
             )
         )
 
@@ -317,6 +321,10 @@ class XChain(AIC):
                 ),
                 eliminations=eliminations,
                 cause_cells=sorted({cell for cell, _ in path}),
+                source_digit_roles={
+                    (cell, digit): "primary"
+                    for cell, digit in path
+                },
             )
         )
 
@@ -529,6 +537,11 @@ class GroupedAIC(Technique):
                 reason=f"{self.name}: grouped strong-ended alternating chain {chain_text} proves at least one endpoint true.",
                 eliminations=eliminations,
                 cause_cells=sorted({cell for _, cells in path for cell in cells}),
+                source_digit_roles={
+                    (cell, digit): "primary"
+                    for digit, cells in path
+                    for cell in cells
+                },
             )
         )
 

@@ -16,6 +16,7 @@ from .common import (
     cell_text,
     elimination_key,
     pair_combinations,
+    source_digit_roles_for_cells,
     strong_links_for_digit,
 )
 
@@ -86,6 +87,7 @@ class SimpleColoring(Technique):
                                     ),
                                     eliminations=eliminations,
                                     cause_cells=component,
+                                    source_digit_roles=source_digit_roles_for_cells(component, [digit]),
                                 )
                             )
 
@@ -109,6 +111,7 @@ class SimpleColoring(Technique):
                             ),
                             eliminations=eliminations,
                             cause_cells=component,
+                            source_digit_roles=source_digit_roles_for_cells(component, [digit]),
                         )
                     )
 
@@ -216,6 +219,10 @@ class MultiColoring(Technique):
                                     ),
                                     eliminations=eliminations,
                                     cause_cells=sorted(left_set | right_set),
+                                    source_digit_roles=source_digit_roles_for_cells(
+                                        sorted(left_set | right_set),
+                                        [digit],
+                                    ),
                                 )
                             )
 
