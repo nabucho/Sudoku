@@ -19,14 +19,14 @@ install-dev:
 	$(PYTHON) -m pip install -r requirements-dev.txt
 
 test:
-	$(PYTHON) test/run_tests.py
+	$(PYTHON) -m pytest -vv -s
 
 coverage:
-	$(PYTHON) -m coverage run test/run_tests.py
+	$(PYTHON) -m coverage run -m pytest -vv -s
 	$(PYTHON) -m coverage report
 
 coverage-html:
-	$(PYTHON) -m coverage run test/run_tests.py
+	$(PYTHON) -m coverage run -m pytest -vv -s
 	$(PYTHON) -m coverage html
 
 typecheck:

@@ -17,6 +17,5 @@
 
 ## Project Tooling
 
-- Consider migrating the custom test runner to `pytest` while preserving the current fixture coverage.
 - Add CI configuration for lint, type checking, tests, and benchmark smoke checks.
 - Improve packaging metadata so the solver can be installed and imported cleanly in more environments.

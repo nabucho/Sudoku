@@ -33,7 +33,7 @@ python3 sudoku.py --file test/puzzles/diabolical_01 --no-progress --no-pause
 Run the automated tests:
 
 ```sh
-python3 test/run_tests.py
+python3 -m pytest
 ```
 
 Run benchmark timing:
@@ -274,7 +274,7 @@ Benchmark options:
 : Human-style solving technique implementations and shared model helpers.
 
 `test/run_tests.py`
-: Automated test runner.
+: Pytest-based automated tests.
 
 `test/benchmark.py`
 : Timing and profiling script.

@@ -172,6 +172,10 @@ def styled_fragment(text: str, *, fg: int | None = None, bg: int | None = None, 
     return ansi_text(text, fg=fg, bg=bg, bold=bold)
 
 
+def progress(message: str) -> None:
+    print(f"    {message}", flush=True)
+
+
 def puzzle_fixtures() -> list[Path]:
     return sorted(path for path in PUZZLE_DIR.iterdir() if path.is_file())
 
@@ -280,6 +284,7 @@ def assert_technique_fixtures(
     fixture_names = set()
     for path in fixtures:
         technique_name, state, expected_placements, expected_eliminations = load_synthetic_fixture(path)
+        progress(f"checking {path.name} with {technique_name}")
         fixture_names.add(technique_name)
         technique = techniques.get(technique_name)
         if technique is None:
@@ -305,6 +310,7 @@ def assert_technique_fixtures(
 
 def test_direct_strategies() -> None:
     for fixture, strategy in itertools.product(puzzle_fixtures()[:4], STRATEGIES):
+        progress(f"CLI solve {fixture.name} using strategy={strategy}")
         assert_success(["--file", fixture_arg(fixture), "--strategy", strategy, "--no-steps"])
 
 
@@ -312,6 +318,7 @@ def test_human_logic_only() -> None:
     logic_solved = []
     logic_unsolved = None
     for fixture in puzzle_fixtures():
+        progress(f"logic-only human solve probe {fixture.name}")
         result = run_command(["--file", fixture_arg(fixture), "--strategy", "human", "--logic-only", "--no-steps"])
         if result.returncode == 0:
             logic_solved.append(fixture)
@@ -332,6 +339,7 @@ def test_human_logic_only() -> None:
 
 def test_step_styles() -> None:
     for fixture, style in itertools.product(puzzle_fixtures()[:4], STEP_STYLES):
+        progress(f"render step-style={style} for {fixture.name}")
         assert_success(
             [
                 "--file",
@@ -372,6 +380,7 @@ def test_cli_helpers_in_process() -> None:
 
     stdout = io.StringIO()
     stderr = io.StringIO()
+    progress("running in-process CLI solve")
     with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
         exit_code = cli_main(["--file", str(puzzle_fixtures()[0]), "--no-steps"])
     if exit_code != 0:
@@ -386,6 +395,7 @@ def test_cli_helpers_in_process() -> None:
     )
     stdout = io.StringIO()
     stderr = io.StringIO()
+    progress(f"running in-process CLI logic-only failure for {unsolved_fixture.name}")
     with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
         exit_code = cli_main(
             [
@@ -445,6 +455,7 @@ def test_basic_techniques_directly() -> None:
 def test_synthetic_technique_fixtures() -> None:
     techniques: dict[str, Technique] = {technique.name: technique for technique in default_techniques()}
     fixtures = sorted(SYNTHETIC_DIR.glob("*.sdkc"))
+    progress(f"checking {len(fixtures)} synthetic technique fixtures")
 
     if not fixtures:
         raise AssertionError(f"Expected synthetic technique fixtures in {SYNTHETIC_DIR}")
@@ -459,6 +470,7 @@ def test_synthetic_technique_fixtures() -> None:
 def test_online_technique_fixtures() -> None:
     techniques: dict[str, Technique] = {technique.name: technique for technique in default_techniques()}
     fixtures = sorted(ONLINE_DIR.glob("*.sdkc"))
+    progress(f"checking {len(fixtures)} online/reference technique fixtures")
 
     if not fixtures:
         raise AssertionError(f"Expected online technique fixtures in {ONLINE_DIR}")
@@ -467,6 +479,7 @@ def test_online_technique_fixtures() -> None:
 
 
 def test_timing_measurements() -> None:
+    progress("checking technique timing measurements")
     state = SudokuState.from_board(puzzle_fixtures()[0].read_text(encoding="utf-8"))
     solver = SudokuSolver(strategy="fastest")
     result, _ = solver.solve_with_search(state, explain=False)
@@ -481,6 +494,7 @@ def test_timing_measurements() -> None:
 
     propagation_state = SudokuState.from_board((PUZZLE_DIR / "diabolical_03").read_text(encoding="utf-8"))
     propagation_solver = SudokuSolver(strategy="human")
+    progress("checking propagation timing measurements")
     result, _ = propagation_solver.solve_with_search(propagation_state, explain=False)
     if result is None:
         raise AssertionError("Expected human strategy to solve diabolical_03 for propagation timing test")
@@ -735,6 +749,7 @@ def test_visualization_directly() -> None:
 
 
 def test_benchmark_profile_output() -> None:
+    progress("running benchmark smoke with profile buckets")
     result = run_benchmark_command(["--strategy", "fastest", "--profile-slowest", "3", "--profile-buckets"])
     if result.returncode != 0:
         raise AssertionError(f"Expected benchmark success, got {result.returncode}: {result.stderr.strip()}")
@@ -750,6 +765,7 @@ def test_technique_soundness_oracle() -> None:
     examples: dict[str, str] = {}
 
     for path in puzzle_fixtures():
+        progress(f"soundness oracle validating {path.name}")
         state = SudokuState.from_board(path.read_text(encoding="utf-8"))
         solver = SoundnessCheckingSolver(path.name, strategy="human")
         result, _ = solver.solve_with_search(state, explain=False)
@@ -771,6 +787,7 @@ def test_technique_soundness_oracle() -> None:
     if unexpected:
         examples_text = ", ".join(f"{technique}: {examples[technique]}" for technique in sorted(unexpected))
         raise AssertionError(f"Soundness oracle covered new techniques; update expected coverage: {examples_text}")
+    progress(f"soundness oracle covered {len(coverage)} techniques")
 
 
 def test_all_puzzle_fixtures() -> None:
@@ -780,6 +797,7 @@ def test_all_puzzle_fixtures() -> None:
 
     solver = SudokuSolver(strategy="fastest")
     for path in fixtures:
+        progress(f"fastest strategy full-fixture solve {path.name}")
         lines = path.read_text(encoding="utf-8").splitlines()
         if len(lines) != 9 or any(len(line) != 9 for line in lines):
             raise AssertionError(f"Expected 9x9 grid in {path}")
@@ -791,35 +809,3 @@ def test_all_puzzle_fixtures() -> None:
         result, _ = solver.solve_with_search(state, explain=False)
         if result is None:
             raise AssertionError(f"Expected {path} to solve")
-
-
-def main() -> int:
-    tests = [
-        test_direct_strategies,
-        test_human_logic_only,
-        test_step_styles,
-        test_cli_validation,
-        test_cli_helpers_in_process,
-        test_basic_techniques_directly,
-        test_synthetic_technique_fixtures,
-        test_online_technique_fixtures,
-        test_timing_measurements,
-        test_best_move_uses_board_impact,
-        test_changed_unit_move_validation,
-        test_fewest_steps_avoids_internal_chain_eliminations,
-        test_visualization_directly,
-        test_benchmark_profile_output,
-        test_technique_soundness_oracle,
-        test_all_puzzle_fixtures,
-    ]
-
-    for test in tests:
-        test()
-        print(f"ok {test.__name__}")
-
-    print(f"ok {len(tests)} test groups")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

@@ -2,4 +2,4 @@
 set -eu
 
 cd "$(dirname "$0")/.."
-python3 test/run_tests.py
+python3 -m pytest -vv -s
