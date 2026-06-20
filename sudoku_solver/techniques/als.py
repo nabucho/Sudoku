@@ -85,19 +85,20 @@ class ALSXZ(Technique):
                         if not eliminations:
                             continue
 
+                        eliminations_key = elimination_key(eliminations)
                         key = (
                             left.cells,
                             right.cells,
                             restricted_digit,
                             eliminated_digit,
-                            elimination_key(eliminations),
+                            eliminations_key,
                         )
                         reverse_key = (
                             right.cells,
                             left.cells,
                             restricted_digit,
                             eliminated_digit,
-                            elimination_key(eliminations),
+                            eliminations_key,
                         )
                         if key in seen or reverse_key in seen:
                             continue
@@ -124,26 +125,29 @@ class ALSXZ(Technique):
         seen: set[ALSGroupKey] = set[ALSGroupKey]()
 
         for unit_index, unit in enumerate[list[int]](ALL_UNITS):
-            masks_by_cell = {cell: state.candidate_mask(cell) for cell in unit}
             unsolved = [
-                cell for cell in unit
-                if not is_single(masks_by_cell[cell])
+                (cell, mask)
+                for cell in unit
+                if not is_single(mask := state.candidate_mask(cell))
             ]
             for size in range(1, min(self.max_size, len(unsolved)) + 1):
-                for cells in sized_combinations(unsolved, size):
+                for entries in sized_combinations(unsolved, size):
                     union_mask = 0
-                    for cell in cells:
-                        union_mask |= masks_by_cell[cell]
+                    cell_mask = 0
+                    for cell, mask in entries:
+                        union_mask |= mask
+                        cell_mask |= 1 << cell
                     if bit_count(union_mask) != size + 1:
                         continue
 
+                    cells = CellGroup(cell for cell, _ in entries)
                     key = (cells, union_mask)
                     if key in seen:
                         continue
                     seen.add(key)
                     digit_cells = {
                         digit: CellGroup(
-                            cell for cell in cells if masks_by_cell[cell] & (1 << (digit - 1))
+                            cell for cell, mask in entries if mask & (1 << (digit - 1))
                         )
                         for digit in bits(union_mask)
                     }
@@ -159,7 +163,7 @@ class ALSXZ(Technique):
                         ALSGroup(
                             cells=cells,
                             cell_set=frozenset(cells),
-                            cell_mask=sum(1 << cell for cell in cells),
+                            cell_mask=cell_mask,
                             mask=union_mask,
                             unit_index=unit_index,
                             digit_cells=digit_cells,
@@ -187,15 +191,9 @@ class ALSXZ(Technique):
     ) -> List[int]:
         digits: List[int] = []
         for digit in bits(common_mask):
-            left_digit_cells = left.digit_cells.get(digit, ())
-            right_digit_cells = right.digit_cells.get(digit, ())
-            right_digit_mask = right.digit_cell_masks.get(digit, 0)
-            left_digit_mask = left.digit_cell_masks.get(digit, 0)
             if (
-                left_digit_cells
-                and right_digit_cells
-                and (right_digit_mask & ~left.digit_peer_masks[digit]) == 0
-                and (left_digit_mask & ~right.digit_peer_masks[digit]) == 0
+                (right.digit_cell_masks[digit] & ~left.digit_peer_masks[digit]) == 0
+                and (left.digit_cell_masks[digit] & ~right.digit_peer_masks[digit]) == 0
             ):
                 digits.append(digit)
         return digits
@@ -207,10 +205,6 @@ class ALSXZ(Technique):
         right: ALSGroup,
         digit: int,
     ) -> List[Elimination]:
-        digit_cells = (*left.digit_cells.get(digit, ()), *right.digit_cells.get(digit, ()))
-        if not digit_cells:
-            return []
-
         target_mask = left.digit_peer_masks[digit] & right.digit_peer_masks[digit]
         target_mask &= ~(left.cell_mask | right.cell_mask)
         eliminations: List[Elimination] = []
