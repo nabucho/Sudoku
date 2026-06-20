@@ -62,6 +62,8 @@ make check
 
 Coverage reports use `coverage.py`; `make coverage` prints a terminal report and `make coverage-html` writes `htmlcov/`. Type checking uses `mypy` with project settings from `pyproject.toml`.
 
+See [Developer Notes](doc/developer-notes.md) for code structure, solver flow, style guidelines, and maintenance conventions.
+
 ## CLI Usage
 
 ```text
