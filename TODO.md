@@ -11,9 +11,12 @@
 ## Code Quality
 
 - Continue optimizing high-cost techniques based on full-fixture benchmark data, prioritizing changes that preserve move ordering and explanations.
-- Optimize `Nishio`: it is costly but high-yield, so preserve ordering and behavior while reducing speculative search overhead and repeated candidate-state validation.
-- Add prefilters for `Grouped X-Chain`, `Avoidable Rectangle`, and large fish variants so zero- or low-yield scans can be skipped when candidate distribution cannot support the pattern.
-- Review unique rectangle type ordering and prechecks: Type 4 currently yields moves while Type 2/3 are often scanned without success.
+- Optimize `Grouped AIC` further: it is still the largest discovery cost after recent mask lookup work. Profile whether duplicate path exploration, endpoint elimination checks, or grouped node/link construction dominates, then add narrowly scoped pruning or caches.
+- Optimize `Nishio`: it is costly but high-yield, so preserve ordering and behavior while reducing speculative search overhead. Prioritize caching per `(candidate state, assumed cell, digit)` and reusing consistency-validation results within a technique run.
+- Add a cheap usefulness gate for `Grouped X-Chain`: current benchmark runs it 63 times with 0 uses, so skip or defer it when no grouped strong-link components can produce an endpoint-pair elimination.
+- Add prefilters for `Avoidable Rectangle`: current benchmark shows one use but high average scan cost. Precompute non-given rectangles and solved-corner patterns before trying every digit pair.
+- Review remaining `ALS-XZ` pair scans: it is much faster now but still a top cost. Consider indexing ALS groups by candidate mask/shared digits so pairs with no restricted-common possibility are never visited.
+- Consider a low-risk `Nishio` benchmark before coding: because it is high-yield, compare optimized variants against full soundness and `--logic-only` behavior before changing strategy order.
 
 ## Project Tooling
 

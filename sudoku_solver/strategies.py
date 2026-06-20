@@ -73,9 +73,9 @@ def default_techniques() -> list[Technique]:
         Fish(3),   # Swordfish
         FinnedSwordfish(),
         UniqueRectangleType1(),
+        UniqueRectangleType4(),
         UniqueRectangleType2(),
         UniqueRectangleType3(),
-        UniqueRectangleType4(),
         SueDeCoq(),
         ALSXZ(),
         ALSWing(),
@@ -85,9 +85,9 @@ def default_techniques() -> list[Technique]:
         Fish(4),   # Jellyfish
         FinnedJellyfish(),
         AvoidableRectangle(),
-        GroupedXChain(),
         BUGPlusOne(),
         Nishio(),
+        GroupedXChain(),
     ]
 
 
@@ -119,9 +119,9 @@ def human_fast_techniques() -> list[Technique]:
         Fish(3),   # Swordfish
         FinnedSwordfish(),
         UniqueRectangleType1(),
+        UniqueRectangleType4(),
         UniqueRectangleType2(),
         UniqueRectangleType3(),
-        UniqueRectangleType4(),
         BUGPlusOne(),
     ]
 
@@ -129,8 +129,8 @@ def human_fast_techniques() -> list[Technique]:
 def fast_techniques() -> list[Technique]:
     """Return the cheap technique order used by the `fastest` strategy."""
     return [
-        HiddenSingle(),
         NakedSingle(),
+        HiddenSingle(),
         NakedSubset(2),
         LockedCandidates(),
         HiddenSubset(2),
@@ -140,8 +140,8 @@ def fast_techniques() -> list[Technique]:
 def balanced_techniques() -> list[Technique]:
     """Return a fast order that adds low-cost guess-reducing techniques."""
     return [
-        HiddenSingle(),
         NakedSingle(),
+        HiddenSingle(),
         NakedSubset(2),
         LockedCandidates(),
         XYWing(),
