@@ -100,7 +100,7 @@ def print_summary(strategy: str, aggregate: dict[str, dict[str, float]], failure
     """Print aggregate timing rows for one strategy."""
     print(f"Strategy: {strategy}")
     print(f"Puzzles: {puzzle_count}  Failures: {failures}  Wall ms: {wall_ms:.2f}")
-    print("Technique                 Used  Runs  Success  Total ms  Avg ms  Avg success ms")
+    print("Technique                 Used  Runs    Found  Total ms  Avg ms  Avg found ms")
     print("------------------------  ----  ----  -------  --------  ------  --------------")
 
     rows = []
@@ -131,7 +131,7 @@ def print_slowest_profile(rows: list[ProfileRow], limit: int) -> None:
         return
 
     print(f"Slowest technique runs by puzzle (top {limit}):")
-    print("Strategy      Puzzle                Technique                 Runs  Used  Total ms  Avg ms  Success")
+    print("Strategy      Puzzle                Technique                 Runs  Used  Total ms  Avg ms    Found")
     print("------------  --------------------  ------------------------  ----  ----  --------  ------  -------")
     slowest = sorted(rows, key=lambda row: (-row.total_ms, -row.average_ms, row.strategy, row.puzzle, row.technique))
     for row in slowest[:limit]:

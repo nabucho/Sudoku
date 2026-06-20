@@ -46,7 +46,7 @@ The code is organized to keep the command-line interface thin, the library API i
 5. `explanation_steps()` replays the before/after state to show placements, eliminations, propagation, and implied naked singles.
 6. If logical solving stalls and search is enabled, MRV backtracking tries the cell with the fewest candidates.
 
-The solver keeps timing in `TechniqueTiming`. A technique run is counted when `find_moves()` is called; a technique use is counted only when one of its moves is selected. Propagation and implied naked singles are also recorded when they appear in detailed replay.
+The solver keeps timing in `TechniqueTiming`. A technique run is counted when `find_moves()` is called; a technique use is counted only when one of its moves is selected. The summary's `Found` percentage means runs that returned at least one candidate move, which can be higher than `Used` under strategies such as `fewest-steps` that scan many techniques and select only one move. Propagation and implied naked singles are also recorded when they appear in detailed replay.
 
 ## Technique Contract
 

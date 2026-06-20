@@ -494,7 +494,7 @@ def print_timing_summary(timing_stats: dict[str, TechniqueTiming]) -> None:
     rows.sort(key=lambda item: (-item[1].used, item[0]))
     print()
     print("Technique timing summary:")
-    print("Technique                 Used  Runs  Success  Total ms  Avg ms")
+    print("Technique                 Used  Runs    Found  Total ms  Avg ms")
     print("------------------------  ----  ----  -------  --------  ------")
     for technique, stats in rows:
         print(

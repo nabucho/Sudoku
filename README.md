@@ -212,7 +212,7 @@ Each technique call is timed in milliseconds. At the end of a solve, the timing 
 
 - how many times a technique was used;
 - how many times it was attempted;
-- successful attempt percentage;
+- found percentage, meaning attempted runs that returned at least one candidate move;
 - total elapsed time;
 - average elapsed time.
 
