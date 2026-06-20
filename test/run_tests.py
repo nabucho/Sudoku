@@ -414,6 +414,14 @@ def test_best_move_uses_board_impact() -> None:
         raise AssertionError(f"Expected propagated board impact to win, got {best_move}")
 
 
+def test_fewest_steps_avoids_internal_chain_eliminations() -> None:
+    state = SudokuState.from_board((PUZZLE_DIR / "diabolical_05").read_text(encoding="utf-8"))
+    solver = SudokuSolver(strategy="fewest-steps")
+    result, _ = solver.solve_with_search(state, explain=False)
+    if result is None:
+        raise AssertionError("Expected fewest-steps to solve diabolical_05")
+
+
 def test_visualization_directly() -> None:
     placement_move = Move(
         technique="Naked Single",
@@ -529,6 +537,7 @@ def main() -> int:
         test_online_technique_fixtures,
         test_timing_measurements,
         test_best_move_uses_board_impact,
+        test_fewest_steps_avoids_internal_chain_eliminations,
         test_visualization_directly,
         test_benchmark_profile_output,
         test_all_puzzle_fixtures,

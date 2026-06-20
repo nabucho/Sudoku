@@ -206,7 +206,13 @@ class AIC(Technique):
         eliminations: List[Elimination] = []
 
         if start_digit == end_digit and start_cell != end_cell:
+            path_cells = {cell for cell, _ in path}
             eliminations = _candidate_common_peer_eliminations(state, start_cell, end_cell, start_digit)
+            eliminations = [
+                elimination
+                for elimination in eliminations
+                if elimination.cell not in path_cells
+            ]
         elif start_cell == end_cell and start_digit != end_digit:
             endpoint_digits = {start_digit, end_digit}
             eliminations = [
@@ -287,7 +293,13 @@ class XChain(AIC):
         if digit != end_digit or start_cell == end_cell:
             return
 
+        path_cells = {cell for cell, _ in path}
         eliminations = _candidate_common_peer_eliminations(state, start_cell, end_cell, digit)
+        eliminations = [
+            elimination
+            for elimination in eliminations
+            if elimination.cell not in path_cells
+        ]
         if not eliminations:
             return
 
@@ -487,7 +499,13 @@ class GroupedAIC(Technique):
         eliminations: List[Elimination] = []
 
         if start_digit == end_digit and set[int](start_cells) != set[int](end_cells):
+            path_cells = {cell for _, cells in path for cell in cells}
             eliminations = _grouped_common_peer_eliminations(state, start_cells, end_cells, start_digit)
+            eliminations = [
+                elimination
+                for elimination in eliminations
+                if elimination.cell not in path_cells
+            ]
         elif len(start_cells) == 1 and start_cells == end_cells and start_digit != end_digit:
             endpoint_digits = {start_digit, end_digit}
             cell = start_cells[0]
