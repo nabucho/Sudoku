@@ -11,11 +11,11 @@ from .common import (
     Move,
     SudokuState,
     Technique,
+    UnitCandidateCache,
     bit,
     bit_count,
     bivalue_candidate_cells,
     cell_text,
-    cells_with_candidate,
     digits_from_mask,
     shared_peer_eliminations,
     single_digit,
@@ -266,11 +266,12 @@ class WWing(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
         bivalue_by_mask: dict[int, list[int]] = {}
+        candidate_cache = UnitCandidateCache(state)
         strong_links_by_digit = {
             digit: [
                 tuple(cells)
                 for unit in ALL_UNITS
-                for cells in (cells_with_candidate(state, unit, digit),)
+                for cells in (candidate_cache.unsolved_cells_with_candidate(unit, digit),)
                 if len(cells) == 2
             ]
             for digit in DIGIT_VALUES

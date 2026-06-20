@@ -17,8 +17,8 @@ from .common import (
     Move,
     SudokuState,
     Technique,
+    UnitCandidateCache,
     cell_text,
-    cells_with_candidate,
     rc_to_i,
     shared_peer_eliminations,
 )
@@ -36,9 +36,10 @@ class TurbotFish(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
         seen = set()
+        candidate_cache = UnitCandidateCache(state)
 
         for digit in DIGIT_VALUES:
-            strong_links = strong_links_for_digit(state, digit)
+            strong_links = strong_links_for_digit(state, digit, candidate_cache)
             for link1, link2 in combinations(strong_links, 2):
                 if set(link1) & set(link2):
                     continue
@@ -257,10 +258,11 @@ class EmptyRectangle(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
+        candidate_cache = UnitCandidateCache(state)
 
         for digit in DIGIT_VALUES:
             for box_index, box in enumerate(BOX_UNITS):
-                box_candidates = cells_with_candidate(state, box, digit)
+                box_candidates = candidate_cache.unsolved_cells_with_candidate(box, digit)
                 if len(box_candidates) < 2:
                     continue
 
@@ -282,7 +284,10 @@ class EmptyRectangle(Technique):
                         for strong_row in range(9):
                             if strong_row in box_rows:
                                 continue
-                            row_cells = cells_with_candidate(state, ROW_UNITS[strong_row], digit)
+                            row_cells = candidate_cache.unsolved_cells_with_candidate(
+                                ROW_UNITS[strong_row],
+                                digit,
+                            )
                             if len(row_cells) != 2:
                                 continue
                             near = [cell for cell in row_cells if COL_OF[cell] == eri_col]
@@ -309,7 +314,10 @@ class EmptyRectangle(Technique):
                         for strong_col in range(9):
                             if strong_col in box_cols:
                                 continue
-                            col_cells = cells_with_candidate(state, COL_UNITS[strong_col], digit)
+                            col_cells = candidate_cache.unsolved_cells_with_candidate(
+                                COL_UNITS[strong_col],
+                                digit,
+                            )
                             if len(col_cells) != 2:
                                 continue
                             near = [cell for cell in col_cells if ROW_OF[cell] == eri_row]

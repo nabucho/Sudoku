@@ -14,20 +14,30 @@ from .common import (
     Move,
     SudokuState,
     Technique,
+    UnitCandidateCache,
     cell_text,
-    cells_with_candidate,
     is_single,
     shared_peer_eliminations,
 )
 
 CandidateNode = tuple[int, int]
 GroupedNode = tuple[int, tuple[int, ...]]
+CELL_BIT_MASKS = [1 << cell for cell in CELL_INDICES]
+UNIT_CELL_MASKS = [
+    sum(CELL_BIT_MASKS[cell] for cell in unit)
+    for unit in ALL_UNITS
+]
 
 
 def _add_link(links: dict, left, right) -> None:
     """Add an undirected graph link between two candidate nodes."""
     links.setdefault(left, set()).add(right)
     links.setdefault(right, set()).add(left)
+
+
+def _cells_mask(cells: tuple[int, ...]) -> int:
+    """Return a bit mask for a tuple of cells."""
+    return sum(CELL_BIT_MASKS[cell] for cell in cells)
 
 
 def _is_duplicate_elimination(
@@ -107,6 +117,7 @@ class AIC(Technique):
     ) -> tuple[dict[CandidateNode, set[CandidateNode]], dict[CandidateNode, set[CandidateNode]]]:
         strong_links: dict[CandidateNode, set[CandidateNode]] = {}
         weak_links: dict[CandidateNode, set[CandidateNode]] = {}
+        candidate_cache = UnitCandidateCache(state)
 
         # Cell links: bivalue cells are strong; all candidate pairs in a cell are weak.
         for cell in CELL_INDICES:
@@ -122,7 +133,10 @@ class AIC(Technique):
         # Unit links: conjugate digit pairs are strong; all same-digit unit pairs are weak.
         for unit in ALL_UNITS:
             for digit in DIGIT_VALUES:
-                nodes = [(cell, digit) for cell in cells_with_candidate(state, unit, digit)]
+                nodes = [
+                    (cell, digit)
+                    for cell in candidate_cache.unsolved_cells_with_candidate(unit, digit)
+                ]
                 for left, right in combinations(nodes, 2):
                     _add_link(weak_links, left, right)
                 if len(nodes) == 2:
@@ -236,10 +250,14 @@ class XChain(AIC):
     ) -> tuple[dict[CandidateNode, set[CandidateNode]], dict[CandidateNode, set[CandidateNode]]]:
         strong_links: dict[CandidateNode, set[CandidateNode]] = {}
         weak_links: dict[CandidateNode, set[CandidateNode]] = {}
+        candidate_cache = UnitCandidateCache(state)
 
         for unit in ALL_UNITS:
             for digit in DIGIT_VALUES:
-                nodes = [(cell, digit) for cell in cells_with_candidate(state, unit, digit)]
+                nodes = [
+                    (cell, digit)
+                    for cell in candidate_cache.unsolved_cells_with_candidate(unit, digit)
+                ]
                 for left, right in combinations(nodes, 2):
                     _add_link(weak_links, left, right)
                 if len(nodes) == 2:
@@ -299,7 +317,12 @@ class GroupedAIC(Technique):
         return self._find_grouped_moves(state, include_cell_links=True)
 
     def _find_grouped_moves(self, state: SudokuState, *, include_cell_links: bool) -> List[Move]:
-        strong_links, weak_links = self._build_links(state, include_cell_links=include_cell_links)
+        candidate_cache = UnitCandidateCache(state)
+        strong_links, weak_links = self._build_links(
+            state,
+            include_cell_links=include_cell_links,
+            candidate_cache=candidate_cache,
+        )
         moves: List[Move] = []
         seen: set[tuple[tuple[GroupedNode, ...], tuple[tuple[int, int], ...]]] = set()
 
@@ -325,29 +348,31 @@ class GroupedAIC(Technique):
         state: SudokuState,
         *,
         include_cell_links: bool,
+        candidate_cache: UnitCandidateCache,
     ) -> tuple[dict[GroupedNode, set[GroupedNode]], dict[GroupedNode, set[GroupedNode]]]:
-        nodes_by_digit = self._grouped_nodes_by_digit(state)
+        nodes_by_digit, node_masks = self._grouped_nodes_by_digit(state, candidate_cache)
         strong_links: dict[GroupedNode, set[GroupedNode]] = {}
         weak_links: dict[GroupedNode, set[GroupedNode]] = {}
 
         for digit, nodes in nodes_by_digit.items():
-            for unit in ALL_UNITS:
-                unit_cells = frozenset(unit)
-                unit_candidates = frozenset(cell for cell in unit if state.can_place(cell, digit))
-                if len(unit_candidates) < 2:
+            for unit_index, unit in enumerate(ALL_UNITS):
+                unit_mask = UNIT_CELL_MASKS[unit_index]
+                unit_candidate_cells = candidate_cache.unsolved_cells_with_candidate(unit, digit)
+                unit_candidate_mask = sum(CELL_BIT_MASKS[cell] for cell in unit_candidate_cells)
+                if len(unit_candidate_cells) < 2:
                     continue
 
                 unit_nodes = [
                     node for node in nodes
-                    if set(node[1]).issubset(unit_cells) and set(node[1]) & unit_candidates
+                    if not (node_masks[node] & ~unit_mask) and node_masks[node] & unit_candidate_mask
                 ]
                 for left, right in combinations(unit_nodes, 2):
-                    left_cells = set(left[1])
-                    right_cells = set(right[1])
-                    if left_cells & right_cells:
+                    left_mask = node_masks[left]
+                    right_mask = node_masks[right]
+                    if left_mask & right_mask:
                         continue
                     _add_link(weak_links, left, right)
-                    if frozenset(left_cells | right_cells) == unit_candidates:
+                    if left_mask | right_mask == unit_candidate_mask:
                         _add_link(strong_links, left, right)
 
         if include_cell_links:
@@ -365,25 +390,37 @@ class GroupedAIC(Technique):
 
         return strong_links, weak_links
 
-    def _grouped_nodes_by_digit(self, state: SudokuState) -> dict[int, set[GroupedNode]]:
+    def _grouped_nodes_by_digit(
+        self,
+        state: SudokuState,
+        candidate_cache: UnitCandidateCache,
+    ) -> tuple[dict[int, set[GroupedNode]], dict[GroupedNode, int]]:
         nodes_by_digit: dict[int, set[GroupedNode]] = {digit: set() for digit in DIGIT_VALUES}
+        node_masks: dict[GroupedNode, int] = {}
 
         for digit in DIGIT_VALUES:
             for cell in CELL_INDICES:
                 if state.can_place(cell, digit):
-                    nodes_by_digit[digit].add((digit, (cell,)))
+                    node: GroupedNode = (digit, (cell,))
+                    nodes_by_digit[digit].add(node)
+                    node_masks[node] = CELL_BIT_MASKS[cell]
 
             for box in BOX_UNITS:
+                box_candidates = candidate_cache.unsolved_cells_with_candidate(box, digit)
                 for row in sorted({ROW_OF[cell] for cell in box}):
-                    cells = tuple(sorted(cell for cell in box if ROW_OF[cell] == row and state.can_place(cell, digit)))
+                    cells = tuple(sorted(cell for cell in box_candidates if ROW_OF[cell] == row))
                     if len(cells) > 1:
-                        nodes_by_digit[digit].add((digit, cells))
+                        node = (digit, cells)
+                        nodes_by_digit[digit].add(node)
+                        node_masks[node] = _cells_mask(cells)
                 for col in sorted({COL_OF[cell] for cell in box}):
-                    cells = tuple(sorted(cell for cell in box if COL_OF[cell] == col and state.can_place(cell, digit)))
+                    cells = tuple(sorted(cell for cell in box_candidates if COL_OF[cell] == col))
                     if len(cells) > 1:
-                        nodes_by_digit[digit].add((digit, cells))
+                        node = (digit, cells)
+                        nodes_by_digit[digit].add(node)
+                        node_masks[node] = _cells_mask(cells)
 
-        return nodes_by_digit
+        return nodes_by_digit, node_masks
 
     def _extend_chain(
         self,

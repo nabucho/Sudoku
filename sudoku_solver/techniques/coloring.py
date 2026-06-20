@@ -12,15 +12,21 @@ from .common import (
     Move,
     SudokuState,
     Technique,
+    UnitCandidateCache,
     cell_text,
 )
 
 
-def strong_links_for_digit(state: SudokuState, digit: int) -> List[Tuple[int, int]]:
+def strong_links_for_digit(
+    state: SudokuState,
+    digit: int,
+    candidate_cache: UnitCandidateCache | None = None,
+) -> List[Tuple[int, int]]:
     """Return conjugate-pair strong links for one candidate digit."""
+    cache = candidate_cache or UnitCandidateCache(state)
     links: set[tuple[int, int]] = set()
     for unit in ALL_UNITS:
-        cells = [cell for cell in unit if state.can_place(cell, digit)]
+        cells = cache.unsolved_cells_with_candidate(unit, digit)
         if len(cells) == 2:
             first_cell, second_cell = sorted(cells)
             links.add((first_cell, second_cell))
@@ -37,10 +43,11 @@ class SimpleColoring(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
+        candidate_cache = UnitCandidateCache(state)
 
         for digit in DIGIT_VALUES:
             graph: dict[int, set[int]] = {}
-            for a, b in strong_links_for_digit(state, digit):
+            for a, b in strong_links_for_digit(state, digit, candidate_cache):
                 graph.setdefault(a, set()).add(b)
                 graph.setdefault(b, set()).add(a)
 
@@ -130,10 +137,11 @@ class MultiColoring(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
         seen = set()
+        candidate_cache = UnitCandidateCache(state)
 
         for digit in DIGIT_VALUES:
             graph: dict[int, set[int]] = {}
-            for a, b in strong_links_for_digit(state, digit):
+            for a, b in strong_links_for_digit(state, digit, candidate_cache):
                 graph.setdefault(a, set()).add(b)
                 graph.setdefault(b, set()).add(a)
 

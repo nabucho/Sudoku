@@ -137,6 +137,40 @@ def cells_with_candidate(state: "SudokuState", unit: Sequence[int], digit: int) 
     return [cell for cell in unit if state.can_place(cell, digit)]
 
 
+class UnitCandidateCache:
+    """Per-state cache of candidate positions in units.
+
+    `SudokuState` is mutable, so create a new cache for each state snapshot and
+    discard it after the technique run.
+    """
+
+    def __init__(self, state: "SudokuState"):
+        self.state = state
+        self._positions: dict[tuple[tuple[int, ...], bool], dict[int, List[int]]] = {}
+
+    def candidate_positions(self, unit: Sequence[int], *, include_solved: bool = True) -> dict[int, List[int]]:
+        """Return candidate cells by digit for one unit."""
+        key = (tuple(unit), include_solved)
+        if key not in self._positions:
+            positions: dict[int, List[int]] = {digit: [] for digit in DIGIT_VALUES}
+            for cell in unit:
+                mask = self.state.candidate_mask(cell)
+                if not include_solved and is_single(mask):
+                    continue
+                for digit in bits(mask):
+                    positions[digit].append(cell)
+            self._positions[key] = positions
+        return self._positions[key]
+
+    def cells_with_candidate(self, unit: Sequence[int], digit: int, *, include_solved: bool = True) -> List[int]:
+        """Return cached candidate cells for a digit in one unit."""
+        return self.candidate_positions(unit, include_solved=include_solved)[digit]
+
+    def unsolved_cells_with_candidate(self, unit: Sequence[int], digit: int) -> List[int]:
+        """Return cached unsolved cells for a digit in one unit."""
+        return self.cells_with_candidate(unit, digit, include_solved=False)
+
+
 def bivalue_candidate_cells(state: "SudokuState") -> List[int]:
     """Return unsolved cells with exactly two candidates."""
     return [cell for cell in CELL_INDICES if state.is_bivalue(cell)]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from itertools import combinations
 from typing import List
 
@@ -11,12 +12,27 @@ from .common import (
     SudokuState,
     Technique,
     bit_count,
+    bits,
     cell_text,
-    digits_from_mask,
     is_single,
-    shared_peer_eliminations,
     unit_text,
 )
+
+PEER_MASKS = [sum(1 << peer for peer in PEERS[cell]) for cell in range(81)]
+
+
+@dataclass(frozen=True)
+class ALSGroup:
+    """Almost Locked Set with precomputed lookup data."""
+
+    cells: tuple[int, ...]
+    cell_set: frozenset[int]
+    cell_mask: int
+    mask: int
+    unit_index: int
+    digit_cells: dict[int, tuple[int, ...]]
+    digit_cell_masks: dict[int, int]
+    digit_peer_masks: dict[int, int]
 
 
 class ALSXZ(Technique):
@@ -37,47 +53,32 @@ class ALSXZ(Technique):
         als_groups = self._als_groups(state)
 
         for left_index, left in enumerate(als_groups):
-            for right in als_groups[left_index + 1:]:
-                left_cells, left_mask, left_unit = left
-                right_cells, right_mask, right_unit = right
-                if set(left_cells) & set(right_cells):
+            for right_index, right in enumerate(als_groups[left_index + 1:], start=left_index + 1):
+                if left.cell_mask & right.cell_mask:
                     continue
 
-                common_digits = set(digits_from_mask(left_mask & right_mask))
-                for restricted_digit in common_digits:
-                    left_restricted = [
-                        cell for cell in left_cells
-                        if state.can_place(cell, restricted_digit)
-                    ]
-                    right_restricted = [
-                        cell for cell in right_cells
-                        if state.can_place(cell, restricted_digit)
-                    ]
-                    if not left_restricted or not right_restricted:
-                        continue
-                    if not all(right_cell in PEERS[left_cell] for left_cell in left_restricted for right_cell in right_restricted):
-                        continue
-
-                    for eliminated_digit in sorted(common_digits - {restricted_digit}):
+                common_mask = left.mask & right.mask
+                for restricted_digit in self._restricted_common_digits(left, right, common_mask):
+                    for eliminated_digit in sorted(set(bits(common_mask)) - {restricted_digit}):
                         eliminations = self._eliminations_for_digit(
                             state,
-                            left_cells,
-                            right_cells,
+                            left,
+                            right,
                             eliminated_digit,
                         )
                         if not eliminations:
                             continue
 
                         key = (
-                            tuple(left_cells),
-                            tuple(right_cells),
+                            left.cells,
+                            right.cells,
                             restricted_digit,
                             eliminated_digit,
                             tuple((elimination.cell, elimination.digit) for elimination in eliminations),
                         )
                         reverse_key = (
-                            tuple(right_cells),
-                            tuple(left_cells),
+                            right.cells,
+                            left.cells,
                             restricted_digit,
                             eliminated_digit,
                             tuple((elimination.cell, elimination.digit) for elimination in eliminations),
@@ -91,57 +92,117 @@ class ALSXZ(Technique):
                                 technique=self.name,
                                 difficulty=self.difficulty,
                                 reason=(
-                                    f"ALS-XZ: ALS in {unit_text(left_unit)} ({', '.join(cell_text(cell) for cell in left_cells)}) "
-                                    f"and ALS in {unit_text(right_unit)} ({', '.join(cell_text(cell) for cell in right_cells)}) "
+                                    f"ALS-XZ: ALS in {unit_text(left.unit_index)} ({', '.join(cell_text(cell) for cell in left.cells)}) "
+                                    f"and ALS in {unit_text(right.unit_index)} ({', '.join(cell_text(cell) for cell in right.cells)}) "
                                     f"share restricted common digit {restricted_digit}; eliminate shared digit {eliminated_digit}."
                                 ),
                                 eliminations=eliminations,
-                                cause_cells=sorted({*left_cells, *right_cells}),
+                                cause_cells=sorted(left.cell_set | right.cell_set),
                             )
                         )
 
         return moves
 
-    def _als_groups(self, state: SudokuState) -> List[tuple[tuple[int, ...], int, int]]:
-        groups = []
+    def _als_groups(self, state: SudokuState) -> List[ALSGroup]:
+        groups: List[ALSGroup] = []
         seen = set()
 
         for unit_index, unit in enumerate(ALL_UNITS):
+            masks_by_cell = {cell: state.candidate_mask(cell) for cell in unit}
             unsolved = [
                 cell for cell in unit
-                if not is_single(state.candidate_mask(cell))
+                if not is_single(masks_by_cell[cell])
             ]
             for size in range(1, min(self.max_size, len(unsolved)) + 1):
                 for cells in combinations(unsolved, size):
                     union_mask = 0
                     for cell in cells:
-                        union_mask |= state.candidate_mask(cell)
+                        union_mask |= masks_by_cell[cell]
                     if bit_count(union_mask) != size + 1:
                         continue
 
-                    key = (tuple(sorted(cells)), union_mask)
+                    key = (cells, union_mask)
                     if key in seen:
                         continue
                     seen.add(key)
-                    groups.append((tuple(sorted(cells)), union_mask, unit_index))
+                    digit_cells = {
+                        digit: tuple(cell for cell in cells if masks_by_cell[cell] & (1 << (digit - 1)))
+                        for digit in bits(union_mask)
+                    }
+                    digit_cell_masks = {
+                        digit: sum(1 << cell for cell in digit_cell_group)
+                        for digit, digit_cell_group in digit_cells.items()
+                    }
+                    digit_peer_masks = {
+                        digit: self._shared_peer_mask(digit_cell_group)
+                        for digit, digit_cell_group in digit_cells.items()
+                    }
+                    groups.append(
+                        ALSGroup(
+                            cells=cells,
+                            cell_set=frozenset(cells),
+                            cell_mask=sum(1 << cell for cell in cells),
+                            mask=union_mask,
+                            unit_index=unit_index,
+                            digit_cells=digit_cells,
+                            digit_cell_masks=digit_cell_masks,
+                            digit_peer_masks=digit_peer_masks,
+                        )
+                    )
 
         return groups
+
+    def _shared_peer_mask(self, cells: tuple[int, ...]) -> int:
+        """Return bit mask of cells that see every cell in the tuple."""
+        if not cells:
+            return 0
+        peer_mask = PEER_MASKS[cells[0]]
+        for cell in cells[1:]:
+            peer_mask &= PEER_MASKS[cell]
+        return peer_mask
+
+    def _restricted_common_digits(
+        self,
+        left: ALSGroup,
+        right: ALSGroup,
+        common_mask: int,
+    ) -> List[int]:
+        digits: List[int] = []
+        for digit in bits(common_mask):
+            left_digit_cells = left.digit_cells.get(digit, ())
+            right_digit_cells = right.digit_cells.get(digit, ())
+            right_digit_mask = right.digit_cell_masks.get(digit, 0)
+            left_digit_mask = left.digit_cell_masks.get(digit, 0)
+            if (
+                left_digit_cells
+                and right_digit_cells
+                and (right_digit_mask & ~left.digit_peer_masks[digit]) == 0
+                and (left_digit_mask & ~right.digit_peer_masks[digit]) == 0
+            ):
+                digits.append(digit)
+        return digits
 
     def _eliminations_for_digit(
         self,
         state: SudokuState,
-        left_cells: tuple[int, ...],
-        right_cells: tuple[int, ...],
+        left: ALSGroup,
+        right: ALSGroup,
         digit: int,
     ) -> List[Elimination]:
-        digit_cells = [
-            cell for cell in (*left_cells, *right_cells)
-            if state.can_place(cell, digit)
-        ]
+        digit_cells = (*left.digit_cells.get(digit, ()), *right.digit_cells.get(digit, ()))
         if not digit_cells:
             return []
 
-        return shared_peer_eliminations(state, digit_cells, digit, blocked=(*left_cells, *right_cells))
+        target_mask = left.digit_peer_masks[digit] & right.digit_peer_masks[digit]
+        target_mask &= ~(left.cell_mask | right.cell_mask)
+        eliminations: List[Elimination] = []
+        while target_mask:
+            cell_mask = target_mask & -target_mask
+            cell = cell_mask.bit_length() - 1
+            if state.can_place(cell, digit):
+                eliminations.append(Elimination(cell, digit))
+            target_mask &= ~cell_mask
+        return eliminations
 
 
 class ALSWing(ALSXZ):
@@ -161,10 +222,9 @@ class ALSWing(ALSXZ):
         moves: List[Move] = []
         seen = set()
         als_groups = self._als_groups(state)
-        restricted_links = self._restricted_links(state, als_groups)
+        restricted_links = self._restricted_links(als_groups)
 
         for pivot_index, pivot in enumerate(als_groups):
-            pivot_cells, pivot_mask, pivot_unit = pivot
             links = restricted_links.get(pivot_index, [])
             for left_link, right_link in combinations(links, 2):
                 left_index, left_digit = left_link
@@ -172,35 +232,35 @@ class ALSWing(ALSXZ):
                 if left_index == right_index or left_digit == right_digit:
                     continue
 
-                left_cells, left_mask, left_unit = als_groups[left_index]
-                right_cells, right_mask, right_unit = als_groups[right_index]
-                if set(left_cells) & set(right_cells):
+                left = als_groups[left_index]
+                right = als_groups[right_index]
+                if left.cell_mask & right.cell_mask:
                     continue
 
-                endpoint_digits = set(digits_from_mask(left_mask & right_mask)) - {left_digit, right_digit}
+                endpoint_digits = set(bits(left.mask & right.mask)) - {left_digit, right_digit}
                 for eliminated_digit in sorted(endpoint_digits):
                     eliminations = self._eliminations_for_digit(
                         state,
-                        left_cells,
-                        right_cells,
+                        left,
+                        right,
                         eliminated_digit,
                     )
                     if not eliminations:
                         continue
 
                     key = (
-                        tuple(pivot_cells),
-                        tuple(left_cells),
-                        tuple(right_cells),
+                        pivot.cells,
+                        left.cells,
+                        right.cells,
                         left_digit,
                         right_digit,
                         eliminated_digit,
                         tuple((elimination.cell, elimination.digit) for elimination in eliminations),
                     )
                     reverse_key = (
-                        tuple(pivot_cells),
-                        tuple(right_cells),
-                        tuple(left_cells),
+                        pivot.cells,
+                        right.cells,
+                        left.cells,
                         right_digit,
                         left_digit,
                         eliminated_digit,
@@ -215,12 +275,12 @@ class ALSWing(ALSXZ):
                             technique=self.name,
                             difficulty=self.difficulty,
                             reason=(
-                                f"ALS-Wing: pivot ALS in {unit_text(pivot_unit)} ({', '.join(cell_text(cell) for cell in pivot_cells)}) "
-                                f"links to ALSes in {unit_text(left_unit)} and {unit_text(right_unit)} "
+                                f"ALS-Wing: pivot ALS in {unit_text(pivot.unit_index)} ({', '.join(cell_text(cell) for cell in pivot.cells)}) "
+                                f"links to ALSes in {unit_text(left.unit_index)} and {unit_text(right.unit_index)} "
                                 f"through restricted digits {left_digit} and {right_digit}; eliminate {eliminated_digit}."
                             ),
                             eliminations=eliminations,
-                            cause_cells=sorted({*pivot_cells, *left_cells, *right_cells}),
+                            cause_cells=sorted(pivot.cell_set | left.cell_set | right.cell_set),
                         )
                     )
                     if len(moves) >= self.max_moves:
@@ -230,34 +290,18 @@ class ALSWing(ALSXZ):
 
     def _restricted_links(
         self,
-        state: SudokuState,
-        als_groups: List[tuple[tuple[int, ...], int, int]],
+        als_groups: List[ALSGroup],
     ) -> dict[int, List[tuple[int, int]]]:
         links: dict[int, List[tuple[int, int]]] = {}
 
         for left_index, left in enumerate(als_groups):
-            left_cells, left_mask, _ = left
-            left_set = set(left_cells)
             for right_index, right in enumerate(als_groups[left_index + 1:], start=left_index + 1):
-                right_cells, right_mask, _ = right
-                if left_set & set(right_cells):
+                if left.cell_mask & right.cell_mask:
                     continue
 
-                for digit in digits_from_mask(left_mask & right_mask):
-                    left_digit_cells = [
-                        cell for cell in left_cells
-                        if state.can_place(cell, digit)
-                    ]
-                    right_digit_cells = [
-                        cell for cell in right_cells
-                        if state.can_place(cell, digit)
-                    ]
-                    if left_digit_cells and right_digit_cells and all(
-                        right_cell in PEERS[left_cell]
-                        for left_cell in left_digit_cells
-                        for right_cell in right_digit_cells
-                    ):
-                        links.setdefault(left_index, []).append((right_index, digit))
-                        links.setdefault(right_index, []).append((left_index, digit))
+                common_mask = left.mask & right.mask
+                for digit in self._restricted_common_digits(left, right, common_mask):
+                    links.setdefault(left_index, []).append((right_index, digit))
+                    links.setdefault(right_index, []).append((left_index, digit))
 
         return links

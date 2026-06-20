@@ -1,9 +1,9 @@
 technique: Hidden Triple
 source: test/puzzles/diabolical_01
 source_step: 0
-reason: Hidden Triple: digits [1, 2, 3] are confined to cells r2c7, r2c8, r2c9.
+reason: Hidden Triple: digits [2, 3, 9] are confined to cells r2c6, r2c8, r2c9.
 placements: none
-eliminations: r2c8!=5, r2c8!=7, r2c9!=4, r2c9!=5, r2c9!=6, r2c9!=7
+eliminations: r2c6!=4, r2c6!=7, r2c8!=5, r2c8!=7, r2c9!=4, r2c9!=5, r2c9!=6, r2c9!=7
 fixed: 1,2,4,7,12,15,19,20,21,26,31,32,33,37,43,47,48,49,54,59,60,61,65,68,73,76,78,79
 given: 1,2,4,7,12,15,19,20,21,26,31,32,33,37,43,47,48,49,54,59,60,61,65,68,73,76,78,79
 candidates:

@@ -15,8 +15,55 @@ from .common import (
     Move,
     SudokuState,
     Technique,
+    bit_count,
     rc_to_i,
 )
+
+LINE_MASK = (1 << 9) - 1
+BOX_COL_CELLS = [
+    [tuple(cell for cell in BOX_UNITS[box] if COL_OF[cell] == col) for col in range(9)]
+    for box in range(9)
+]
+BOX_ROW_CELLS = [
+    [tuple(cell for cell in BOX_UNITS[box] if ROW_OF[cell] == row) for row in range(9)]
+    for box in range(9)
+]
+BOX_COL_MASKS = [
+    sum(1 << col for col in {COL_OF[cell] for cell in BOX_UNITS[box]})
+    for box in range(9)
+]
+BOX_ROW_MASKS = [
+    sum(1 << row for row in {ROW_OF[cell] for cell in BOX_UNITS[box]})
+    for box in range(9)
+]
+
+
+def _indexes_from_mask(mask: int) -> tuple[int, ...]:
+    """Return zero-based row/column indexes represented by a bit mask."""
+    return tuple(index for index in range(9) if mask & (1 << index))
+
+
+def _mask_combinations(mask: int, size: int):
+    """Yield bit masks containing `size` selected bits from `mask`."""
+    if size < 0 or bit_count(mask) < size:
+        return
+    if size == 0:
+        yield 0
+        return
+    for indexes in combinations(_indexes_from_mask(mask), size):
+        yield sum(1 << index for index in indexes)
+
+
+def _candidate_line_masks(state: SudokuState, digit: int) -> tuple[list[int], list[int]]:
+    """Return row column-masks and column row-masks for a candidate digit."""
+    row_masks = [0] * 9
+    col_masks = [0] * 9
+    for row in range(9):
+        for col in range(9):
+            if state.can_place(rc_to_i(row, col), digit):
+                row_masks[row] |= 1 << col
+                col_masks[col] |= 1 << row
+    return row_masks, col_masks
 
 
 class Fish(Technique):
@@ -256,143 +303,166 @@ class FinnedSwordfish(Technique):
         seen = set()
 
         for digit in DIGIT_VALUES:
+            row_masks, col_masks = _candidate_line_masks(state, digit)
             row_patterns = [
-                (row, [col for col in range(9) if state.can_place(rc_to_i(row, col), digit)])
-                for row in range(9)
+                (row, mask)
+                for row, mask in enumerate(row_masks)
+                if 2 <= bit_count(mask) <= self.size + 2
             ]
-            row_patterns = [(row, cols) for row, cols in row_patterns if 2 <= len(cols) <= self.size + 2]
             for combo in combinations(row_patterns, self.size):
                 rows = [row for row, _ in combo]
-                union_cols = sorted({col for _, cols in combo for col in cols})
-                if len(union_cols) <= self.size:
+                rows_mask = sum(1 << row for row in rows)
+                union_col_mask = 0
+                for _, col_mask in combo:
+                    union_col_mask |= col_mask
+                if bit_count(union_col_mask) <= self.size:
                     continue
 
-                for fish_cols in combinations(union_cols, self.size):
-                    fish_col_set = set(fish_cols)
-                    if any(not (set(cols) & fish_col_set) for _, cols in combo):
-                        continue
-                    if any(not any(col in cols for _, cols in combo) for col in fish_cols):
-                        continue
-
-                    fins = [
-                        rc_to_i(row, col)
-                        for row, cols in combo
-                        for col in cols
-                        if col not in fish_col_set
-                    ]
-                    if not fins:
-                        continue
-                    fin_boxes = {BOX_OF[cell] for cell in fins}
-                    if len(fin_boxes) != 1:
+                for fin_box in range(9):
+                    required_fish_col_mask = 0
+                    allowed_fin_col_mask = BOX_COL_MASKS[fin_box]
+                    allowed_fin_row_mask = BOX_ROW_MASKS[fin_box]
+                    for row, col_mask in combo:
+                        allowed_mask = allowed_fin_col_mask if allowed_fin_row_mask & (1 << row) else 0
+                        required_fish_col_mask |= col_mask & ~allowed_mask
+                    if bit_count(required_fish_col_mask) > self.size:
                         continue
 
-                    fin_box = next(iter(fin_boxes))
-                    eliminations = [
-                        Elimination(cell, digit)
-                        for col in fish_cols
-                        for cell in set(COL_UNITS[col]) & set(BOX_UNITS[fin_box])
-                        if ROW_OF[cell] not in rows and state.can_place(cell, digit)
-                    ]
-                    if not eliminations:
-                        continue
+                    optional_col_mask = union_col_mask & ~required_fish_col_mask
+                    needed_cols = self.size - bit_count(required_fish_col_mask)
+                    for extra_col_mask in _mask_combinations(optional_col_mask, needed_cols):
+                        fish_col_mask = required_fish_col_mask | extra_col_mask
+                        if bit_count(fish_col_mask) != self.size:
+                            continue
+                        if any(not (col_mask & fish_col_mask) for _, col_mask in combo):
+                            continue
 
-                    cause_cells = [
-                        rc_to_i(row, col)
-                        for row, cols in combo
-                        for col in cols
-                    ]
-                    key = (
-                        "row",
-                        digit,
-                        tuple(rows),
-                        tuple(fish_cols),
-                        tuple(sorted(fins)),
-                        tuple(sorted((elimination.cell, elimination.digit) for elimination in eliminations)),
-                    )
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    moves.append(
-                        Move(
-                            technique=self.name,
-                            difficulty=self.difficulty,
-                            reason=(
-                                f"{self.name} on digit {digit}: rows {[row+1 for row in rows]} use "
-                                f"columns {[col+1 for col in fish_cols]} with fins in box {fin_box+1}."
-                            ),
-                            eliminations=eliminations,
-                            cause_cells=cause_cells,
+                        fins = [
+                            rc_to_i(row, col)
+                            for row, col_mask in combo
+                            for col in _indexes_from_mask(col_mask & ~fish_col_mask & LINE_MASK)
+                        ]
+                        if not fins:
+                            continue
+
+                        fish_cols = _indexes_from_mask(fish_col_mask)
+                        eliminations = [
+                            Elimination(cell, digit)
+                            for col in fish_cols
+                            for cell in BOX_COL_CELLS[fin_box][col]
+                            if not (rows_mask & (1 << ROW_OF[cell])) and state.can_place(cell, digit)
+                        ]
+                        if not eliminations:
+                            continue
+
+                        cause_cells = [
+                            rc_to_i(row, col)
+                            for row, col_mask in combo
+                            for col in _indexes_from_mask(col_mask)
+                        ]
+                        key = (
+                            "row",
+                            digit,
+                            tuple(rows),
+                            tuple(fish_cols),
+                            tuple(sorted(fins)),
+                            tuple(sorted((elimination.cell, elimination.digit) for elimination in eliminations)),
                         )
-                    )
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        moves.append(
+                            Move(
+                                technique=self.name,
+                                difficulty=self.difficulty,
+                                reason=(
+                                    f"{self.name} on digit {digit}: rows {[row+1 for row in rows]} use "
+                                    f"columns {[col+1 for col in fish_cols]} with fins in box {fin_box+1}."
+                                ),
+                                eliminations=eliminations,
+                                cause_cells=cause_cells,
+                            )
+                        )
 
             col_patterns = [
-                (col, [row for row in range(9) if state.can_place(rc_to_i(row, col), digit)])
-                for col in range(9)
+                (col, mask)
+                for col, mask in enumerate(col_masks)
+                if 2 <= bit_count(mask) <= self.size + 2
             ]
-            col_patterns = [(col, rows) for col, rows in col_patterns if 2 <= len(rows) <= self.size + 2]
             for combo in combinations(col_patterns, self.size):
                 cols = [col for col, _ in combo]
-                union_rows = sorted({row for _, rows in combo for row in rows})
-                if len(union_rows) <= self.size:
+                cols_mask = sum(1 << col for col in cols)
+                union_row_mask = 0
+                for _, row_mask in combo:
+                    union_row_mask |= row_mask
+                if bit_count(union_row_mask) <= self.size:
                     continue
 
-                for fish_rows in combinations(union_rows, self.size):
-                    fish_row_set = set(fish_rows)
-                    if any(not (set(rows) & fish_row_set) for _, rows in combo):
-                        continue
-                    if any(not any(row in rows for _, rows in combo) for row in fish_rows):
-                        continue
-
-                    fins = [
-                        rc_to_i(row, col)
-                        for col, rows in combo
-                        for row in rows
-                        if row not in fish_row_set
-                    ]
-                    if not fins:
-                        continue
-                    fin_boxes = {BOX_OF[cell] for cell in fins}
-                    if len(fin_boxes) != 1:
+                for fin_box in range(9):
+                    required_fish_row_mask = 0
+                    allowed_fin_row_mask = BOX_ROW_MASKS[fin_box]
+                    allowed_fin_col_mask = BOX_COL_MASKS[fin_box]
+                    for col, row_mask in combo:
+                        allowed_mask = allowed_fin_row_mask if allowed_fin_col_mask & (1 << col) else 0
+                        required_fish_row_mask |= row_mask & ~allowed_mask
+                    if bit_count(required_fish_row_mask) > self.size:
                         continue
 
-                    fin_box = next(iter(fin_boxes))
-                    eliminations = [
-                        Elimination(cell, digit)
-                        for row in fish_rows
-                        for cell in set(ROW_UNITS[row]) & set(BOX_UNITS[fin_box])
-                        if COL_OF[cell] not in cols and state.can_place(cell, digit)
-                    ]
-                    if not eliminations:
-                        continue
+                    optional_row_mask = union_row_mask & ~required_fish_row_mask
+                    needed_rows = self.size - bit_count(required_fish_row_mask)
+                    for extra_row_mask in _mask_combinations(optional_row_mask, needed_rows):
+                        fish_row_mask = required_fish_row_mask | extra_row_mask
+                        if bit_count(fish_row_mask) != self.size:
+                            continue
+                        if any(not (row_mask & fish_row_mask) for _, row_mask in combo):
+                            continue
 
-                    cause_cells = [
-                        rc_to_i(row, col)
-                        for col, rows in combo
-                        for row in rows
-                    ]
-                    key = (
-                        "col",
-                        digit,
-                        tuple(cols),
-                        tuple(fish_rows),
-                        tuple(sorted(fins)),
-                        tuple(sorted((elimination.cell, elimination.digit) for elimination in eliminations)),
-                    )
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    moves.append(
-                        Move(
-                            technique=self.name,
-                            difficulty=self.difficulty,
-                            reason=(
-                                f"{self.name} on digit {digit}: columns {[col+1 for col in cols]} use "
-                                f"rows {[row+1 for row in fish_rows]} with fins in box {fin_box+1}."
-                            ),
-                            eliminations=eliminations,
-                            cause_cells=cause_cells,
+                        fins = [
+                            rc_to_i(row, col)
+                            for col, row_mask in combo
+                            for row in _indexes_from_mask(row_mask & ~fish_row_mask & LINE_MASK)
+                        ]
+                        if not fins:
+                            continue
+
+                        fish_rows = _indexes_from_mask(fish_row_mask)
+                        eliminations = [
+                            Elimination(cell, digit)
+                            for row in fish_rows
+                            for cell in BOX_ROW_CELLS[fin_box][row]
+                            if not (cols_mask & (1 << COL_OF[cell])) and state.can_place(cell, digit)
+                        ]
+                        if not eliminations:
+                            continue
+
+                        cause_cells = [
+                            rc_to_i(row, col)
+                            for col, row_mask in combo
+                            for row in _indexes_from_mask(row_mask)
+                        ]
+                        key = (
+                            "col",
+                            digit,
+                            tuple(cols),
+                            tuple(fish_rows),
+                            tuple(sorted(fins)),
+                            tuple(sorted((elimination.cell, elimination.digit) for elimination in eliminations)),
                         )
-                    )
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        moves.append(
+                            Move(
+                                technique=self.name,
+                                difficulty=self.difficulty,
+                                reason=(
+                                    f"{self.name} on digit {digit}: columns {[col+1 for col in cols]} use "
+                                    f"rows {[row+1 for row in fish_rows]} with fins in box {fin_box+1}."
+                                ),
+                                eliminations=eliminations,
+                                cause_cells=cause_cells,
+                            )
+                        )
 
         return moves
 
