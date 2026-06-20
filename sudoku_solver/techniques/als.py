@@ -71,7 +71,7 @@ class ALSXZ(Technique):
         als_groups = self._als_groups(state)
 
         for left_index, left in enumerate[ALSGroup](als_groups):
-            for right_index, right in enumerate[ALSGroup](als_groups[left_index + 1:], start=left_index + 1):
+            for right_index, right in enumerate[ALSGroup](als_groups[left_index + 1 :], start=left_index + 1):
                 if left.cell_mask & right.cell_mask:
                     continue
 
@@ -144,11 +144,7 @@ class ALSXZ(Technique):
         seen: set[ALSGroupKey] = set[ALSGroupKey]()
 
         for unit_index, unit in enumerate[list[int]](ALL_UNITS):
-            unsolved = [
-                (cell, mask)
-                for cell in unit
-                if not is_single(mask := state.candidate_mask(cell))
-            ]
+            unsolved = [(cell, mask) for cell in unit if not is_single(mask := state.candidate_mask(cell))]
             for size in range(1, min(self.max_size, len(unsolved)) + 1):
                 for entries in sized_combinations(unsolved, size):
                     union_mask = 0
@@ -166,9 +162,7 @@ class ALSXZ(Technique):
                         continue
                     seen.add(key)
                     digit_cells = {
-                        digit: CellGroup(
-                            cell for cell, mask in entries if mask & (1 << (digit - 1))
-                        )
+                        digit: CellGroup(cell for cell, mask in entries if mask & (1 << (digit - 1)))
                         for digit in union_digits
                     }
                     digit_cell_masks = {
@@ -211,10 +205,9 @@ class ALSXZ(Technique):
     ) -> List[int]:
         digits: List[int] = []
         for digit in common_digits:
-            if (
-                (right.digit_cell_masks[digit] & ~left.digit_peer_masks[digit]) == 0
-                and (left.digit_cell_masks[digit] & ~right.digit_peer_masks[digit]) == 0
-            ):
+            if (right.digit_cell_masks[digit] & ~left.digit_peer_masks[digit]) == 0 and (
+                left.digit_cell_masks[digit] & ~right.digit_peer_masks[digit]
+            ) == 0:
                 digits.append(digit)
         return digits
 
@@ -345,7 +338,7 @@ class ALSWing(ALSXZ):
         links: dict[int, List[IndexDigit]] = {}
 
         for left_index, left in enumerate[ALSGroup](als_groups):
-            for right_index, right in enumerate[ALSGroup](als_groups[left_index + 1:], start=left_index + 1):
+            for right_index, right in enumerate[ALSGroup](als_groups[left_index + 1 :], start=left_index + 1):
                 if left.cell_mask & right.cell_mask:
                     continue
 

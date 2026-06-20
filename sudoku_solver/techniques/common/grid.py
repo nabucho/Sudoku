@@ -22,7 +22,7 @@ def i_to_rc(cell: int) -> Tuple[int, int]:
 def cell_text(cell: int) -> str:
     """Format a cell index as a human-readable coordinate, such as r1c1."""
     r, c = i_to_rc(cell)
-    return f"r{r+1}c{c+1}"
+    return f"r{r + 1}c{c + 1}"
 
 
 def cells_text(cells: Iterable[int]) -> str:
@@ -38,11 +38,7 @@ def forced_cell_reason(cell: int, digit: int) -> str:
 ROW_UNITS = [[rc_to_i(row, col) for col in COLUMN_INDICES] for row in ROW_INDICES]
 COL_UNITS = [[rc_to_i(row, col) for row in ROW_INDICES] for col in COLUMN_INDICES]
 BOX_UNITS = [
-    [
-        rc_to_i(row, col)
-        for row in range(br * 3, br * 3 + 3)
-        for col in range(bc * 3, bc * 3 + 3)
-    ]
+    [rc_to_i(row, col) for row in range(br * 3, br * 3 + 3) for col in range(bc * 3, bc * 3 + 3)]
     for br in range(3)
     for bc in range(3)
 ]

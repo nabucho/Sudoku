@@ -48,9 +48,7 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
     """Return a compact explanation step plus implied solved singles."""
     changed_cells = {
         cell
-        for cell, (before_mask, after_mask) in enumerate[MaskTransition](
-            zip_pairs(before.candidates, after.candidates)
-        )
+        for cell, (before_mask, after_mask) in enumerate[MaskTransition](zip_pairs(before.candidates, after.candidates))
         if before_mask != after_mask
     }
 
@@ -66,9 +64,7 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
     full_move.timing_ms = move.timing_ms
 
     known_eliminations = {(elimination.cell, elimination.digit) for elimination in full_move.eliminations}
-    for cell, (before_mask, after_mask) in enumerate[MaskTransition](
-        zip_pairs(before.candidates, after.candidates)
-    ):
+    for cell, (before_mask, after_mask) in enumerate[MaskTransition](zip_pairs(before.candidates, after.candidates)):
         removed_mask = before_mask & ~after_mask
         for digit in digits_from_mask(removed_mask):
             key = (cell, digit)
@@ -79,9 +75,7 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
     steps = [ExplanationStep(full_move, after.candidates[:], sorted(changed_cells))]
     placed_cells = {placement.cell for placement in full_move.placements}
 
-    for cell, (before_mask, after_mask) in enumerate[MaskTransition](
-        zip_pairs(before.candidates, after.candidates)
-    ):
+    for cell, (before_mask, after_mask) in enumerate[MaskTransition](zip_pairs(before.candidates, after.candidates)):
         if cell in placed_cells:
             continue
         if not is_single(before_mask) and is_single(after_mask):

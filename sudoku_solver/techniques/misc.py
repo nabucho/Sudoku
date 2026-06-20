@@ -42,11 +42,7 @@ class SueDeCoq(Technique):
 
         for box_index, box in enumerate[list[int]](BOX_UNITS):
             for line_name, line_index, line in self._intersecting_lines(box_index):
-                intersection = [
-                    cell
-                    for cell in box
-                    if cell in line and not is_single(state.candidate_mask(cell))
-                ]
+                intersection = [cell for cell in box if cell in line and not is_single(state.candidate_mask(cell))]
                 if len(intersection) < 2:
                     continue
 
@@ -56,16 +52,8 @@ class SueDeCoq(Technique):
                 if MASK_BIT_COUNTS[intersection_mask] != len(intersection) + 2:
                     continue
 
-                line_cells = [
-                    cell
-                    for cell in line
-                    if cell not in box and not is_single(state.candidate_mask(cell))
-                ]
-                box_cells = [
-                    cell
-                    for cell in box
-                    if cell not in line and not is_single(state.candidate_mask(cell))
-                ]
+                line_cells = [cell for cell in line if cell not in box and not is_single(state.candidate_mask(cell))]
+                box_cells = [cell for cell in box if cell not in line and not is_single(state.candidate_mask(cell))]
 
                 for line_companions in self._basic_companion_groups(state, line_cells, intersection_mask):
                     line_mask = self._union_mask(state, line_companions)
@@ -136,14 +124,8 @@ class SueDeCoq(Technique):
     def _intersecting_lines(self, box_index: int) -> list[IntersectingLine]:
         box_row = box_index // 3
         box_col = box_index % 3
-        rows = [
-            ("row", row, ROW_UNITS[row])
-            for row in range(box_row * 3, box_row * 3 + 3)
-        ]
-        cols = [
-            ("column", col, COL_UNITS[col])
-            for col in range(box_col * 3, box_col * 3 + 3)
-        ]
+        rows = [("row", row, ROW_UNITS[row]) for row in range(box_row * 3, box_row * 3 + 3)]
+        cols = [("column", col, COL_UNITS[col]) for col in range(box_col * 3, box_col * 3 + 3)]
         return rows + cols
 
     def _basic_companion_groups(

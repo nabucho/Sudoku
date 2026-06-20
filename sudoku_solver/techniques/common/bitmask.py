@@ -6,15 +6,9 @@ from typing import Iterable, List
 
 ALL_DIGITS_MASK = 0x1FF  # bits 0..8 => digits 1..9
 DIGIT_VALUES = range(1, 10)
-MASK_DIGITS = [
-    tuple(digit + 1 for digit in range(9) if mask & (1 << digit))
-    for mask in range(1 << 9)
-]
+MASK_DIGITS = [tuple(digit + 1 for digit in range(9) if mask & (1 << digit)) for mask in range(1 << 9)]
 MASK_BIT_COUNTS = [len(digits) for digits in MASK_DIGITS]
-MASK_INDEXES = [
-    tuple(index for index in range(9) if mask & (1 << index))
-    for mask in range(1 << 9)
-]
+MASK_INDEXES = [tuple(index for index in range(9) if mask & (1 << index)) for mask in range(1 << 9)]
 
 
 def bit(digit: int) -> int:

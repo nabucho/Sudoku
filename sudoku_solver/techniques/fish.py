@@ -36,21 +36,13 @@ FinnedFishSeenKey = tuple[
     EliminationKey,
 ]
 BOX_COL_CELLS = [
-    [CellGroup(cell for cell in BOX_UNITS[box] if COL_OF[cell] == col) for col in range(9)]
-    for box in range(9)
+    [CellGroup(cell for cell in BOX_UNITS[box] if COL_OF[cell] == col) for col in range(9)] for box in range(9)
 ]
 BOX_ROW_CELLS = [
-    [CellGroup(cell for cell in BOX_UNITS[box] if ROW_OF[cell] == row) for row in range(9)]
-    for box in range(9)
+    [CellGroup(cell for cell in BOX_UNITS[box] if ROW_OF[cell] == row) for row in range(9)] for box in range(9)
 ]
-BOX_COL_MASKS = [
-    sum(1 << col for col in {COL_OF[cell] for cell in BOX_UNITS[box]})
-    for box in range(9)
-]
-BOX_ROW_MASKS = [
-    sum(1 << row for row in {ROW_OF[cell] for cell in BOX_UNITS[box]})
-    for box in range(9)
-]
+BOX_COL_MASKS = [sum(1 << col for col in {COL_OF[cell] for cell in BOX_UNITS[box]}) for box in range(9)]
+BOX_ROW_MASKS = [sum(1 << row for row in {ROW_OF[cell] for cell in BOX_UNITS[box]}) for box in range(9)]
 
 
 def _indexes_from_mask(mask: int) -> CellGroup:
@@ -101,9 +93,7 @@ class Fish(Technique):
 
             # Row-based fish
             row_patterns = [
-                (row, mask)
-                for row, mask in enumerate[int](row_masks)
-                if 2 <= MASK_BIT_COUNTS[mask] <= self.size
+                (row, mask) for row, mask in enumerate[int](row_masks) if 2 <= MASK_BIT_COUNTS[mask] <= self.size
             ]
 
             for combo in sized_combinations(row_patterns, self.size):
@@ -125,16 +115,12 @@ class Fish(Technique):
                                 eliminations.append(Elimination(cell, digit))
 
                 if eliminations:
-                    cause_cells = [
-                        rc_to_i(row, col)
-                        for row, col_mask in combo
-                        for col in _indexes_from_mask(col_mask)
-                    ]
+                    cause_cells = [rc_to_i(row, col) for row, col_mask in combo for col in _indexes_from_mask(col_mask)]
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
-                            reason=f"{self.name}: digit {digit} forms a row-based fish on rows {[row+1 for row in fish_row_indexes]} and columns {[col+1 for col in fish_cols]}.",
+                            reason=f"{self.name}: digit {digit} forms a row-based fish on rows {[row + 1 for row in fish_row_indexes]} and columns {[col + 1 for col in fish_cols]}.",
                             eliminations=eliminations,
                             cause_cells=cause_cells,
                             source_digit_roles=source_digit_roles_for_cells(cause_cells, [digit]),
@@ -143,9 +129,7 @@ class Fish(Technique):
 
             # Column-based fish
             col_patterns = [
-                (col, mask)
-                for col, mask in enumerate[int](col_masks)
-                if 2 <= MASK_BIT_COUNTS[mask] <= self.size
+                (col, mask) for col, mask in enumerate[int](col_masks) if 2 <= MASK_BIT_COUNTS[mask] <= self.size
             ]
 
             for combo in sized_combinations(col_patterns, self.size):
@@ -167,16 +151,12 @@ class Fish(Technique):
                                 eliminations.append(Elimination(cell, digit))
 
                 if eliminations:
-                    cause_cells = [
-                        rc_to_i(row, col)
-                        for col, row_mask in combo
-                        for row in _indexes_from_mask(row_mask)
-                    ]
+                    cause_cells = [rc_to_i(row, col) for col, row_mask in combo for row in _indexes_from_mask(row_mask)]
                     moves.append(
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
-                            reason=f"{self.name}: digit {digit} forms a column-based fish on columns {[col+1 for col in fish_col_indexes]} and rows {[row+1 for row in fish_rows]}.",
+                            reason=f"{self.name}: digit {digit} forms a column-based fish on columns {[col + 1 for col in fish_col_indexes]} and rows {[row + 1 for row in fish_rows]}.",
                             eliminations=eliminations,
                             cause_cells=cause_cells,
                             source_digit_roles=source_digit_roles_for_cells(cause_cells, [digit]),
@@ -199,10 +179,7 @@ class FinnedXWing(Technique):
         moves: List[Move] = []
 
         for d in DIGIT_VALUES:
-            row_cols = {
-                row: [col for col in range(9) if state.can_place(rc_to_i(row, col), d)]
-                for row in range(9)
-            }
+            row_cols = {row: [col for col in range(9) if state.can_place(rc_to_i(row, col), d)] for row in range(9)}
             for base_row, base_cols in row_cols.items():
                 if len(base_cols) != 2:
                     continue
@@ -220,10 +197,7 @@ class FinnedXWing(Technique):
                     if len(fin_boxes) != 1:
                         continue
                     fin_box = next(iter(fin_boxes))
-                    attached_cols = [
-                        col for col in base_cols
-                        if BOX_OF[rc_to_i(fin_row, col)] == fin_box
-                    ]
+                    attached_cols = [col for col in base_cols if BOX_OF[rc_to_i(fin_row, col)] == fin_box]
                     if len(attached_cols) != 1:
                         continue
 
@@ -241,34 +215,21 @@ class FinnedXWing(Technique):
                                 technique=self.name,
                                 difficulty=self.difficulty,
                                 reason=(
-                                    f"Finned X-Wing on digit {d}: rows {base_row+1} and {fin_row+1} use "
-                                    f"columns {[col+1 for col in base_cols]} with fins in box {fin_box+1}."
+                                    f"Finned X-Wing on digit {d}: rows {base_row + 1} and {fin_row + 1} use "
+                                    f"columns {[col + 1 for col in base_cols]} with fins in box {fin_box + 1}."
                                 ),
                                 eliminations=eliminations,
-                                cause_cells=[
-                                    rc_to_i(base_row, col)
-                                    for col in base_cols
-                                ] + [
-                                    rc_to_i(fin_row, col)
-                                    for col in fin_cols
-                                ],
+                                cause_cells=[rc_to_i(base_row, col) for col in base_cols]
+                                + [rc_to_i(fin_row, col) for col in fin_cols],
                                 source_digit_roles=source_digit_roles_for_cells(
-                                    [
-                                        rc_to_i(base_row, col)
-                                        for col in base_cols
-                                    ] + [
-                                        rc_to_i(fin_row, col)
-                                        for col in fin_cols
-                                    ],
+                                    [rc_to_i(base_row, col) for col in base_cols]
+                                    + [rc_to_i(fin_row, col) for col in fin_cols],
                                     [d],
                                 ),
                             )
                         )
 
-            col_rows = {
-                col: [row for row in range(9) if state.can_place(rc_to_i(row, col), d)]
-                for col in range(9)
-            }
+            col_rows = {col: [row for row in range(9) if state.can_place(rc_to_i(row, col), d)] for col in range(9)}
             for base_col, base_rows in col_rows.items():
                 if len(base_rows) != 2:
                     continue
@@ -286,10 +247,7 @@ class FinnedXWing(Technique):
                     if len(fin_boxes) != 1:
                         continue
                     fin_box = next(iter(fin_boxes))
-                    attached_rows = [
-                        row for row in base_rows
-                        if BOX_OF[rc_to_i(row, fin_col)] == fin_box
-                    ]
+                    attached_rows = [row for row in base_rows if BOX_OF[rc_to_i(row, fin_col)] == fin_box]
                     if len(attached_rows) != 1:
                         continue
 
@@ -307,25 +265,15 @@ class FinnedXWing(Technique):
                                 technique=self.name,
                                 difficulty=self.difficulty,
                                 reason=(
-                                    f"Finned X-Wing on digit {d}: columns {base_col+1} and {fin_col+1} use "
-                                    f"rows {[row+1 for row in base_rows]} with fins in box {fin_box+1}."
+                                    f"Finned X-Wing on digit {d}: columns {base_col + 1} and {fin_col + 1} use "
+                                    f"rows {[row + 1 for row in base_rows]} with fins in box {fin_box + 1}."
                                 ),
                                 eliminations=eliminations,
-                                cause_cells=[
-                                    rc_to_i(row, base_col)
-                                    for row in base_rows
-                                ] + [
-                                    rc_to_i(row, fin_col)
-                                    for row in fin_rows
-                                ],
+                                cause_cells=[rc_to_i(row, base_col) for row in base_rows]
+                                + [rc_to_i(row, fin_col) for row in fin_rows],
                                 source_digit_roles=source_digit_roles_for_cells(
-                                    [
-                                        rc_to_i(row, base_col)
-                                        for row in base_rows
-                                    ] + [
-                                        rc_to_i(row, fin_col)
-                                        for row in fin_rows
-                                    ],
+                                    [rc_to_i(row, base_col) for row in base_rows]
+                                    + [rc_to_i(row, fin_col) for row in fin_rows],
                                     [d],
                                 ),
                             )
@@ -352,9 +300,7 @@ class FinnedSwordfish(Technique):
         for digit in DIGIT_VALUES:
             row_masks, col_masks = _candidate_line_masks(state, digit)
             row_patterns = [
-                (row, mask)
-                for row, mask in enumerate[int](row_masks)
-                if 2 <= MASK_BIT_COUNTS[mask] <= self.size + 2
+                (row, mask) for row, mask in enumerate[int](row_masks) if 2 <= MASK_BIT_COUNTS[mask] <= self.size + 2
             ]
             for combo in sized_combinations(row_patterns, self.size):
                 rows = [row for row, _ in combo]
@@ -403,9 +349,7 @@ class FinnedSwordfish(Technique):
                             continue
 
                         cause_cells = [
-                            rc_to_i(row, col)
-                            for row, col_mask in combo
-                            for col in _indexes_from_mask(col_mask)
+                            rc_to_i(row, col) for row, col_mask in combo for col in _indexes_from_mask(col_mask)
                         ]
                         key = (
                             "row",
@@ -423,8 +367,8 @@ class FinnedSwordfish(Technique):
                                 technique=self.name,
                                 difficulty=self.difficulty,
                                 reason=(
-                                    f"{self.name} on digit {digit}: rows {[row+1 for row in rows]} use "
-                                    f"columns {[col+1 for col in fish_cols]} with fins in box {fin_box+1}."
+                                    f"{self.name} on digit {digit}: rows {[row + 1 for row in rows]} use "
+                                    f"columns {[col + 1 for col in fish_cols]} with fins in box {fin_box + 1}."
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=cause_cells,
@@ -433,9 +377,7 @@ class FinnedSwordfish(Technique):
                         )
 
             col_patterns = [
-                (col, mask)
-                for col, mask in enumerate[int](col_masks)
-                if 2 <= MASK_BIT_COUNTS[mask] <= self.size + 2
+                (col, mask) for col, mask in enumerate[int](col_masks) if 2 <= MASK_BIT_COUNTS[mask] <= self.size + 2
             ]
             for combo in sized_combinations(col_patterns, self.size):
                 cols = [col for col, _ in combo]
@@ -484,9 +426,7 @@ class FinnedSwordfish(Technique):
                             continue
 
                         cause_cells = [
-                            rc_to_i(row, col)
-                            for col, row_mask in combo
-                            for row in _indexes_from_mask(row_mask)
+                            rc_to_i(row, col) for col, row_mask in combo for row in _indexes_from_mask(row_mask)
                         ]
                         key = (
                             "col",
@@ -504,8 +444,8 @@ class FinnedSwordfish(Technique):
                                 technique=self.name,
                                 difficulty=self.difficulty,
                                 reason=(
-                                    f"{self.name} on digit {digit}: columns {[col+1 for col in cols]} use "
-                                    f"rows {[row+1 for row in fish_rows]} with fins in box {fin_box+1}."
+                                    f"{self.name} on digit {digit}: columns {[col + 1 for col in cols]} use "
+                                    f"rows {[row + 1 for row in fish_rows]} with fins in box {fin_box + 1}."
                                 ),
                                 eliminations=eliminations,
                                 cause_cells=cause_cells,
@@ -524,4 +464,3 @@ class FinnedJellyfish(FinnedSwordfish):
 
     def __init__(self):
         super().__init__(4)
-

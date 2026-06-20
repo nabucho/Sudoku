@@ -62,31 +62,11 @@ def plural_technique_name(technique: str) -> str:
 
 def combine_step_group(technique: str, moves: Sequence[ExplanationStep]) -> ExplanationStep:
     """Combine consecutive explanation steps into one display step."""
-    placements = [
-        placement
-        for move in moves
-        for placement in move.placements
-    ]
-    eliminations = [
-        elimination
-        for move in moves
-        for elimination in move.eliminations
-    ]
-    changed_cells = {
-        cell
-        for move in moves
-        for cell in move.changed_cells
-    }
-    cause_cells = {
-        cell
-        for move in moves
-        for cell in move.cause_cells
-    }
-    source_digit_roles = {
-        cell_digit: role
-        for move in moves
-        for cell_digit, role in move.source_digit_roles.items()
-    }
+    placements = [placement for move in moves for placement in move.placements]
+    eliminations = [elimination for move in moves for elimination in move.eliminations]
+    changed_cells = {cell for move in moves for cell in move.changed_cells}
+    cause_cells = {cell for move in moves for cell in move.cause_cells}
+    source_digit_roles = {cell_digit: role for move in moves for cell_digit, role in move.source_digit_roles.items()}
     details = [placement_text(placement) for placement in placements]
     details.extend(elimination_text(elimination) for elimination in eliminations)
     change_count = len(details)
@@ -215,7 +195,9 @@ def format_steps(steps: Sequence[ExplanationStep], style: str) -> List[str]:
     return [compact_move_text(step) for step in styled_steps]
 
 
-def ansi_text(text: str, *, fg: Optional[int] = None, bg: Optional[int] = None, bold: bool = False, enabled: bool = True) -> str:
+def ansi_text(
+    text: str, *, fg: Optional[int] = None, bg: Optional[int] = None, bold: bool = False, enabled: bool = True
+) -> str:
     """Return ANSI-styled text when color output is enabled."""
     if not enabled:
         return text
@@ -304,7 +286,9 @@ def styled_cell(
     if left:
         parts.append(ansi_text(" " * left, bg=bg, enabled=use_color))
     for text, fg, segment_bg, bold in segments:
-        parts.append(ansi_text(text, fg=fg, bg=segment_bg if segment_bg is not None else bg, bold=bold, enabled=use_color))
+        parts.append(
+            ansi_text(text, fg=fg, bg=segment_bg if segment_bg is not None else bg, bold=bold, enabled=use_color)
+        )
     if right:
         parts.append(ansi_text(" " * right, bg=bg, enabled=use_color))
     return "".join(parts)
@@ -336,12 +320,14 @@ def candidate_cell_lines(
                     digit_style = source_digit_style(source_digit_roles[digit])
                 else:
                     digit_style = RenderStyle(fg=fg, bg=bg, bold=bold)
-                segments.append((
-                    str(digit),
-                    digit_style.fg,
-                    digit_style.bg if digit_style.bg is not None else bg,
-                    digit_style.bold,
-                ))
+                segments.append(
+                    (
+                        str(digit),
+                        digit_style.fg,
+                        digit_style.bg if digit_style.bg is not None else bg,
+                        digit_style.bold,
+                    )
+                )
             else:
                 segments.append((" ", fg, bg, bold))
         lines.append(styled_cell(segments, cell_width, use_color, bg=bg))
@@ -471,11 +457,7 @@ def render_progress_grid(
     causes = set[int](cause_cells)
     if source_digit_roles is None:
         decision_digits = {digit for digits in candidate_eliminated_digits.values() for digit in digits}
-        source_digit_roles = {
-            (cell, digit): "primary"
-            for cell in causes
-            for digit in decision_digits
-        }
+        source_digit_roles = {(cell, digit): "primary" for cell in causes for digit in decision_digits}
     source_digit_roles_by_cell: dict[int, dict[int, str]] = {}
     for (cell, digit), role in source_digit_roles.items():
         source_digit_roles_by_cell.setdefault(cell, {})[digit] = role
@@ -652,9 +634,7 @@ def print_timing_summary(timing_stats: dict[str, TechniqueTiming]) -> None:
         return
 
     rows = [
-        (technique, stats)
-        for technique, stats in timing_stats.items()
-        if stats.used and technique != "Propagation"
+        (technique, stats) for technique, stats in timing_stats.items() if stats.used and technique != "Propagation"
     ]
     if not rows:
         return

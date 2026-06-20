@@ -167,10 +167,7 @@ class SudokuSolver:
 
     def _has_unprocessed_singles(self, state: SudokuState) -> bool:
         """Return whether solved cells still need explanation as singles."""
-        return any(
-            is_single(state.candidate_mask(cell)) and cell not in state.fixed_cells
-            for cell in CELL_INDICES
-        )
+        return any(is_single(state.candidate_mask(cell)) and cell not in state.fixed_cells for cell in CELL_INDICES)
 
     def solve_logic(
         self,

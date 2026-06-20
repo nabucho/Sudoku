@@ -130,14 +130,8 @@ class XYZWing(Technique):
             x, y, z = pivot_digits
             x_mask, y_mask, z_mask = bit(x), bit(y), bit(z)
 
-            xz_peers = [
-                peer for peer in (PEERS[pivot] & bivalue)
-                if state.candidate_mask(peer) == (x_mask | z_mask)
-            ]
-            yz_peers = [
-                peer for peer in (PEERS[pivot] & bivalue)
-                if state.candidate_mask(peer) == (y_mask | z_mask)
-            ]
+            xz_peers = [peer for peer in (PEERS[pivot] & bivalue) if state.candidate_mask(peer) == (x_mask | z_mask)]
+            yz_peers = [peer for peer in (PEERS[pivot] & bivalue) if state.candidate_mask(peer) == (y_mask | z_mask)]
 
             for xz_pincer in xz_peers:
                 for yz_pincer in yz_peers:
@@ -262,9 +256,7 @@ class XYChain(Technique):
                         eliminations=eliminations,
                         cause_cells=next_path,
                         source_digit_roles={
-                            (cell, digit): "primary"
-                            for cell in next_path
-                            for digit in state.candidate_digits(cell)
+                            (cell, digit): "primary" for cell in next_path for digit in state.candidate_digits(cell)
                         },
                     )
                 )
@@ -295,10 +287,7 @@ class WWing(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
         candidate_cache = UnitCandidateCache(state)
-        strong_links_by_digit = {
-            digit: strong_links_for_digit(state, digit, candidate_cache)
-            for digit in DIGIT_VALUES
-        }
+        strong_links_by_digit = {digit: strong_links_for_digit(state, digit, candidate_cache) for digit in DIGIT_VALUES}
 
         for pair_mask, cells in bivalue_cells_by_mask(state).items():
             pair_digits = digits_from_mask(pair_mask)
@@ -310,9 +299,8 @@ class WWing(Technique):
                     eliminated_digit = other_bivalue_digit(pair_digits, link_digit)
                     for first_link_cell, second_link_cell in strong_links_by_digit[link_digit]:
                         linked = (
-                            (first_link_cell in PEERS[first_wing_cell] and second_link_cell in PEERS[second_wing_cell])
-                            or (second_link_cell in PEERS[first_wing_cell] and first_link_cell in PEERS[second_wing_cell])
-                        )
+                            first_link_cell in PEERS[first_wing_cell] and second_link_cell in PEERS[second_wing_cell]
+                        ) or (second_link_cell in PEERS[first_wing_cell] and first_link_cell in PEERS[second_wing_cell])
                         if not linked:
                             continue
 
@@ -333,7 +321,9 @@ class WWing(Technique):
                                         f"remove {eliminated_digit} from common peers."
                                     ),
                                     eliminations=eliminations,
-                                    cause_cells=sorted({first_wing_cell, second_wing_cell, first_link_cell, second_link_cell}),
+                                    cause_cells=sorted(
+                                        {first_wing_cell, second_wing_cell, first_link_cell, second_link_cell}
+                                    ),
                                     source_digit_roles={
                                         **source_digit_roles_for_cells(
                                             [first_wing_cell, second_wing_cell],
@@ -425,4 +415,3 @@ class RemotePairs(Technique):
                         )
 
         return moves
-

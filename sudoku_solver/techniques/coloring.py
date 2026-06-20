@@ -74,9 +74,7 @@ class SimpleColoring(Technique):
                     same_color_cells = [cell for cell in component if color[cell] == bad_color]
                     if any(b in PEERS[a] for a, b in pair_combinations(same_color_cells)):
                         eliminations = [
-                            Elimination(cell, digit)
-                            for cell in same_color_cells
-                            if state.can_place(cell, digit)
+                            Elimination(cell, digit) for cell in same_color_cells if state.can_place(cell, digit)
                         ]
                         if eliminations:
                             moves.append(
@@ -167,7 +165,7 @@ class MultiColoring(Technique):
 
             for left_index, left_component in enumerate[list[int]](components):
                 left_set = set[int](left_component)
-                for right_component in components[left_index + 1:]:
+                for right_component in components[left_index + 1 :]:
                     right_set = set[int](right_component)
                     for left_color in (0, 1):
                         left_link_cells = [cell for cell in left_component if global_color[cell] == left_color]
@@ -229,4 +227,3 @@ class MultiColoring(Technique):
                             )
 
         return moves
-

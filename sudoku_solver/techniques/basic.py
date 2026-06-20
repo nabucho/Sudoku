@@ -122,7 +122,7 @@ class LockedCandidates(Technique):
                             Move(
                                 technique=self.name,
                                 difficulty=self.difficulty,
-                                reason=f"Pointing: digit {digit} in box {box_index+1} is confined to row {row+1}.",
+                                reason=f"Pointing: digit {digit} in box {box_index + 1} is confined to row {row + 1}.",
                                 eliminations=eliminations,
                                 cause_cells=cells,
                                 source_digit_roles=source_digit_roles_for_cells(cells, [digit]),
@@ -141,7 +141,7 @@ class LockedCandidates(Technique):
                             Move(
                                 technique=self.name,
                                 difficulty=self.difficulty,
-                                reason=f"Pointing: digit {digit} in box {box_index+1} is confined to column {col+1}.",
+                                reason=f"Pointing: digit {digit} in box {box_index + 1} is confined to column {col + 1}.",
                                 eliminations=eliminations,
                                 cause_cells=cells,
                                 source_digit_roles=source_digit_roles_for_cells(cells, [digit]),
@@ -170,7 +170,7 @@ class LockedCandidates(Technique):
                                 Move(
                                     technique=self.name,
                                     difficulty=self.difficulty,
-                                    reason=f"Claiming: digit {digit} in {family_name} {unit_index+1} is confined to box {box_index+1}.",
+                                    reason=f"Claiming: digit {digit} in {family_name} {unit_index + 1} is confined to box {box_index + 1}.",
                                     eliminations=eliminations,
                                     cause_cells=cells,
                                     source_digit_roles=source_digit_roles_for_cells(cells, [digit]),
@@ -195,11 +195,7 @@ class NakedSubset(Technique):
         moves: List[Move] = []
 
         for unit in ALL_UNITS:
-            subset_cells = [
-                cell
-                for cell in unit
-                if 2 <= bit_count(state.candidate_mask(cell)) <= self.size
-            ]
+            subset_cells = [cell for cell in unit if 2 <= bit_count(state.candidate_mask(cell)) <= self.size]
 
             for combo in sized_combinations(subset_cells, self.size):
                 union_mask = 0
@@ -250,11 +246,7 @@ class HiddenSubset(Technique):
 
         for unit in ALL_UNITS:
             cells_by_digit = candidate_cache.candidate_positions(unit, include_solved=False)
-            eligible_digits = [
-                digit
-                for digit in DIGIT_VALUES
-                if 1 <= len(cells_by_digit[digit]) <= self.size
-            ]
+            eligible_digits = [digit for digit in DIGIT_VALUES if 1 <= len(cells_by_digit[digit]) <= self.size]
             if len(eligible_digits) < self.size:
                 continue
 
@@ -289,4 +281,3 @@ class HiddenSubset(Technique):
                     )
 
         return moves
-

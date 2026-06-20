@@ -116,18 +116,14 @@ class UniqueRectangleType1(Technique):
                 continue
 
             pair_digits = MASK_DIGITS[pair_mask]
-            eliminations = [
-                Elimination(odd_cell, d)
-                for d in pair_digits
-                if state.can_place(odd_cell, d)
-            ]
+            eliminations = [Elimination(odd_cell, d) for d in pair_digits if state.can_place(odd_cell, d)]
             if eliminations:
                 moves.append(
                     Move(
                         technique=self.name,
                         difficulty=self.difficulty,
                         reason=(
-                            f"Unique Rectangle Type 1 on rows {r1+1},{r2+1} and columns {c1+1},{c2+1}: "
+                            f"Unique Rectangle Type 1 on rows {r1 + 1},{r2 + 1} and columns {c1 + 1},{c2 + 1}: "
                             f"three corners form deadly pair {pair_digits}, so {cell_text(odd_cell)} "
                             f"cannot keep both of those digits."
                         ),
@@ -157,9 +153,7 @@ class UniqueRectangleType2(Technique):
             for pair_mask in {mask for mask in masks.values() if MASK_BIT_COUNTS[mask] == 2}:
                 pair_cells = [cell for cell in cells if masks[cell] == pair_mask]
                 extra_cells = [
-                    cell
-                    for cell in cells
-                    if cell not in pair_cells and (masks[cell] & pair_mask) == pair_mask
+                    cell for cell in cells if cell not in pair_cells and (masks[cell] & pair_mask) == pair_mask
                 ]
                 if len(pair_cells) != 2 or len(extra_cells) != 2:
                     continue
@@ -319,11 +313,7 @@ class UniqueRectangleType4(Technique):
                 if len(pair_cells) != 2 or len(floor_cells) != 2:
                     continue
 
-                shared_units = [
-                    unit
-                    for unit in CELL_UNITS[floor_cells[0]]
-                    if floor_cells[1] in unit
-                ]
+                shared_units = [unit for unit in CELL_UNITS[floor_cells[0]] if floor_cells[1] in unit]
                 for unit in shared_units:
                     for strong_digit in pair_digits:
                         cells_for_digit = candidate_cache.unsolved_cells_with_candidate(
@@ -335,9 +325,7 @@ class UniqueRectangleType4(Technique):
 
                         other_digit = pair_digits[0] if pair_digits[1] == strong_digit else pair_digits[1]
                         eliminations = [
-                            Elimination(cell, other_digit)
-                            for cell in floor_cells
-                            if state.can_place(cell, other_digit)
+                            Elimination(cell, other_digit) for cell in floor_cells if state.can_place(cell, other_digit)
                         ]
                         if eliminations:
                             moves.append(
@@ -393,11 +381,7 @@ class AvoidableRectangle(Technique):
                     if len(solved_corners) != 3:
                         continue
 
-                    target_index = next(
-                        index
-                        for index, cell in enumerate[int](cells)
-                        if cell not in solved_corners
-                    )
+                    target_index = next(index for index, cell in enumerate[int](cells) if cell not in solved_corners)
                     target = cells[target_index]
                     target_digit = pattern[target_index]
                     if is_single(state.candidate_mask(target)):
@@ -445,10 +429,7 @@ class BUGPlusOne(Technique):
             return moves
 
         tri_cells = [cell for cell in unsolved if MASK_BIT_COUNTS[state.candidate_mask(cell)] == 3]
-        other_bad = [
-            cell for cell in unsolved
-            if MASK_BIT_COUNTS[state.candidate_mask(cell)] not in (2, 3)
-        ]
+        other_bad = [cell for cell in unsolved if MASK_BIT_COUNTS[state.candidate_mask(cell)] not in (2, 3)]
 
         if len(tri_cells) != 1 or other_bad:
             return moves
@@ -469,8 +450,7 @@ class BUGPlusOne(Technique):
                         technique=self.name,
                         difficulty=self.difficulty,
                         reason=(
-                            f"BUG+1: {cell_text(cell)} is the only tri-value cell, "
-                            f"so digit {d} must be placed there."
+                            f"BUG+1: {cell_text(cell)} is the only tri-value cell, so digit {d} must be placed there."
                         ),
                         placements=[Placement(cell, d)],
                         cause_cells=[cell],
@@ -518,4 +498,3 @@ class Nishio(Technique):
                 )
 
         return moves
-

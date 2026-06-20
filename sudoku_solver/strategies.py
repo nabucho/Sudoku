@@ -57,7 +57,7 @@ def default_techniques() -> list[Technique]:
         HiddenSubset(3),
         NakedSubset(4),
         HiddenSubset(4),
-        Fish(2),   # X-Wing
+        Fish(2),  # X-Wing
         FinnedXWing(),
         SimpleColoring(),
         MultiColoring(),
@@ -70,7 +70,7 @@ def default_techniques() -> list[Technique]:
         XYZWing(),
         XYChain(),
         EmptyRectangle(),
-        Fish(3),   # Swordfish
+        Fish(3),  # Swordfish
         FinnedSwordfish(),
         UniqueRectangleType1(),
         UniqueRectangleType4(),
@@ -82,7 +82,7 @@ def default_techniques() -> list[Technique]:
         XChain(),
         AIC(),
         GroupedAIC(),
-        Fish(4),   # Jellyfish
+        Fish(4),  # Jellyfish
         FinnedJellyfish(),
         AvoidableRectangle(),
         BUGPlusOne(),
@@ -103,7 +103,7 @@ def human_fast_techniques() -> list[Technique]:
         HiddenSubset(3),
         NakedSubset(4),
         HiddenSubset(4),
-        Fish(2),   # X-Wing
+        Fish(2),  # X-Wing
         FinnedXWing(),
         SimpleColoring(),
         MultiColoring(),
@@ -116,7 +116,7 @@ def human_fast_techniques() -> list[Technique]:
         XYZWing(),
         XYChain(),
         EmptyRectangle(),
-        Fish(3),   # Swordfish
+        Fish(3),  # Swordfish
         FinnedSwordfish(),
         UniqueRectangleType1(),
         UniqueRectangleType4(),

@@ -194,7 +194,9 @@ def print_summary(
         avg_success_ms = stats["successful_ms"] / successes if successes else 0.0
         rows.append((stats["used"], avg_ms, technique, stats, success_percent, avg_success_ms))
 
-    for _, avg_ms, technique, stats, success_percent, avg_success_ms in sorted(rows, key=lambda row: (-row[0], row[1], row[2])):
+    for _, avg_ms, technique, stats, success_percent, avg_success_ms in sorted(
+        rows, key=lambda row: (-row[0], row[1], row[2])
+    ):
         print(
             f"{technique[:24]:24}  "
             f"{int(stats['used']):4d}  "
@@ -287,7 +289,7 @@ def main() -> int:
 
     paths = fixture_paths()
     if args.limit > 0:
-        paths = paths[:args.limit]
+        paths = paths[: args.limit]
     if not paths:
         raise SystemExit("No fixtures found.")
 

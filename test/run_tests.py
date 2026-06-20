@@ -153,11 +153,7 @@ class SoundnessCheckingSolver(SudokuSolver):
         key = (tuple(state.candidates), (cell, digit, place_digit))
         if key not in self._solution_cache:
             constrained = state.clone()
-            applied = (
-                constrained.place_digit(cell, digit)
-                if place_digit
-                else constrained.eliminate_digit(cell, digit)
-            )
+            applied = constrained.place_digit(cell, digit) if place_digit else constrained.eliminate_digit(cell, digit)
             if not applied or not constrained.consistency_ok():
                 self._solution_cache[key] = False
             else:
@@ -223,8 +219,7 @@ def assert_failure_contains(args: list[str], expected: str) -> None:
     result = run_command(args)
     if result.returncode == 0 or expected not in result.stderr:
         raise AssertionError(
-            f"Expected failure containing {expected!r} for {args}, "
-            f"got {result.returncode}: {result.stderr.strip()}"
+            f"Expected failure containing {expected!r} for {args}, got {result.returncode}: {result.stderr.strip()}"
         )
 
 
@@ -238,7 +233,7 @@ def state_with_candidates(overrides: dict[int, int], fixed_cells: set[int] | Non
 def parse_cell_reference(text: str) -> int:
     col_marker = text.index("c")
     row = int(text[1:col_marker]) - 1
-    col = int(text[col_marker + 1:]) - 1
+    col = int(text[col_marker + 1 :]) - 1
     return rc_to_i(row, col)
 
 
@@ -278,12 +273,8 @@ def parse_expected_eliminations(text: str) -> set[tuple[int, int]]:
 def load_synthetic_fixture(path: Path) -> tuple[str, SudokuState, set[tuple[int, int]], set[tuple[int, int]]]:
     lines = path.read_text(encoding="utf-8").splitlines()
     candidate_start = lines.index("candidates:")
-    metadata = {
-        key: value
-        for line in lines[:candidate_start]
-        for key, value in [line.split(": ", 1)]
-    }
-    candidate_rows = lines[candidate_start + 1:]
+    metadata = {key: value for line in lines[:candidate_start] for key, value in [line.split(": ", 1)]}
+    candidate_rows = lines[candidate_start + 1 :]
     if len(candidate_rows) != 9:
         raise AssertionError(f"Expected 9 candidate rows in {path}, got {len(candidate_rows)}")
 
@@ -330,8 +321,7 @@ def assert_technique_fixtures(
         ]
         if expected not in actual:
             raise AssertionError(
-                f"{technique_name} fixture {path.name} did not produce expected move. "
-                f"Expected {expected}, got {actual}"
+                f"{technique_name} fixture {path.name} did not produce expected move. Expected {expected}, got {actual}"
             )
 
     return fixture_names
@@ -435,11 +425,7 @@ def test_basic_techniques_directly() -> None:
     if naked_moves[0].reason != f"{cell_text(rc_to_i(0, 0))} is forced to 5.":
         raise AssertionError(f"Unexpected naked single reason: {naked_moves[0].reason}")
 
-    hidden_overrides = {
-        cell: ALL_DIGITS_MASK & ~bit(7)
-        for cell in ROW_UNITS[0]
-        if cell != rc_to_i(0, 3)
-    }
+    hidden_overrides = {cell: ALL_DIGITS_MASK & ~bit(7) for cell in ROW_UNITS[0] if cell != rc_to_i(0, 3)}
     hidden_overrides[rc_to_i(0, 3)] = bit(1) | bit(7)
     hidden_moves = HiddenSingle().find_moves(state_with_candidates(hidden_overrides))
     if len(hidden_moves) != 1 or hidden_moves[0].placements[0].cell != rc_to_i(0, 3):
@@ -459,12 +445,13 @@ def test_basic_techniques_directly() -> None:
     locked_state = state_with_candidates(locked_overrides)
     locked_moves = LockedCandidates().find_moves(locked_state)
     pointing_moves = [
-        move for move in locked_moves
-        if move.reason.startswith("Pointing: digit 9 in box 2 is confined to row 1.")
+        move for move in locked_moves if move.reason.startswith("Pointing: digit 9 in box 2 is confined to row 1.")
     ]
     if not pointing_moves:
         raise AssertionError(f"Expected pointing locked candidate move, got {[move.reason for move in locked_moves]}")
-    if not any(elimination.cell == rc_to_i(0, 6) and elimination.digit == 9 for elimination in pointing_moves[0].eliminations):
+    if not any(
+        elimination.cell == rc_to_i(0, 6) and elimination.digit == 9 for elimination in pointing_moves[0].eliminations
+    ):
         raise AssertionError(f"Expected elimination from r1c7, got {pointing_moves[0].eliminations}")
 
 
@@ -766,7 +753,9 @@ def test_visualization_directly() -> None:
 
 def test_benchmark_profile_output() -> None:
     progress("running benchmark smoke with profile buckets")
-    result = run_benchmark_command(["--strategy", "fastest", "--limit", "4", "--profile-slowest", "3", "--profile-buckets"])
+    result = run_benchmark_command(
+        ["--strategy", "fastest", "--limit", "4", "--profile-slowest", "3", "--profile-buckets"]
+    )
     if result.returncode != 0:
         raise AssertionError(f"Expected benchmark success, got {result.returncode}: {result.stderr.strip()}")
     required = [
@@ -805,8 +794,7 @@ def test_technique_soundness_oracle() -> None:
     if missing:
         counts = ", ".join(f"{technique}={coverage[technique]}" for technique in sorted(coverage))
         raise AssertionError(
-            f"Soundness oracle did not cover expected techniques {sorted(missing)}. "
-            f"Covered counts: {counts}"
+            f"Soundness oracle did not cover expected techniques {sorted(missing)}. Covered counts: {counts}"
         )
 
     unexpected = set(coverage) - EXPECTED_SOUNDNESS_TECHNIQUES
@@ -854,8 +842,7 @@ def test_technique_soundness_oracle_all_fixtures() -> None:
     if missing:
         counts = ", ".join(f"{technique}={coverage[technique]}" for technique in sorted(coverage))
         raise AssertionError(
-            f"Full soundness oracle did not cover expected techniques {sorted(missing)}. "
-            f"Covered counts: {counts}"
+            f"Full soundness oracle did not cover expected techniques {sorted(missing)}. Covered counts: {counts}"
         )
 
     unexpected = set(coverage) - EXPECTED_SOUNDNESS_TECHNIQUES

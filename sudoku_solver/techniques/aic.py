@@ -34,10 +34,7 @@ LinkSeenKey = tuple[tuple[LinkNode, ...], EliminationKey]
 CandidateSeenKey = tuple[tuple[CandidateNode, ...], EliminationKey]
 GroupedSeenKey = tuple[tuple[GroupedNode, ...], EliminationKey]
 CELL_BIT_MASKS = [1 << cell for cell in CELL_INDICES]
-UNIT_CELL_MASKS = [
-    sum(CELL_BIT_MASKS[cell] for cell in unit)
-    for unit in ALL_UNITS
-]
+UNIT_CELL_MASKS = [sum(CELL_BIT_MASKS[cell] for cell in unit) for unit in ALL_UNITS]
 
 
 def _add_link(links: dict[LinkNode, set[LinkNode]], left: LinkNode, right: LinkNode) -> None:
@@ -48,10 +45,7 @@ def _add_link(links: dict[LinkNode, set[LinkNode]], left: LinkNode, right: LinkN
 
 def _sorted_link_map(links: dict[LinkNode, set[LinkNode]]) -> dict[LinkNode, tuple[LinkNode, ...]]:
     """Return a deterministic adjacency map sorted once before chain search."""
-    return {
-        node: tuple(sorted(neighbors))
-        for node, neighbors in links.items()
-    }
+    return {node: tuple(sorted(neighbors)) for node, neighbors in links.items()}
 
 
 def _cells_mask(cells: CellGroup) -> int:
@@ -152,10 +146,7 @@ class AIC(Technique):
         # Unit links: conjugate digit pairs are strong; all same-digit unit pairs are weak.
         for unit in ALL_UNITS:
             for digit in DIGIT_VALUES:
-                nodes = [
-                    (cell, digit)
-                    for cell in candidate_cache.unsolved_cells_with_candidate(unit, digit)
-                ]
+                nodes = [(cell, digit) for cell in candidate_cache.unsolved_cells_with_candidate(unit, digit)]
                 for left, right in pair_combinations(nodes):
                     _add_link(weak_links, left, right)
                 if len(nodes) == 2:
@@ -218,11 +209,7 @@ class AIC(Technique):
         if start_digit == end_digit and start_cell != end_cell:
             path_cells = {cell for cell, _ in path}
             eliminations = _candidate_common_peer_eliminations(state, start_cell, end_cell, start_digit)
-            eliminations = [
-                elimination
-                for elimination in eliminations
-                if elimination.cell not in path_cells
-            ]
+            eliminations = [elimination for elimination in eliminations if elimination.cell not in path_cells]
         elif start_cell == end_cell and start_digit != end_digit:
             endpoint_digits = {start_digit, end_digit}
             eliminations = [
@@ -245,10 +232,7 @@ class AIC(Technique):
                 reason=f"AIC: strong-ended alternating chain {chain_text} proves at least one endpoint true.",
                 eliminations=eliminations,
                 cause_cells=sorted({cell for cell, _ in path}),
-                source_digit_roles={
-                    (cell, digit): "primary"
-                    for cell, digit in path
-                },
+                source_digit_roles={(cell, digit): "primary" for cell, digit in path},
             )
         )
 
@@ -283,10 +267,7 @@ class XChain(AIC):
 
         for unit in ALL_UNITS:
             for digit in DIGIT_VALUES:
-                nodes = [
-                    (cell, digit)
-                    for cell in candidate_cache.unsolved_cells_with_candidate(unit, digit)
-                ]
+                nodes = [(cell, digit) for cell in candidate_cache.unsolved_cells_with_candidate(unit, digit)]
                 for left, right in pair_combinations(nodes):
                     _add_link(weak_links, left, right)
                 if len(nodes) == 2:
@@ -309,11 +290,7 @@ class XChain(AIC):
 
         path_cells = {cell for cell, _ in path}
         eliminations = _candidate_common_peer_eliminations(state, start_cell, end_cell, digit)
-        eliminations = [
-            elimination
-            for elimination in eliminations
-            if elimination.cell not in path_cells
-        ]
+        eliminations = [elimination for elimination in eliminations if elimination.cell not in path_cells]
         if not eliminations:
             return
 
@@ -331,10 +308,7 @@ class XChain(AIC):
                 ),
                 eliminations=eliminations,
                 cause_cells=sorted({cell for cell, _ in path}),
-                source_digit_roles={
-                    (cell, digit): "primary"
-                    for cell, digit in path
-                },
+                source_digit_roles={(cell, digit): "primary" for cell, digit in path},
             )
         )
 
@@ -406,7 +380,8 @@ class GroupedAIC(Technique):
                     continue
 
                 unit_nodes = [
-                    node for node in nodes
+                    node
+                    for node in nodes
                     if not (node_masks[node] & ~unit_mask) and node_masks[node] & unit_candidate_mask
                 ]
                 for left, right in pair_combinations(unit_nodes):
@@ -422,10 +397,7 @@ class GroupedAIC(Technique):
             for cell in CELL_INDICES:
                 if is_single(state.candidate_mask(cell)):
                     continue
-                cell_nodes = [
-                    (digit, (cell,))
-                    for digit in state.candidate_digits(cell)
-                ]
+                cell_nodes = [(digit, (cell,)) for digit in state.candidate_digits(cell)]
                 for left, right in pair_combinations(cell_nodes):
                     _add_link(weak_links, left, right)
                     if len(cell_nodes) == 2:
@@ -438,9 +410,7 @@ class GroupedAIC(Technique):
         state: SudokuState,
         candidate_cache: UnitCandidateCache,
     ) -> tuple[dict[int, set[GroupedNode]], dict[GroupedNode, int]]:
-        nodes_by_digit: dict[int, set[GroupedNode]] = {
-            digit: set[GroupedNode]() for digit in DIGIT_VALUES
-        }
+        nodes_by_digit: dict[int, set[GroupedNode]] = {digit: set[GroupedNode]() for digit in DIGIT_VALUES}
         node_masks: dict[GroupedNode, int] = {}
 
         for digit in DIGIT_VALUES:
@@ -530,17 +500,13 @@ class GroupedAIC(Technique):
         if start_digit == end_digit and set[int](start_cells) != set[int](end_cells):
             eliminations = _grouped_common_peer_eliminations(state, start_cells, end_cells, start_digit)
             eliminations = [
-                elimination
-                for elimination in eliminations
-                if not (path_cell_mask & CELL_BIT_MASKS[elimination.cell])
+                elimination for elimination in eliminations if not (path_cell_mask & CELL_BIT_MASKS[elimination.cell])
             ]
         elif len(start_cells) == 1 and start_cells == end_cells and start_digit != end_digit:
             endpoint_digits = {start_digit, end_digit}
             cell = start_cells[0]
             eliminations = [
-                Elimination(cell, digit)
-                for digit in state.candidate_digits(cell)
-                if digit not in endpoint_digits
+                Elimination(cell, digit) for digit in state.candidate_digits(cell) if digit not in endpoint_digits
             ]
 
         if not eliminations:
@@ -557,11 +523,7 @@ class GroupedAIC(Technique):
                 reason=f"{self.name}: grouped strong-ended alternating chain {chain_text} proves at least one endpoint true.",
                 eliminations=eliminations,
                 cause_cells=sorted({cell for _, cells in path for cell in cells}),
-                source_digit_roles={
-                    (cell, digit): "primary"
-                    for digit, cells in path
-                    for cell in cells
-                },
+                source_digit_roles={(cell, digit): "primary" for digit, cells in path for cell in cells},
             )
         )
 

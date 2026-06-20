@@ -70,11 +70,7 @@ def source_digit_roles_for_cells(
     role: SourceDigitRole = "primary",
 ) -> SourceDigitRoles:
     """Return source-digit metadata for every cell/digit combination."""
-    return {
-        (cell, digit): role
-        for cell in cells
-        for digit in digits
-    }
+    return {(cell, digit): role for cell in cells for digit in digits}
 
 
 @dataclass

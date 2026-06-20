@@ -114,9 +114,7 @@ def shared_peer_eliminations(
     """
     blocked_cells = set[int](blocked)
     return [
-        Elimination(cell, digit)
-        for cell in sorted(shared_peers(cells) - blocked_cells)
-        if state.can_place(cell, digit)
+        Elimination(cell, digit) for cell in sorted(shared_peers(cells) - blocked_cells) if state.can_place(cell, digit)
     ]
 
 

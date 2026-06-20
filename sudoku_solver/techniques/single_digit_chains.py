@@ -62,7 +62,9 @@ class TurbotFish(Technique):
                             continue
 
                         cause_cells = sorted({*link1, *link2})
-                        eliminations = shared_peer_eliminations(state, (endpoint1, endpoint2), digit, blocked=cause_cells)
+                        eliminations = shared_peer_eliminations(
+                            state, (endpoint1, endpoint2), digit, blocked=cause_cells
+                        )
                         if not eliminations:
                             continue
 
@@ -91,6 +93,7 @@ class TurbotFish(Technique):
                         )
 
         return moves
+
 
 class Skyscraper(Technique):
     """Find Skyscraper eliminations from two parallel strong links.
@@ -133,8 +136,8 @@ class Skyscraper(Technique):
                             technique=self.name,
                             difficulty=self.difficulty,
                             reason=(
-                                f"Skyscraper on digit {digit}: rows {r1+1} and {r2+1} share base column "
-                                f"{common_col+1}; roof cells are {cell_text(cell1)} and {cell_text(cell2)}."
+                                f"Skyscraper on digit {digit}: rows {r1 + 1} and {r2 + 1} share base column "
+                                f"{common_col + 1}; roof cells are {cell_text(cell1)} and {cell_text(cell2)}."
                             ),
                             eliminations=eliminations,
                             cause_cells=[
@@ -183,8 +186,8 @@ class Skyscraper(Technique):
                             technique=self.name,
                             difficulty=self.difficulty,
                             reason=(
-                                f"Skyscraper on digit {digit}: columns {c1+1} and {c2+1} share base row "
-                                f"{common_row+1}; roof cells are {cell_text(cell1)} and {cell_text(cell2)}."
+                                f"Skyscraper on digit {digit}: columns {c1 + 1} and {c2 + 1} share base row "
+                                f"{common_row + 1}; roof cells are {cell_text(cell1)} and {cell_text(cell2)}."
                             ),
                             eliminations=eliminations,
                             cause_cells=[
@@ -253,7 +256,7 @@ class TwoStringKite(Technique):
                                         technique=self.name,
                                         difficulty=self.difficulty,
                                         reason=(
-                                            f"Two-String Kite on digit {digit}: row {r+1} and column {c+1} "
+                                            f"Two-String Kite on digit {digit}: row {r + 1} and column {c + 1} "
                                             f"are linked via same-box cells {cell_text(row_cell)} and {cell_text(col_cell)}; "
                                             f"therefore digit {digit} can be removed from cells seeing both "
                                             f"{cell_text(row_other)} and {cell_text(col_other)}."
@@ -325,8 +328,8 @@ class EmptyRectangle(Technique):
                                     technique=self.name,
                                     difficulty=self.difficulty,
                                     reason=(
-                                        f"Empty Rectangle on digit {digit}: box {box_index+1} is covered by "
-                                        f"row {eri_row+1} and column {eri_col+1}; strong row link "
+                                        f"Empty Rectangle on digit {digit}: box {box_index + 1} is covered by "
+                                        f"row {eri_row + 1} and column {eri_col + 1}; strong row link "
                                         f"{cell_text(near[0])}-{cell_text(far)} eliminates {digit} from {cell_text(target)}."
                                     ),
                                     eliminations=[Elimination(target, digit)],
@@ -359,8 +362,8 @@ class EmptyRectangle(Technique):
                                     technique=self.name,
                                     difficulty=self.difficulty,
                                     reason=(
-                                        f"Empty Rectangle on digit {digit}: box {box_index+1} is covered by "
-                                        f"row {eri_row+1} and column {eri_col+1}; strong column link "
+                                        f"Empty Rectangle on digit {digit}: box {box_index + 1} is covered by "
+                                        f"row {eri_row + 1} and column {eri_col + 1}; strong column link "
                                         f"{cell_text(near[0])}-{cell_text(far)} eliminates {digit} from {cell_text(target)}."
                                     ),
                                     eliminations=[Elimination(target, digit)],
@@ -373,4 +376,3 @@ class EmptyRectangle(Technique):
                             )
 
         return moves
-

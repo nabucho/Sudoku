@@ -10,17 +10,7 @@ from sudoku_solver.solver import SudokuSolver
 from sudoku_solver.techniques.common import SudokuState, rc_to_i
 from sudoku_solver.visualization import format_steps, print_progress_steps, print_timing_summary
 
-DEFAULT_PUZZLE = (
-    "...8....3"
-    "..8.61..."
-    "14.37..2."
-    "..4.8...7"
-    "...7...4."
-    "9.6.5..1."
-    "2......9."
-    ".1......."
-    "5......3."
-)
+DEFAULT_PUZZLE = "...8....3..8.61...14.37..2...4.8...7...7...4.9.6.5..1.2......9..1.......5......3."
 
 
 def read_puzzle_argument(puzzle: str | None, puzzle_file: str | None) -> str:
@@ -58,10 +48,7 @@ def pretty_puzzle(puzzle: str) -> str:
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build the CLI argument parser documented in README.md."""
     parser = argparse.ArgumentParser(
-        description=(
-            "Solve a Sudoku puzzle. Empty cells may be written as 0 or .; "
-            "non-puzzle characters are ignored."
-        )
+        description=("Solve a Sudoku puzzle. Empty cells may be written as 0 or .; non-puzzle characters are ignored.")
     )
     parser.add_argument(
         "puzzle",
