@@ -8,6 +8,20 @@ version = "0.1.0"
 description = "A command-line Sudoku solver with human-style techniques, explanations, and timing."
 readme = "README.md"
 requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Ivan Debnar" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Games/Entertainment :: Puzzle Games",
+]
 dependencies = []
 
 [project.scripts]

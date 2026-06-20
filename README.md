@@ -80,6 +80,10 @@ GitHub Actions runs `make ci` on pull requests and pushes to `main`, plus a benc
 
 See [Developer Notes](doc/developer-notes.md) for code structure, solver flow, style guidelines, and maintenance conventions.
 
+## License
+
+This project is released under the [MIT License](LICENSE).
+
 ## CLI Usage
 
 ```text
@@ -307,6 +311,15 @@ Benchmark options:
 
 `.github/dependabot.yml`
 : Dependabot updates for GitHub Actions and Python dependencies.
+
+`.github/ISSUE_TEMPLATE/` and `.github/pull_request_template.md`
+: Public contribution templates for bug reports, solver regressions, technique requests, and pull requests.
+
+`LICENSE`
+: MIT license text for the solver code.
+
+`SECURITY.md`, `CONTRIBUTING.md`, and `CHANGELOG.md`
+: Public repository policy, contribution guidance, and release notes.
 
 `requirements-dev.txt`
 : Compatibility install file that installs the package with the `dev` extra.
