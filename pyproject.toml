@@ -24,6 +24,12 @@ classifiers = [
 ]
 dependencies = []
 
+[project.urls]
+Homepage = "https://github.com/nabucho/Sudoku"
+Repository = "https://github.com/nabucho/Sudoku"
+Issues = "https://github.com/nabucho/Sudoku/issues"
+Changelog = "https://github.com/nabucho/Sudoku/blob/main/CHANGELOG.md"
+
 [project.scripts]
 sudoku-solver = "cli:main"
 

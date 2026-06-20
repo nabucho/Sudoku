@@ -8,7 +8,7 @@ This project is currently pre-1.0. Security fixes are applied to the latest `mai
 
 Please do not open a public issue for a suspected vulnerability.
 
-Until a dedicated security contact is published, report security concerns privately to the repository owner. Include:
+Report security concerns privately to `debnar@web.sk`. Include:
 
 - a description of the issue and affected functionality;
 - steps to reproduce or a minimal proof of concept;

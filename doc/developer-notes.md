@@ -195,7 +195,7 @@ make check
 
 `make check` compiles the Python modules, runs Ruff linting, runs mypy, and executes the regular pytest suite. Use `make format-check` when you specifically want to verify Ruff formatting. Use `make test-all` or `make check-all` before releases, broad refactors, strategy-order changes, search changes, or changes to shared candidate propagation. Regular `make test` skips tests marked `slow` so day-to-day feedback stays fast.
 
-GitHub Actions mirrors the local gates: `.github/workflows/ci.yml` runs `make ci` and a benchmark smoke check on pull requests and pushes to `main`, while `.github/workflows/slow-tests.yml` runs the full slow suite on a weekly schedule and on manual dispatch.
+GitHub Actions mirrors the local gates: `.github/workflows/ci.yml` runs `make ci` and a benchmark smoke check on pull requests and pushes to `main`. The `ci` target adds Ruff `format-check` on top of `make check`. `.github/workflows/slow-tests.yml` runs the full slow suite on a weekly schedule and on manual dispatch.
 
 ### Test Layers
 

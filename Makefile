@@ -67,6 +67,7 @@ check-all: check
 	$(MAKE) test-all
 
 ci: check
+	$(MAKE) format-check
 
 benchmark:
 	$(PYTHON) test/benchmark.py

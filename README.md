@@ -1,5 +1,9 @@
 # Sudoku Solver
 
+[![CI](https://github.com/nabucho/Sudoku/actions/workflows/ci.yml/badge.svg)](https://github.com/nabucho/Sudoku/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/nabucho/Sudoku)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](pyproject.toml)
+
 A Python Sudoku solver with human-style logical techniques, MRV backtracking, step-by-step explanations, colored progress rendering, timing statistics, tests, and benchmark tooling.
 
 The solver accepts puzzles as an 81-character string or a text file. Empty cells can be written as `.` or `0`; whitespace and other non-puzzle characters are ignored.
