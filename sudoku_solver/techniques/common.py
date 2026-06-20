@@ -672,25 +672,7 @@ class SudokuState:
 
     def consistency_ok(self) -> bool:
         """Return whether the current candidates satisfy Sudoku invariants."""
-        if any(mask == 0 for mask in self.candidates):
-            return False
-
-        for unit in ALL_UNITS:
-            seen_fixed: set[int] = set[int]()
-            for cell in unit:
-                mask = self.candidates[cell]
-                if is_single(mask):
-                    digit = single_digit(mask)
-                    if digit in seen_fixed:
-                        return False
-                    seen_fixed.add(digit)
-
-            for digit in DIGIT_VALUES:
-                digit_mask = bit(digit)
-                if not any(self.candidates[cell] & digit_mask for cell in unit):
-                    return False
-
-        return True
+        return candidates_consistency_ok(self.candidates)
 
     def eliminate_digit(self, cell: int, digit: int) -> bool:
         """Remove one candidate and propagate if the cell becomes solved."""
