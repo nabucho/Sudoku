@@ -23,6 +23,7 @@ from sudoku_solver.techniques.common import (
     SudokuState,
     Technique,
     TechniqueTiming,
+    apply_move_to_candidates,
     bit,
     cell_text,
     rc_to_i,
@@ -414,6 +415,22 @@ def test_best_move_uses_board_impact() -> None:
         raise AssertionError(f"Expected propagated board impact to win, got {best_move}")
 
 
+def test_changed_unit_move_validation() -> None:
+    candidates = [ALL_DIGITS_MASK] * 81
+    candidates[rc_to_i(0, 0)] = bit(1) | bit(2)
+    for col in range(1, 9):
+        candidates[rc_to_i(0, col)] &= ~bit(1)
+
+    move = Move(
+        technique="Test",
+        difficulty=1,
+        reason="Remove the row's last candidate for 1.",
+        eliminations=[Elimination(rc_to_i(0, 0), 1)],
+    )
+    if apply_move_to_candidates(candidates, move, validate_all=False):
+        raise AssertionError("Expected changed-unit validation to catch a missing row digit")
+
+
 def test_fewest_steps_avoids_internal_chain_eliminations() -> None:
     state = SudokuState.from_board((PUZZLE_DIR / "diabolical_05").read_text(encoding="utf-8"))
     solver = SudokuSolver(strategy="fewest-steps")
@@ -537,6 +554,7 @@ def main() -> int:
         test_online_technique_fixtures,
         test_timing_measurements,
         test_best_move_uses_board_impact,
+        test_changed_unit_move_validation,
         test_fewest_steps_avoids_internal_chain_eliminations,
         test_visualization_directly,
         test_benchmark_profile_output,

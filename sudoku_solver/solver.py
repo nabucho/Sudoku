@@ -132,7 +132,7 @@ class SudokuSolver:
     ) -> MoveScore | None:
         """Return a deterministic board-impact score for a candidate move."""
         candidates = state.candidates[:]
-        if not apply_move_to_candidates(candidates, move):
+        if not apply_move_to_candidates(candidates, move, validate_all=False):
             return None
 
         after_solved, after_candidates = candidate_totals(candidates)

@@ -144,9 +144,11 @@ def unit_text(unit_index: int) -> str:
     return f"box {unit_index - 17}"
 
 CELL_UNITS: List[List[List[int]]] = [[] for _ in CELL_INDICES]
-for unit in ALL_UNITS:
+CELL_UNIT_INDICES: List[List[int]] = [[] for _ in CELL_INDICES]
+for unit_index, unit in enumerate[List[int]](ALL_UNITS):
     for cell in unit:
         CELL_UNITS[cell].append(unit)
+        CELL_UNIT_INDICES[cell].append(unit_index)
 
 PEERS: List[set[int]] = []
 for cell in CELL_INDICES:
@@ -390,7 +392,12 @@ def candidate_totals(candidates: Sequence[int]) -> tuple[int, int]:
     )
 
 
-def eliminate_digit_from_candidates(candidates: list[int], cell: int, digit: int) -> bool:
+def eliminate_digit_from_candidates(
+    candidates: list[int],
+    cell: int,
+    digit: int,
+    changed_cells: set[int] | None = None,
+) -> bool:
     """Remove one candidate from a local candidate-mask list."""
     digit_mask = bit(digit)
     current_mask = candidates[cell]
@@ -402,17 +409,24 @@ def eliminate_digit_from_candidates(candidates: list[int], cell: int, digit: int
         return False
 
     candidates[cell] = new_mask
+    if changed_cells is not None:
+        changed_cells.add(cell)
     if is_single(new_mask):
         fixed_digit = single_digit(new_mask)
         fixed_mask = bit(fixed_digit)
         for peer in PEERS[cell]:
             if candidates[peer] & fixed_mask:
-                if not eliminate_digit_from_candidates(candidates, peer, fixed_digit):
+                if not eliminate_digit_from_candidates(candidates, peer, fixed_digit, changed_cells):
                     return False
     return True
 
 
-def place_digit_in_candidates(candidates: list[int], cell: int, digit: int) -> bool:
+def place_digit_in_candidates(
+    candidates: list[int],
+    cell: int,
+    digit: int,
+    changed_cells: set[int] | None = None,
+) -> bool:
     """Place a digit in a local candidate-mask list."""
     digit_mask = bit(digit)
     if not (candidates[cell] & digit_mask):
@@ -420,49 +434,71 @@ def place_digit_in_candidates(candidates: list[int], cell: int, digit: int) -> b
 
     for candidate_digit in digits_from_mask(candidates[cell]):
         if candidate_digit != digit:
-            if not eliminate_digit_from_candidates(candidates, cell, candidate_digit):
+            if not eliminate_digit_from_candidates(candidates, cell, candidate_digit, changed_cells):
                 return False
 
     for peer in PEERS[cell]:
         if candidates[peer] & digit_mask:
-            if not eliminate_digit_from_candidates(candidates, peer, digit):
+            if not eliminate_digit_from_candidates(candidates, peer, digit, changed_cells):
                 return False
+    return True
+
+
+def _candidate_unit_consistency_ok(candidates: Sequence[int], unit: Sequence[int]) -> bool:
+    """Return whether one unit has no duplicate singles and no missing digit."""
+    seen_fixed: set[int] = set[int]()
+    for cell in unit:
+        mask = candidates[cell]
+        if mask == 0:
+            return False
+        if is_single(mask):
+            digit = single_digit(mask)
+            if digit in seen_fixed:
+                return False
+            seen_fixed.add(digit)
+
+    for digit in DIGIT_VALUES:
+        digit_mask = bit(digit)
+        if not any(candidates[cell] & digit_mask for cell in unit):
+            return False
     return True
 
 
 def candidates_consistency_ok(candidates: Sequence[int]) -> bool:
     """Return whether local candidate masks satisfy Sudoku invariants."""
-    if any(mask == 0 for mask in candidates):
-        return False
-
     for unit in ALL_UNITS:
-        seen_fixed: set[int] = set[int]()
-        for cell in unit:
-            mask = candidates[cell]
-            if is_single(mask):
-                digit = single_digit(mask)
-                if digit in seen_fixed:
-                    return False
-                seen_fixed.add(digit)
+        if not _candidate_unit_consistency_ok(candidates, unit):
+            return False
+    return True
 
-        for digit in DIGIT_VALUES:
-            digit_mask = bit(digit)
-            if not any(candidates[cell] & digit_mask for cell in unit):
+
+def changed_candidates_consistency_ok(candidates: Sequence[int], changed_cells: set[int]) -> bool:
+    """Return whether units touched by changed cells remain consistent."""
+    checked_units: set[int] = set[int]()
+    for cell in changed_cells:
+        for unit_index in CELL_UNIT_INDICES[cell]:
+            if unit_index in checked_units:
+                continue
+            checked_units.add(unit_index)
+            if not _candidate_unit_consistency_ok(candidates, ALL_UNITS[unit_index]):
                 return False
     return True
 
 
-def apply_move_to_candidates(candidates: list[int], move: Move) -> bool:
+def apply_move_to_candidates(candidates: list[int], move: Move, *, validate_all: bool = True) -> bool:
     """Apply a move to candidate masks without cloning a full SudokuState."""
+    changed_cells: set[int] = set[int]()
     for placement in move.placements:
-        if not place_digit_in_candidates(candidates, placement.cell, placement.digit):
+        if not place_digit_in_candidates(candidates, placement.cell, placement.digit, changed_cells):
             return False
 
     for elimination in move.eliminations:
-        if not eliminate_digit_from_candidates(candidates, elimination.cell, elimination.digit):
+        if not eliminate_digit_from_candidates(candidates, elimination.cell, elimination.digit, changed_cells):
             return False
 
-    return candidates_consistency_ok(candidates)
+    if validate_all:
+        return candidates_consistency_ok(candidates)
+    return changed_candidates_consistency_ok(candidates, changed_cells)
 
 
 @dataclass
