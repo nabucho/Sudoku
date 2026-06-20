@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List
 
 from .common import (
-    ALL_UNITS,
     CELL_INDICES,
     DIGIT_VALUES,
     PEERS,
@@ -13,24 +12,11 @@ from .common import (
     Technique,
     UnitCandidateCache,
     cell_text,
+    elimination_key,
     pair_combinations,
+    strong_links_for_digit,
 )
 
-
-def strong_links_for_digit(
-    state: SudokuState,
-    digit: int,
-    candidate_cache: UnitCandidateCache | None = None,
-) -> List[Tuple[int, int]]:
-    """Return conjugate-pair strong links for one candidate digit."""
-    cache = candidate_cache or UnitCandidateCache(state)
-    links: set[tuple[int, int]] = set[tuple[int, int]]()
-    for unit in ALL_UNITS:
-        cells = cache.unsolved_cells_with_candidate(unit, digit)
-        if len(cells) == 2:
-            first_cell, second_cell = sorted(cells)
-            links.add((first_cell, second_cell))
-    return sorted(links)
 
 class SimpleColoring(Technique):
     """Use two-color conjugate-link graphs to find contradictions.
@@ -210,9 +196,7 @@ class MultiColoring(Technique):
                                 tuple[int, ...](sorted(right_component)),
                                 left_color,
                                 right_color,
-                                tuple[tuple[int, int], ...](
-                                    (elimination.cell, elimination.digit) for elimination in eliminations
-                                ),
+                                elimination_key(eliminations),
                             )
                             if key in seen:
                                 continue

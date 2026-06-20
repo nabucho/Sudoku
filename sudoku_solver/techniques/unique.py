@@ -11,7 +11,6 @@ from .common import (
     COL_OF,
     COL_UNITS,
     DIGIT_VALUES,
-    PEERS,
     ROW_OF,
     ROW_UNITS,
     Elimination,
@@ -20,12 +19,14 @@ from .common import (
     SudokuState,
     Technique,
     UnitCandidateCache,
-    bit,
     bit_count,
+    candidates_consistency_ok,
     cell_text,
     digits_from_mask,
+    elimination_key,
     is_single,
     pair_combinations,
+    place_digit_in_candidates,
     placement_text,
     rc_to_i,
     shared_peer_eliminations,
@@ -255,9 +256,7 @@ class UniqueRectangleType3(Technique):
                             tuple[int, ...](sorted(helpers)),
                             unit_index,
                             extra_mask,
-                            tuple[tuple[int, int], ...](
-                                (elimination.cell, elimination.digit) for elimination in eliminations
-                            ),
+                            elimination_key(eliminations),
                         )
                         if key in seen:
                             continue
@@ -480,7 +479,7 @@ class Nishio(Technique):
 
             for digit in digits_from_mask(cell_mask):
                 candidates = state.candidates[:]
-                if self._place_digit(candidates, cell, digit) and self._consistency_ok(candidates):
+                if place_digit_in_candidates(candidates, cell, digit) and candidates_consistency_ok(candidates):
                     continue
 
                 moves.append(
@@ -497,57 +496,4 @@ class Nishio(Technique):
                 )
 
         return moves
-
-    def _place_digit(self, candidates: list[int], cell: int, digit: int) -> bool:
-        digit_mask = bit(digit)
-        if not (candidates[cell] & digit_mask):
-            return False
-
-        for candidate_digit in digits_from_mask(candidates[cell]):
-            if candidate_digit != digit and not self._eliminate_digit(candidates, cell, candidate_digit):
-                return False
-
-        for peer in PEERS[cell]:
-            if candidates[peer] & digit_mask and not self._eliminate_digit(candidates, peer, digit):
-                return False
-        return True
-
-    def _eliminate_digit(self, candidates: list[int], cell: int, digit: int) -> bool:
-        digit_mask = bit(digit)
-        current_mask = candidates[cell]
-        if not (current_mask & digit_mask):
-            return True
-
-        new_mask = current_mask & ~digit_mask
-        if new_mask == 0:
-            return False
-
-        candidates[cell] = new_mask
-        if is_single(new_mask):
-            fixed_digit = single_digit(new_mask)
-            fixed_mask = bit(fixed_digit)
-            for peer in PEERS[cell]:
-                if candidates[peer] & fixed_mask and not self._eliminate_digit(candidates, peer, fixed_digit):
-                    return False
-        return True
-
-    def _consistency_ok(self, candidates: list[int]) -> bool:
-        if any(mask == 0 for mask in candidates):
-            return False
-
-        for unit in ALL_UNITS:
-            seen_fixed: set[int] = set[int]()
-            for cell in unit:
-                mask = candidates[cell]
-                if is_single(mask):
-                    digit = single_digit(mask)
-                    if digit in seen_fixed:
-                        return False
-                    seen_fixed.add(digit)
-
-            for digit in DIGIT_VALUES:
-                digit_mask = bit(digit)
-                if not any(candidates[cell] & digit_mask for cell in unit):
-                    return False
-        return True
 

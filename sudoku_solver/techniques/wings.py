@@ -3,8 +3,6 @@ from __future__ import annotations
 from typing import List
 
 from .common import (
-    ALL_UNITS,
-    CELL_INDICES,
     DIGIT_VALUES,
     PEERS,
     Move,
@@ -14,12 +12,15 @@ from .common import (
     bit,
     bit_count,
     bivalue_candidate_cells,
+    bivalue_cells_by_mask,
     cell_text,
     digits_from_mask,
+    elimination_key,
+    other_bivalue_digit,
     pair_combinations,
     shared_peer_eliminations,
     single_digit,
-    triple_combinations,
+    strong_links_for_digit,
     trivalue_candidate_cells,
 )
 
@@ -52,12 +53,10 @@ class XYWing(Technique):
                     continue
                 peer_mask = state.candidate_mask(peer)
 
-                # xz pincer: contains x but not y
                 if (peer_mask & x_mask) and not (peer_mask & y_mask):
                     if bit_count(peer_mask) == 2:
                         xz_peers.append(peer)
 
-                # yz pincer: contains y but not x
                 if (peer_mask & y_mask) and not (peer_mask & x_mask):
                     if bit_count(peer_mask) == 2:
                         yz_peers.append(peer)
@@ -113,37 +112,37 @@ class XYZWing(Technique):
             if len(pivot_digits) != 3:
                 continue
 
-            for x, y, z in triple_combinations(pivot_digits):
-                x_mask, y_mask, z_mask = bit(x), bit(y), bit(z)
+            x, y, z = pivot_digits
+            x_mask, y_mask, z_mask = bit(x), bit(y), bit(z)
 
-                xz_peers = [
-                    peer for peer in (PEERS[pivot] & bivalue)
-                    if state.candidate_mask(peer) == (x_mask | z_mask)
-                ]
-                yz_peers = [
-                    peer for peer in (PEERS[pivot] & bivalue)
-                    if state.candidate_mask(peer) == (y_mask | z_mask)
-                ]
+            xz_peers = [
+                peer for peer in (PEERS[pivot] & bivalue)
+                if state.candidate_mask(peer) == (x_mask | z_mask)
+            ]
+            yz_peers = [
+                peer for peer in (PEERS[pivot] & bivalue)
+                if state.candidate_mask(peer) == (y_mask | z_mask)
+            ]
 
-                for xz_pincer in xz_peers:
-                    for yz_pincer in yz_peers:
-                        if xz_pincer == yz_pincer:
-                            continue
+            for xz_pincer in xz_peers:
+                for yz_pincer in yz_peers:
+                    if xz_pincer == yz_pincer:
+                        continue
 
-                        eliminations = shared_peer_eliminations(state, (pivot, xz_pincer, yz_pincer), z)
-                        if eliminations:
-                            moves.append(
-                                Move(
-                                    technique=self.name,
-                                    difficulty=self.difficulty,
-                                    reason=(
-                                        f"Pivot {cell_text(pivot)} is {{{x},{y},{z}}}; pincers "
-                                        f"{cell_text(xz_pincer)} are {{{x},{z}}} and {cell_text(yz_pincer)} are "
-                                        f"{{{y},{z}}}, so digit {z} can be removed from cells seeing all three."
-                                    ),
-                                    eliminations=eliminations,
-                                    cause_cells=[pivot, xz_pincer, yz_pincer],
-                                )
+                    eliminations = shared_peer_eliminations(state, (pivot, xz_pincer, yz_pincer), z)
+                    if eliminations:
+                        moves.append(
+                            Move(
+                                technique=self.name,
+                                difficulty=self.difficulty,
+                                reason=(
+                                    f"Pivot {cell_text(pivot)} is {{{x},{y},{z}}}; pincers "
+                                    f"{cell_text(xz_pincer)} are {{{x},{z}}} and {cell_text(yz_pincer)} are "
+                                    f"{{{y},{z}}}, so digit {z} can be removed from cells seeing all three."
+                                ),
+                                eliminations=eliminations,
+                                cause_cells=[pivot, xz_pincer, yz_pincer],
+                            )
                             )
 
         return moves
@@ -172,7 +171,7 @@ class XYChain(Technique):
         for start in bivalue:
             start_digits = digits_from_mask(state.candidate_mask(start))
             for eliminated_digit in start_digits:
-                next_digit = start_digits[0] if start_digits[1] == eliminated_digit else start_digits[1]
+                next_digit = other_bivalue_digit(start_digits, eliminated_digit)
                 self._extend_chain(
                     state,
                     start,
@@ -211,7 +210,7 @@ class XYChain(Technique):
             next_digits = digits_from_mask(next_mask)
             if len(next_digits) != 2:
                 continue
-            next_needed = next_digits[0] if next_digits[1] == needed_digit else next_digits[1]
+            next_needed = other_bivalue_digit(next_digits, needed_digit)
             next_path = path + [next_cell]
 
             if next_needed == eliminated_digit and len(next_path) >= 3:
@@ -223,9 +222,7 @@ class XYChain(Technique):
                     eliminated_digit,
                     min(start, next_cell),
                     tuple[int, ...](sorted(next_path)),
-                    tuple[tuple[int, int], ...](
-                        (elimination.cell, elimination.digit) for elimination in eliminations
-                    ),
+                    elimination_key(eliminations),
                 )
                 if key in seen:
                     continue
@@ -270,30 +267,20 @@ class WWing(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        bivalue_by_mask: dict[int, list[int]] = {}
         candidate_cache = UnitCandidateCache(state)
         strong_links_by_digit = {
-            digit: [
-                tuple[int, ...](cells)
-                for unit in ALL_UNITS
-                for cells in (candidate_cache.unsolved_cells_with_candidate(unit, digit),)
-                if len(cells) == 2
-            ]
+            digit: strong_links_for_digit(state, digit, candidate_cache)
             for digit in DIGIT_VALUES
         }
 
-        for cell in CELL_INDICES:
-            if state.is_bivalue(cell):
-                bivalue_by_mask.setdefault(state.candidate_mask(cell), []).append(cell)
-
-        for pair_mask, cells in bivalue_by_mask.items():
+        for pair_mask, cells in bivalue_cells_by_mask(state).items():
             pair_digits = digits_from_mask(pair_mask)
             for first_wing_cell, second_wing_cell in pair_combinations(cells):
                 if second_wing_cell in PEERS[first_wing_cell]:
                     continue
 
                 for link_digit in pair_digits:
-                    eliminated_digit = pair_digits[0] if pair_digits[1] == link_digit else pair_digits[1]
+                    eliminated_digit = other_bivalue_digit(pair_digits, link_digit)
                     for first_link_cell, second_link_cell in strong_links_by_digit[link_digit]:
                         linked = (
                             (first_link_cell in PEERS[first_wing_cell] and second_link_cell in PEERS[second_wing_cell])
@@ -337,13 +324,7 @@ class RemotePairs(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        cells_by_mask: dict[int, list[int]] = {}
-
-        for cell in CELL_INDICES:
-            if state.is_bivalue(cell):
-                cells_by_mask.setdefault(state.candidate_mask(cell), []).append(cell)
-
-        for pair_mask, cells in cells_by_mask.items():
+        for pair_mask, cells in bivalue_cells_by_mask(state).items():
             if len(cells) < 4:
                 continue
 

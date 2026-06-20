@@ -7,21 +7,18 @@ import time
 from .explanation import explanation_steps
 from .strategies import techniques_for_strategy
 from .techniques.common import (
-    ALL_UNITS,
     CELL_INDICES,
-    DIGIT_VALUES,
-    PEERS,
     ExplanationStep,
     Move,
     Placement,
     SudokuState,
     Technique,
     TechniqueTiming,
-    bit,
+    apply_move_to_candidates,
     bit_count,
+    candidate_totals,
     cell_text,
     is_single,
-    single_digit,
     unsolved_cells,
 )
 
@@ -108,7 +105,7 @@ class SudokuSolver:
 
     def _best_move(self, state: SudokuState, moves: list[Move]) -> Move:
         """Choose the most useful move from one technique result set."""
-        before_solved, before_candidates = self._candidate_totals(state.candidates)
+        before_solved, before_candidates = candidate_totals(state.candidates)
         scored_moves = [
             (score, move)
             for move in moves
@@ -126,13 +123,6 @@ class SudokuSolver:
             )
         return max(scored_moves, key=lambda item: item[0])[1]
 
-    def _candidate_totals(self, candidates: list[int]) -> tuple[int, int]:
-        """Return solved-cell and total-candidate counts."""
-        return (
-            sum(1 for mask in candidates if is_single(mask)),
-            sum(bit_count(mask) for mask in candidates),
-        )
-
     def _move_score(
         self,
         state: SudokuState,
@@ -142,10 +132,10 @@ class SudokuSolver:
     ) -> MoveScore | None:
         """Return a deterministic board-impact score for a candidate move."""
         candidates = state.candidates[:]
-        if not self._apply_move_to_candidates(candidates, move):
+        if not apply_move_to_candidates(candidates, move):
             return None
 
-        after_solved, after_candidates = self._candidate_totals(candidates)
+        after_solved, after_candidates = candidate_totals(candidates)
 
         return (
             after_solved - before_solved,
@@ -157,87 +147,11 @@ class SudokuSolver:
             move.reason,
         )
 
-    def _apply_move_to_candidates(self, candidates: list[int], move: Move) -> bool:
-        """Apply a move to candidate masks without cloning a full SudokuState."""
-        for placement in move.placements:
-            if not self._place_digit_in_candidates(candidates, placement.cell, placement.digit):
-                return False
-
-        for elimination in move.eliminations:
-            if not self._eliminate_digit_from_candidates(candidates, elimination.cell, elimination.digit):
-                return False
-
-        return self._candidates_consistency_ok(candidates)
-
-    def _eliminate_digit_from_candidates(self, candidates: list[int], cell: int, digit: int) -> bool:
-        """Remove one candidate from a local candidate-mask list."""
-        digit_mask = bit(digit)
-        current_mask = candidates[cell]
-        if not (current_mask & digit_mask):
-            return True
-
-        new_mask = current_mask & ~digit_mask
-        if new_mask == 0:
-            return False
-
-        candidates[cell] = new_mask
-        if is_single(new_mask):
-            fixed_digit = single_digit(new_mask)
-            fixed_mask = bit(fixed_digit)
-            for peer in PEERS[cell]:
-                if candidates[peer] & fixed_mask:
-                    if not self._eliminate_digit_from_candidates(candidates, peer, fixed_digit):
-                        return False
-        return True
-
-    def _place_digit_in_candidates(self, candidates: list[int], cell: int, digit: int) -> bool:
-        """Place a digit in a local candidate-mask list."""
-        digit_mask = bit(digit)
-        if not (candidates[cell] & digit_mask):
-            return False
-
-        current_digits = [
-            candidate_digit
-            for candidate_digit in DIGIT_VALUES
-            if candidates[cell] & bit(candidate_digit)
-        ]
-        for candidate_digit in current_digits:
-            if candidate_digit != digit:
-                if not self._eliminate_digit_from_candidates(candidates, cell, candidate_digit):
-                    return False
-
-        for peer in PEERS[cell]:
-            if candidates[peer] & digit_mask:
-                if not self._eliminate_digit_from_candidates(candidates, peer, digit):
-                    return False
-        return True
-
-    def _candidates_consistency_ok(self, candidates: list[int]) -> bool:
-        """Return whether local candidate masks satisfy Sudoku invariants."""
-        if any(mask == 0 for mask in candidates):
-            return False
-
-        for unit in ALL_UNITS:
-            seen_fixed: set[int] = set[int]()
-            for cell in unit:
-                mask = candidates[cell]
-                if is_single(mask):
-                    digit = single_digit(mask)
-                    if digit in seen_fixed:
-                        return False
-                    seen_fixed.add(digit)
-
-            for digit in DIGIT_VALUES:
-                digit_mask = bit(digit)
-                if not any(candidates[cell] & digit_mask for cell in unit):
-                    return False
-        return True
-
     def _highest_impact_move(self, state: SudokuState) -> Move | None:
         """Evaluate all logical moves and return the one with best impact."""
         best_move: Move | None = None
         best_score: MoveScore | None = None
-        before_solved, before_candidates = self._candidate_totals(state.candidates)
+        before_solved, before_candidates = candidate_totals(state.candidates)
 
         for technique in self.techniques:
             for move in self._find_moves_timed(technique, state):

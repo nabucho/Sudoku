@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import List
 
-from .coloring import strong_links_for_digit
 from .common import (
     BOX_OF,
     BOX_UNITS,
@@ -18,9 +17,11 @@ from .common import (
     Technique,
     UnitCandidateCache,
     cell_text,
+    elimination_key,
     pair_combinations,
     rc_to_i,
     shared_peer_eliminations,
+    strong_links_for_digit,
 )
 
 
@@ -63,9 +64,7 @@ class TurbotFish(Technique):
                         key = (
                             digit,
                             tuple[int, ...](cause_cells),
-                            tuple[tuple[int, int], ...](
-                                sorted((elimination.cell, elimination.digit) for elimination in eliminations)
-                            ),
+                            elimination_key(eliminations, sorted_key=True),
                         )
                         if key in seen:
                             continue
@@ -86,11 +85,6 @@ class TurbotFish(Technique):
                         )
 
         return moves
-
-
-# ============================================================
-# Advanced techniques
-# ============================================================
 
 class Skyscraper(Technique):
     """Find Skyscraper eliminations from two parallel strong links.
@@ -218,7 +212,6 @@ class TwoStringKite(Technique):
 
             for r, row_cells in row_twos:
                 for c, col_cells in col_twos:
-                    # Need one row candidate and one column candidate in same box.
                     for row_cell in row_cells:
                         for col_cell in col_cells:
                             if row_cell == col_cell:
@@ -226,11 +219,9 @@ class TwoStringKite(Technique):
                             if BOX_OF[row_cell] != BOX_OF[col_cell]:
                                 continue
 
-                            # endpoints = the "other" row and column cells
                             row_other = row_cells[0] if row_cells[1] == row_cell else row_cells[1]
                             col_other = col_cells[0] if col_cells[1] == col_cell else col_cells[1]
 
-                            # Row-other and col-other are the kite tips.
                             eliminations = shared_peer_eliminations(state, (row_other, col_other), digit)
                             if eliminations:
                                 moves.append(

@@ -61,14 +61,13 @@ def digits_from_mask(mask: int) -> List[int]:
     return list[int](bits(mask))
 
 
+# ============================================================
+# Typed iteration helpers
+# ============================================================
+
 def pair_combinations(items: Iterable[T]) -> Iterator[tuple[T, T]]:
     """Return typed 2-item combinations from an iterable."""
     return cast(Iterator[tuple[T, T]], combinations(items, 2))
-
-
-def triple_combinations(items: Iterable[T]) -> Iterator[tuple[T, T, T]]:
-    """Return typed 3-item combinations from an iterable."""
-    return cast(Iterator[tuple[T, T, T]], combinations(items, 3))
 
 
 def sized_combinations(items: Iterable[T], size: int) -> Iterator[tuple[T, ...]]:
@@ -156,10 +155,9 @@ COL_OF = [cell % 9 for cell in CELL_INDICES]
 BOX_OF = [((cell // 9) // 3) * 3 + ((cell % 9) // 3) for cell in CELL_INDICES]
 
 
-def cells_with_candidate(state: "SudokuState", unit: Sequence[int], digit: int) -> List[int]:
-    """Return cells in a unit that still allow a candidate digit."""
-    return [cell for cell in unit if state.can_place(cell, digit)]
-
+# ============================================================
+# Candidate lookup helpers
+# ============================================================
 
 class UnitCandidateCache:
     """Per-state cache of candidate positions in units.
@@ -195,9 +193,33 @@ class UnitCandidateCache:
         return self.cells_with_candidate(unit, digit, include_solved=False)
 
 
+def strong_links_for_digit(
+    state: "SudokuState",
+    digit: int,
+    candidate_cache: UnitCandidateCache | None = None,
+) -> List[Tuple[int, int]]:
+    """Return conjugate-pair strong links for one candidate digit."""
+    cache = candidate_cache or UnitCandidateCache(state)
+    links: set[tuple[int, int]] = set[tuple[int, int]]()
+    for unit in ALL_UNITS:
+        cells = cache.unsolved_cells_with_candidate(unit, digit)
+        if len(cells) == 2:
+            first_cell, second_cell = sorted(cells)
+            links.add((first_cell, second_cell))
+    return sorted(links)
+
+
 def bivalue_candidate_cells(state: "SudokuState") -> List[int]:
     """Return unsolved cells with exactly two candidates."""
     return [cell for cell in CELL_INDICES if state.is_bivalue(cell)]
+
+
+def bivalue_cells_by_mask(state: "SudokuState") -> dict[int, list[int]]:
+    """Group bivalue cells by their two-candidate mask."""
+    cells_by_mask: dict[int, list[int]] = {}
+    for cell in bivalue_candidate_cells(state):
+        cells_by_mask.setdefault(state.candidate_mask(cell), []).append(cell)
+    return cells_by_mask
 
 
 def trivalue_candidate_cells(state: "SudokuState") -> List[int]:
@@ -209,6 +231,10 @@ def unsolved_cells(state: "SudokuState") -> List[int]:
     """Return cells that are not solved to a single digit."""
     return [cell for cell in CELL_INDICES if not is_single(state.candidate_mask(cell))]
 
+
+# ============================================================
+# Peer and elimination helpers
+# ============================================================
 
 def shared_peers(cells: Iterable[int]) -> set[int]:
     """Return cells that see every cell in the given collection."""
@@ -244,6 +270,11 @@ def shared_peer_eliminations(
         for cell in sorted(shared_peers(cells) - blocked_cells)
         if state.can_place(cell, digit)
     ]
+
+
+def other_bivalue_digit(digits: Sequence[int], known_digit: int) -> int:
+    """Return the other digit from a two-digit candidate sequence."""
+    return digits[0] if digits[1] == known_digit else digits[1]
 
 
 # ============================================================
@@ -297,6 +328,7 @@ class TechniqueTiming:
         return (self.successes / self.attempts * 100.0) if self.attempts else 0.0
 
 
+# Text formatting helpers used by explanations and CLI rendering.
 def placement_text(placement: Placement) -> str:
     return f"{cell_text(placement.cell)}={placement.digit}"
 
@@ -326,6 +358,102 @@ class Move:
         if self.reason.startswith(f"{self.technique}:"):
             return self.reason
         return f"{self.technique}: {self.reason}"
+
+
+# ============================================================
+# Move key and candidate simulation helpers
+# ============================================================
+
+EliminationKey = tuple[tuple[int, int], ...]
+
+
+def elimination_key(eliminations: Sequence[Elimination], *, sorted_key: bool = False) -> EliminationKey:
+    """Return a typed, hashable key for a sequence of eliminations."""
+    pairs = ((elimination.cell, elimination.digit) for elimination in eliminations)
+    return tuple[tuple[int, int], ...](sorted(pairs) if sorted_key else pairs)
+
+
+def candidate_totals(candidates: Sequence[int]) -> tuple[int, int]:
+    """Return solved-cell and total-candidate counts."""
+    return (
+        sum(1 for mask in candidates if is_single(mask)),
+        sum(bit_count(mask) for mask in candidates),
+    )
+
+
+def eliminate_digit_from_candidates(candidates: list[int], cell: int, digit: int) -> bool:
+    """Remove one candidate from a local candidate-mask list."""
+    digit_mask = bit(digit)
+    current_mask = candidates[cell]
+    if not (current_mask & digit_mask):
+        return True
+
+    new_mask = current_mask & ~digit_mask
+    if new_mask == 0:
+        return False
+
+    candidates[cell] = new_mask
+    if is_single(new_mask):
+        fixed_digit = single_digit(new_mask)
+        fixed_mask = bit(fixed_digit)
+        for peer in PEERS[cell]:
+            if candidates[peer] & fixed_mask:
+                if not eliminate_digit_from_candidates(candidates, peer, fixed_digit):
+                    return False
+    return True
+
+
+def place_digit_in_candidates(candidates: list[int], cell: int, digit: int) -> bool:
+    """Place a digit in a local candidate-mask list."""
+    digit_mask = bit(digit)
+    if not (candidates[cell] & digit_mask):
+        return False
+
+    for candidate_digit in digits_from_mask(candidates[cell]):
+        if candidate_digit != digit:
+            if not eliminate_digit_from_candidates(candidates, cell, candidate_digit):
+                return False
+
+    for peer in PEERS[cell]:
+        if candidates[peer] & digit_mask:
+            if not eliminate_digit_from_candidates(candidates, peer, digit):
+                return False
+    return True
+
+
+def candidates_consistency_ok(candidates: Sequence[int]) -> bool:
+    """Return whether local candidate masks satisfy Sudoku invariants."""
+    if any(mask == 0 for mask in candidates):
+        return False
+
+    for unit in ALL_UNITS:
+        seen_fixed: set[int] = set[int]()
+        for cell in unit:
+            mask = candidates[cell]
+            if is_single(mask):
+                digit = single_digit(mask)
+                if digit in seen_fixed:
+                    return False
+                seen_fixed.add(digit)
+
+        for digit in DIGIT_VALUES:
+            digit_mask = bit(digit)
+            if not any(candidates[cell] & digit_mask for cell in unit):
+                return False
+    return True
+
+
+def apply_move_to_candidates(candidates: list[int], move: Move) -> bool:
+    """Apply a move to candidate masks without cloning a full SudokuState."""
+    for placement in move.placements:
+        if not place_digit_in_candidates(candidates, placement.cell, placement.digit):
+            return False
+
+    for elimination in move.eliminations:
+        if not eliminate_digit_from_candidates(candidates, elimination.cell, elimination.digit):
+            return False
+
+    return candidates_consistency_ok(candidates)
 
 
 @dataclass
@@ -499,11 +627,9 @@ class SudokuState:
 
     def consistency_ok(self) -> bool:
         """Return whether the current candidates satisfy Sudoku invariants."""
-        # no empty cells
         if any(mask == 0 for mask in self.candidates):
             return False
 
-        # each digit must have at least one possible place in each unit
         for unit in ALL_UNITS:
             seen_fixed: set[int] = set[int]()
             for cell in unit:
@@ -540,7 +666,6 @@ class SudokuState:
             fixed_mask = bit(fixed_digit)
             self.fixed_cells.add(cell)
 
-            # remove fixed_digit from all peers
             for peer in PEERS[cell]:
                 if self.candidates[peer] & fixed_mask:
                     if not self.eliminate_digit(peer, fixed_digit):
@@ -559,7 +684,6 @@ class SudokuState:
                 if not self.eliminate_digit(cell, candidate_digit):
                     return False
 
-        # ensure peers do not contain the placed digit
         for peer in PEERS[cell]:
             if self.can_place(peer, digit):
                 if not self.eliminate_digit(peer, digit):
@@ -594,6 +718,3 @@ class Technique:
     def find_moves(self, state: SudokuState) -> List[Move]:
         """Return all moves this technique can currently find."""
         raise NotImplementedError
-
-# ============================================================
-

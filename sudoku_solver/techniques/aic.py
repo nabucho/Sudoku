@@ -15,6 +15,7 @@ from .common import (
     Technique,
     UnitCandidateCache,
     cell_text,
+    elimination_key,
     is_single,
     pair_combinations,
     shared_peer_eliminations,
@@ -47,13 +48,11 @@ def _is_duplicate_elimination(
     path: list[LinkNode],
     eliminations: List[Elimination],
 ) -> bool:
-    elimination_key = tuple[tuple[int, int], ...](
-        (elimination.cell, elimination.digit) for elimination in eliminations
-    )
+    eliminations_key = elimination_key(eliminations)
     path_key = tuple[LinkNode, ...](path)
     reverse_path_key = tuple[LinkNode, ...](reversed(path))
-    key = (path_key, elimination_key)
-    reverse_key = (reverse_path_key, elimination_key)
+    key = (path_key, eliminations_key)
+    reverse_key = (reverse_path_key, eliminations_key)
     if key in seen or reverse_key in seen:
         return True
     seen.add(key)

@@ -15,6 +15,7 @@ from .common import (
     SudokuState,
     Technique,
     bit_count,
+    elimination_key,
     rc_to_i,
     sized_combinations,
 )
@@ -370,9 +371,7 @@ class FinnedSwordfish(Technique):
                             tuple[int, ...](rows),
                             tuple[int, ...](fish_cols),
                             tuple[int, ...](sorted(fins)),
-                            tuple[tuple[int, int], ...](
-                                sorted((elimination.cell, elimination.digit) for elimination in eliminations)
-                            ),
+                            elimination_key(eliminations, sorted_key=True),
                         )
                         if key in seen:
                             continue
@@ -452,9 +451,7 @@ class FinnedSwordfish(Technique):
                             tuple[int, ...](cols),
                             tuple[int, ...](fish_rows),
                             tuple[int, ...](sorted(fins)),
-                            tuple[tuple[int, int], ...](
-                                sorted((elimination.cell, elimination.digit) for elimination in eliminations)
-                            ),
+                            elimination_key(eliminations, sorted_key=True),
                         )
                         if key in seen:
                             continue

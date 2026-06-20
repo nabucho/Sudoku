@@ -13,6 +13,7 @@ from .common import (
     bit_count,
     cells_text,
     digits_from_mask,
+    elimination_key,
     is_single,
     sized_combinations,
 )
@@ -99,9 +100,7 @@ class SueDeCoq(Technique):
                             tuple[int, ...](intersection),
                             tuple[int, ...](line_companions),
                             tuple[int, ...](box_companions),
-                            tuple[tuple[int, int], ...](
-                                (elimination.cell, elimination.digit) for elimination in eliminations
-                            ),
+                            elimination_key(eliminations),
                         )
                         if key in seen:
                             continue

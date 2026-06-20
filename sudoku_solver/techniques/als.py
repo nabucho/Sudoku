@@ -13,6 +13,7 @@ from .common import (
     bit_count,
     bits,
     cell_text,
+    elimination_key,
     is_single,
     pair_combinations,
     sized_combinations,
@@ -79,18 +80,14 @@ class ALSXZ(Technique):
                             right.cells,
                             restricted_digit,
                             eliminated_digit,
-                            tuple[tuple[int, int], ...](
-                                (elimination.cell, elimination.digit) for elimination in eliminations
-                            ),
+                            elimination_key(eliminations),
                         )
                         reverse_key = (
                             right.cells,
                             left.cells,
                             restricted_digit,
                             eliminated_digit,
-                            tuple[tuple[int, int], ...](
-                                (elimination.cell, elimination.digit) for elimination in eliminations
-                            ),
+                            elimination_key(eliminations),
                         )
                         if key in seen or reverse_key in seen:
                             continue
@@ -284,9 +281,7 @@ class ALSWing(ALSXZ):
                         left_digit,
                         right_digit,
                         eliminated_digit,
-                        tuple[tuple[int, int], ...](
-                            (elimination.cell, elimination.digit) for elimination in eliminations
-                        ),
+                        elimination_key(eliminations),
                     )
                     reverse_key = (
                         pivot.cells,
@@ -295,9 +290,7 @@ class ALSWing(ALSXZ):
                         right_digit,
                         left_digit,
                         eliminated_digit,
-                        tuple[tuple[int, int], ...](
-                            (elimination.cell, elimination.digit) for elimination in eliminations
-                        ),
+                        elimination_key(eliminations),
                     )
                     if key in seen or reverse_key in seen:
                         continue
