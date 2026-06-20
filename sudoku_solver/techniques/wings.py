@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import combinations
 from typing import List
 
 from .common import (
@@ -17,8 +16,10 @@ from .common import (
     bivalue_candidate_cells,
     cell_text,
     digits_from_mask,
+    pair_combinations,
     shared_peer_eliminations,
     single_digit,
+    triple_combinations,
     trivalue_candidate_cells,
 )
 
@@ -43,8 +44,8 @@ class XYWing(Technique):
             x_mask = bit(x)
             y_mask = bit(y)
 
-            xz_peers = []
-            yz_peers = []
+            xz_peers: list[int] = []
+            yz_peers: list[int] = []
 
             for peer in PEERS[pivot]:
                 if not state.is_bivalue(peer):
@@ -105,14 +106,14 @@ class XYZWing(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
         pivots = trivalue_candidate_cells(state)
-        bivalue = set(bivalue_candidate_cells(state))
+        bivalue = set[int](bivalue_candidate_cells(state))
 
         for pivot in pivots:
             pivot_digits = digits_from_mask(state.candidate_mask(pivot))
             if len(pivot_digits) != 3:
                 continue
 
-            for x, y, z in combinations(pivot_digits, 3):
+            for x, y, z in triple_combinations(pivot_digits):
                 x_mask, y_mask, z_mask = bit(x), bit(y), bit(z)
 
                 xz_peers = [
@@ -162,9 +163,11 @@ class XYChain(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen: set[tuple[int, int, tuple[int, ...], tuple[tuple[int, int], ...]]] = set()
+        seen: set[tuple[int, int, tuple[int, ...], tuple[tuple[int, int], ...]]] = set[
+            tuple[int, int, tuple[int, ...], tuple[tuple[int, int], ...]]
+        ]()
         bivalue = bivalue_candidate_cells(state)
-        bivalue_set = set(bivalue)
+        bivalue_set = set[int](bivalue)
 
         for start in bivalue:
             start_digits = digits_from_mask(state.candidate_mask(start))
@@ -199,7 +202,7 @@ class XYChain(Technique):
         if len(path) >= self.max_length:
             return
 
-        next_cells = sorted((PEERS[current] & bivalue_cell_set) - set(path))
+        next_cells = sorted((PEERS[current] & bivalue_cell_set) - set[int](path))
         for next_cell in next_cells:
             next_mask = state.candidate_mask(next_cell)
             if not (next_mask & bit(needed_digit)):
@@ -219,8 +222,10 @@ class XYChain(Technique):
                 key = (
                     eliminated_digit,
                     min(start, next_cell),
-                    tuple(sorted(next_path)),
-                    tuple((elimination.cell, elimination.digit) for elimination in eliminations),
+                    tuple[int, ...](sorted(next_path)),
+                    tuple[tuple[int, int], ...](
+                        (elimination.cell, elimination.digit) for elimination in eliminations
+                    ),
                 )
                 if key in seen:
                     continue
@@ -269,7 +274,7 @@ class WWing(Technique):
         candidate_cache = UnitCandidateCache(state)
         strong_links_by_digit = {
             digit: [
-                tuple(cells)
+                tuple[int, ...](cells)
                 for unit in ALL_UNITS
                 for cells in (candidate_cache.unsolved_cells_with_candidate(unit, digit),)
                 if len(cells) == 2
@@ -283,7 +288,7 @@ class WWing(Technique):
 
         for pair_mask, cells in bivalue_by_mask.items():
             pair_digits = digits_from_mask(pair_mask)
-            for first_wing_cell, second_wing_cell in combinations(cells, 2):
+            for first_wing_cell, second_wing_cell in pair_combinations(cells):
                 if second_wing_cell in PEERS[first_wing_cell]:
                     continue
 
@@ -342,7 +347,7 @@ class RemotePairs(Technique):
             if len(cells) < 4:
                 continue
 
-            cell_set = set(cells)
+            cell_set = set[int](cells)
             graph = {cell: sorted(PEERS[cell] & cell_set) for cell in cells}
             color: dict[int, int] = {}
 
@@ -350,7 +355,7 @@ class RemotePairs(Technique):
                 if start in color:
                     continue
 
-                component = []
+                component: list[int] = []
                 queue = [start]
                 color[start] = 0
                 valid_component = True
@@ -370,7 +375,7 @@ class RemotePairs(Technique):
                     continue
 
                 pair_digits = digits_from_mask(pair_mask)
-                for first_endpoint, second_endpoint in combinations(component, 2):
+                for first_endpoint, second_endpoint in pair_combinations(component):
                     if color[first_endpoint] == color[second_endpoint]:
                         continue
 

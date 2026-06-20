@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from itertools import combinations
-from typing import List
+from typing import List, TypeVar
 
 from .common import (
     ALL_UNITS,
@@ -17,11 +16,14 @@ from .common import (
     UnitCandidateCache,
     cell_text,
     is_single,
+    pair_combinations,
     shared_peer_eliminations,
+    zip_pairs,
 )
 
 CandidateNode = tuple[int, int]
 GroupedNode = tuple[int, tuple[int, ...]]
+LinkNode = TypeVar("LinkNode", CandidateNode, GroupedNode)
 CELL_BIT_MASKS = [1 << cell for cell in CELL_INDICES]
 UNIT_CELL_MASKS = [
     sum(CELL_BIT_MASKS[cell] for cell in unit)
@@ -29,10 +31,10 @@ UNIT_CELL_MASKS = [
 ]
 
 
-def _add_link(links: dict, left, right) -> None:
+def _add_link(links: dict[LinkNode, set[LinkNode]], left: LinkNode, right: LinkNode) -> None:
     """Add an undirected graph link between two candidate nodes."""
-    links.setdefault(left, set()).add(right)
-    links.setdefault(right, set()).add(left)
+    links.setdefault(left, set[LinkNode]()).add(right)
+    links.setdefault(right, set[LinkNode]()).add(left)
 
 
 def _cells_mask(cells: tuple[int, ...]) -> int:
@@ -41,13 +43,15 @@ def _cells_mask(cells: tuple[int, ...]) -> int:
 
 
 def _is_duplicate_elimination(
-    seen: set[tuple[tuple, tuple[tuple[int, int], ...]]],
-    path: list,
+    seen: set[tuple[tuple[LinkNode, ...], tuple[tuple[int, int], ...]]],
+    path: list[LinkNode],
     eliminations: List[Elimination],
 ) -> bool:
-    elimination_key = tuple((elimination.cell, elimination.digit) for elimination in eliminations)
-    path_key = tuple(path)
-    reverse_path_key = tuple(reversed(path))
+    elimination_key = tuple[tuple[int, int], ...](
+        (elimination.cell, elimination.digit) for elimination in eliminations
+    )
+    path_key = tuple[LinkNode, ...](path)
+    reverse_path_key = tuple[LinkNode, ...](reversed(path))
     key = (path_key, elimination_key)
     reverse_key = (reverse_path_key, elimination_key)
     if key in seen or reverse_key in seen:
@@ -94,7 +98,9 @@ class AIC(Technique):
     def find_moves(self, state: SudokuState) -> List[Move]:
         strong_links, weak_links = self._build_links(state)
         moves: List[Move] = []
-        seen: set[tuple[tuple[CandidateNode, ...], tuple[tuple[int, int], ...]]] = set()
+        seen: set[tuple[tuple[CandidateNode, ...], tuple[tuple[int, int], ...]]] = set[
+            tuple[tuple[CandidateNode, ...], tuple[tuple[int, int], ...]]
+        ]()
 
         for start in sorted(strong_links):
             self._extend_chain(
@@ -125,7 +131,7 @@ class AIC(Technique):
                 continue
 
             nodes = [(cell, digit) for digit in state.candidate_digits(cell)]
-            for left, right in combinations(nodes, 2):
+            for left, right in pair_combinations(nodes):
                 _add_link(weak_links, left, right)
                 if len(nodes) == 2:
                     _add_link(strong_links, left, right)
@@ -137,7 +143,7 @@ class AIC(Technique):
                     (cell, digit)
                     for cell in candidate_cache.unsolved_cells_with_candidate(unit, digit)
                 ]
-                for left, right in combinations(nodes, 2):
+                for left, right in pair_combinations(nodes):
                     _add_link(weak_links, left, right)
                 if len(nodes) == 2:
                     _add_link(strong_links, nodes[0], nodes[1])
@@ -162,7 +168,7 @@ class AIC(Technique):
         links = strong_links if next_link_type == "strong" else weak_links
         following_link_type = _next_link_type(next_link_type)
 
-        for next_node in sorted(links.get(current, set())):
+        for next_node in sorted(links.get(current, set[CandidateNode]())):
             if next_node in path:
                 continue
 
@@ -225,7 +231,7 @@ class AIC(Technique):
 
     def _chain_text(self, path: List[CandidateNode], edge_types: List[str]) -> str:
         parts = [self._node_text(path[0])]
-        for edge_type, node in zip(edge_types, path[1:]):
+        for edge_type, node in zip_pairs(edge_types, path[1:]):
             marker = "=" if edge_type == "strong" else "-"
             parts.append(f"{marker} {self._node_text(node)}")
         return " ".join(parts)
@@ -258,7 +264,7 @@ class XChain(AIC):
                     (cell, digit)
                     for cell in candidate_cache.unsolved_cells_with_candidate(unit, digit)
                 ]
-                for left, right in combinations(nodes, 2):
+                for left, right in pair_combinations(nodes):
                     _add_link(weak_links, left, right)
                 if len(nodes) == 2:
                     _add_link(strong_links, nodes[0], nodes[1])
@@ -324,7 +330,9 @@ class GroupedAIC(Technique):
             candidate_cache=candidate_cache,
         )
         moves: List[Move] = []
-        seen: set[tuple[tuple[GroupedNode, ...], tuple[tuple[int, int], ...]]] = set()
+        seen: set[tuple[tuple[GroupedNode, ...], tuple[tuple[int, int], ...]]] = set[
+            tuple[tuple[GroupedNode, ...], tuple[tuple[int, int], ...]]
+        ]()
 
         for start in sorted(strong_links):
             if len(moves) >= self.max_moves:
@@ -355,7 +363,7 @@ class GroupedAIC(Technique):
         weak_links: dict[GroupedNode, set[GroupedNode]] = {}
 
         for digit, nodes in nodes_by_digit.items():
-            for unit_index, unit in enumerate(ALL_UNITS):
+            for unit_index, unit in enumerate[list[int]](ALL_UNITS):
                 unit_mask = UNIT_CELL_MASKS[unit_index]
                 unit_candidate_cells = candidate_cache.unsolved_cells_with_candidate(unit, digit)
                 unit_candidate_mask = sum(CELL_BIT_MASKS[cell] for cell in unit_candidate_cells)
@@ -366,7 +374,7 @@ class GroupedAIC(Technique):
                     node for node in nodes
                     if not (node_masks[node] & ~unit_mask) and node_masks[node] & unit_candidate_mask
                 ]
-                for left, right in combinations(unit_nodes, 2):
+                for left, right in pair_combinations(unit_nodes):
                     left_mask = node_masks[left]
                     right_mask = node_masks[right]
                     if left_mask & right_mask:
@@ -383,7 +391,7 @@ class GroupedAIC(Technique):
                     (digit, (cell,))
                     for digit in state.candidate_digits(cell)
                 ]
-                for left, right in combinations(cell_nodes, 2):
+                for left, right in pair_combinations(cell_nodes):
                     _add_link(weak_links, left, right)
                     if len(cell_nodes) == 2:
                         _add_link(strong_links, left, right)
@@ -395,7 +403,9 @@ class GroupedAIC(Technique):
         state: SudokuState,
         candidate_cache: UnitCandidateCache,
     ) -> tuple[dict[int, set[GroupedNode]], dict[GroupedNode, int]]:
-        nodes_by_digit: dict[int, set[GroupedNode]] = {digit: set() for digit in DIGIT_VALUES}
+        nodes_by_digit: dict[int, set[GroupedNode]] = {
+            digit: set[GroupedNode]() for digit in DIGIT_VALUES
+        }
         node_masks: dict[GroupedNode, int] = {}
 
         for digit in DIGIT_VALUES:
@@ -408,13 +418,13 @@ class GroupedAIC(Technique):
             for box in BOX_UNITS:
                 box_candidates = candidate_cache.unsolved_cells_with_candidate(box, digit)
                 for row in sorted({ROW_OF[cell] for cell in box}):
-                    cells = tuple(sorted(cell for cell in box_candidates if ROW_OF[cell] == row))
+                    cells = tuple[int, ...](sorted(cell for cell in box_candidates if ROW_OF[cell] == row))
                     if len(cells) > 1:
                         node = (digit, cells)
                         nodes_by_digit[digit].add(node)
                         node_masks[node] = _cells_mask(cells)
                 for col in sorted({COL_OF[cell] for cell in box}):
-                    cells = tuple(sorted(cell for cell in box_candidates if COL_OF[cell] == col))
+                    cells = tuple[int, ...](sorted(cell for cell in box_candidates if COL_OF[cell] == col))
                     if len(cells) > 1:
                         node = (digit, cells)
                         nodes_by_digit[digit].add(node)
@@ -440,7 +450,7 @@ class GroupedAIC(Technique):
         links = strong_links if next_link_type == "strong" else weak_links
         following_link_type = _next_link_type(next_link_type)
 
-        for next_node in sorted(links.get(current, set())):
+        for next_node in sorted(links.get(current, set[GroupedNode]())):
             if len(moves) >= self.max_moves:
                 return
             if next_node in path:
@@ -475,7 +485,7 @@ class GroupedAIC(Technique):
         end_digit, end_cells = path[-1]
         eliminations: List[Elimination] = []
 
-        if start_digit == end_digit and set(start_cells) != set(end_cells):
+        if start_digit == end_digit and set[int](start_cells) != set[int](end_cells):
             eliminations = _grouped_common_peer_eliminations(state, start_cells, end_cells, start_digit)
         elif len(start_cells) == 1 and start_cells == end_cells and start_digit != end_digit:
             endpoint_digits = {start_digit, end_digit}
@@ -505,7 +515,7 @@ class GroupedAIC(Technique):
 
     def _chain_text(self, path: List[GroupedNode], edge_types: List[str]) -> str:
         parts = [self._node_text(path[0])]
-        for edge_type, node in zip(edge_types, path[1:]):
+        for edge_type, node in zip_pairs(edge_types, path[1:]):
             marker = "=" if edge_type == "strong" else "-"
             parts.append(f"{marker} {self._node_text(node)}")
         return " ".join(parts)

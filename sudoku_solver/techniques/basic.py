@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import combinations
 from typing import List
 
 from .common import (
@@ -27,6 +26,7 @@ from .common import (
     forced_cell_reason,
     is_single,
     single_digit,
+    sized_combinations,
     unit_text,
 )
 
@@ -67,7 +67,7 @@ class HiddenSingle(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         candidate_cache = UnitCandidateCache(state)
-        for unit_index, unit in enumerate(ALL_UNITS):
+        for unit_index, unit in enumerate[list[int]](ALL_UNITS):
             for digit in DIGIT_VALUES:
                 cells = candidate_cache.cells_with_candidate(unit, digit)
                 if len(cells) == 1:
@@ -98,7 +98,7 @@ class LockedCandidates(Technique):
         candidate_cache = UnitCandidateCache(state)
 
         # Pointing: box -> row / column
-        for box_index, box in enumerate(BOX_UNITS):
+        for box_index, box in enumerate[list[int]](BOX_UNITS):
             for digit in DIGIT_VALUES:
                 cells = candidate_cache.cells_with_candidate(box, digit)
                 if len(cells) < 2:
@@ -145,7 +145,7 @@ class LockedCandidates(Technique):
 
         # Claiming: row / column -> box
         for family_name, unit_list in (("row", ROW_UNITS), ("column", COL_UNITS)):
-            for unit_index, unit in enumerate(unit_list):
+            for unit_index, unit in enumerate[list[int]](unit_list):
                 for digit in DIGIT_VALUES:
                     cells = candidate_cache.cells_with_candidate(unit, digit)
                     if len(cells) < 2:
@@ -195,7 +195,7 @@ class NakedSubset(Technique):
                 if 2 <= bit_count(state.candidate_mask(cell)) <= self.size
             ]
 
-            for combo in combinations(subset_cells, self.size):
+            for combo in sized_combinations(subset_cells, self.size):
                 union_mask = 0
                 for cell in combo:
                     union_mask |= state.candidate_mask(cell)
@@ -219,7 +219,7 @@ class NakedSubset(Technique):
                             difficulty=self.difficulty,
                             reason=f"{self.name}: cells {cells_text(combo)} contain only digits {digits_text}.",
                             eliminations=eliminations,
-                            cause_cells=list(combo),
+                            cause_cells=list[int](combo),
                         )
                     )
 
@@ -251,8 +251,8 @@ class HiddenSubset(Technique):
             if len(eligible_digits) < self.size:
                 continue
 
-            for digits_combo in combinations(eligible_digits, self.size):
-                cells_set: set[int] = set()
+            for digits_combo in sized_combinations(eligible_digits, self.size):
+                cells_set: set[int] = set[int]()
                 for digit in digits_combo:
                     cells_set.update(cells_by_digit[digit])
                     if len(cells_set) > self.size:
@@ -274,7 +274,7 @@ class HiddenSubset(Technique):
                         Move(
                             technique=self.name,
                             difficulty=self.difficulty,
-                            reason=f"{self.name}: digits {list(digits_combo)} are confined to cells {cells_text(cells)}.",
+                            reason=f"{self.name}: digits {list[int](digits_combo)} are confined to cells {cells_text(cells)}.",
                             eliminations=eliminations,
                             cause_cells=cells,
                         )

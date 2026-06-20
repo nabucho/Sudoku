@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import combinations
 from typing import List
 
 from .common import (
@@ -17,15 +16,16 @@ from .common import (
     Technique,
     bit_count,
     rc_to_i,
+    sized_combinations,
 )
 
 LINE_MASK = (1 << 9) - 1
 BOX_COL_CELLS = [
-    [tuple(cell for cell in BOX_UNITS[box] if COL_OF[cell] == col) for col in range(9)]
+    [tuple[int, ...](cell for cell in BOX_UNITS[box] if COL_OF[cell] == col) for col in range(9)]
     for box in range(9)
 ]
 BOX_ROW_CELLS = [
-    [tuple(cell for cell in BOX_UNITS[box] if ROW_OF[cell] == row) for row in range(9)]
+    [tuple[int, ...](cell for cell in BOX_UNITS[box] if ROW_OF[cell] == row) for row in range(9)]
     for box in range(9)
 ]
 BOX_COL_MASKS = [
@@ -40,7 +40,7 @@ BOX_ROW_MASKS = [
 
 def _indexes_from_mask(mask: int) -> tuple[int, ...]:
     """Return zero-based row/column indexes represented by a bit mask."""
-    return tuple(index for index in range(9) if mask & (1 << index))
+    return tuple[int, ...](index for index in range(9) if mask & (1 << index))
 
 
 def _mask_combinations(mask: int, size: int):
@@ -50,7 +50,7 @@ def _mask_combinations(mask: int, size: int):
     if size == 0:
         yield 0
         return
-    for indexes in combinations(_indexes_from_mask(mask), size):
+    for indexes in sized_combinations(_indexes_from_mask(mask), size):
         yield sum(1 << index for index in indexes)
 
 
@@ -83,15 +83,15 @@ class Fish(Technique):
 
         for digit in DIGIT_VALUES:
             # Row-based fish
-            row_patterns = []
+            row_patterns: list[tuple[int, tuple[int, ...]]] = []
             for row in range(9):
                 candidate_cols = [col for col in range(9) if state.can_place(rc_to_i(row, col), digit)]
                 if 2 <= len(candidate_cols) <= self.size:
-                    row_patterns.append((row, tuple(candidate_cols)))
+                    row_patterns.append((row, tuple[int, ...](candidate_cols)))
 
-            for combo in combinations(row_patterns, self.size):
+            for combo in sized_combinations(row_patterns, self.size):
                 fish_rows = [row for row, _ in combo]
-                fish_cols = sorted(set(col for _, cols in combo for col in cols))
+                fish_cols = sorted(set[int](col for _, cols in combo for col in cols))
                 if len(fish_cols) != self.size:
                     continue
 
@@ -120,15 +120,15 @@ class Fish(Technique):
                     )
 
             # Column-based fish
-            col_patterns = []
+            col_patterns: list[tuple[int, tuple[int, ...]]] = []
             for col in range(9):
                 candidate_rows = [row for row in range(9) if state.can_place(rc_to_i(row, col), digit)]
                 if 2 <= len(candidate_rows) <= self.size:
-                    col_patterns.append((col, tuple(candidate_rows)))
+                    col_patterns.append((col, tuple[int, ...](candidate_rows)))
 
-            for combo in combinations(col_patterns, self.size):
+            for combo in sized_combinations(col_patterns, self.size):
                 fish_cols = [col for col, _ in combo]
-                fish_rows = sorted(set(row for _, rows in combo for row in rows))
+                fish_rows = sorted(set[int](row for _, rows in combo for row in rows))
                 if len(fish_rows) != self.size:
                     continue
 
@@ -180,11 +180,11 @@ class FinnedXWing(Technique):
                 if len(base_cols) != 2:
                     continue
 
-                base_set = set(base_cols)
+                base_set = set[int](base_cols)
                 for fin_row, fin_cols in row_cols.items():
                     if fin_row == base_row or len(fin_cols) <= 2:
                         continue
-                    fin_set = set(fin_cols)
+                    fin_set = set[int](fin_cols)
                     fins = sorted(fin_set - base_set)
                     if not fins or not base_set.issubset(fin_set):
                         continue
@@ -203,7 +203,7 @@ class FinnedXWing(Technique):
                     target_col = attached_cols[0]
                     eliminations = [
                         Elimination(cell, d)
-                        for cell in (set(BOX_UNITS[fin_box]) & set(COL_UNITS[target_col]))
+                        for cell in (set[int](BOX_UNITS[fin_box]) & set[int](COL_UNITS[target_col]))
                         if ROW_OF[cell] not in (base_row, fin_row)
                         and COL_OF[cell] not in fins
                         and state.can_place(cell, d)
@@ -236,11 +236,11 @@ class FinnedXWing(Technique):
                 if len(base_rows) != 2:
                     continue
 
-                base_set = set(base_rows)
+                base_set = set[int](base_rows)
                 for fin_col, fin_rows in col_rows.items():
                     if fin_col == base_col or len(fin_rows) <= 2:
                         continue
-                    fin_set = set(fin_rows)
+                    fin_set = set[int](fin_rows)
                     fins = sorted(fin_set - base_set)
                     if not fins or not base_set.issubset(fin_set):
                         continue
@@ -259,7 +259,7 @@ class FinnedXWing(Technique):
                     target_row = attached_rows[0]
                     eliminations = [
                         Elimination(cell, d)
-                        for cell in (set(BOX_UNITS[fin_box]) & set(ROW_UNITS[target_row]))
+                        for cell in (set[int](BOX_UNITS[fin_box]) & set[int](ROW_UNITS[target_row]))
                         if COL_OF[cell] not in (base_col, fin_col)
                         and ROW_OF[cell] not in fins
                         and state.can_place(cell, d)
@@ -300,16 +300,20 @@ class FinnedSwordfish(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen = set()
+        seen: set[
+            tuple[str, int, tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[tuple[int, int], ...]]
+        ] = set[
+            tuple[str, int, tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[tuple[int, int], ...]]
+        ]()
 
         for digit in DIGIT_VALUES:
             row_masks, col_masks = _candidate_line_masks(state, digit)
             row_patterns = [
                 (row, mask)
-                for row, mask in enumerate(row_masks)
+                for row, mask in enumerate[int](row_masks)
                 if 2 <= bit_count(mask) <= self.size + 2
             ]
-            for combo in combinations(row_patterns, self.size):
+            for combo in sized_combinations(row_patterns, self.size):
                 rows = [row for row, _ in combo]
                 rows_mask = sum(1 << row for row in rows)
                 union_col_mask = 0
@@ -363,10 +367,12 @@ class FinnedSwordfish(Technique):
                         key = (
                             "row",
                             digit,
-                            tuple(rows),
-                            tuple(fish_cols),
-                            tuple(sorted(fins)),
-                            tuple(sorted((elimination.cell, elimination.digit) for elimination in eliminations)),
+                            tuple[int, ...](rows),
+                            tuple[int, ...](fish_cols),
+                            tuple[int, ...](sorted(fins)),
+                            tuple[tuple[int, int], ...](
+                                sorted((elimination.cell, elimination.digit) for elimination in eliminations)
+                            ),
                         )
                         if key in seen:
                             continue
@@ -386,10 +392,10 @@ class FinnedSwordfish(Technique):
 
             col_patterns = [
                 (col, mask)
-                for col, mask in enumerate(col_masks)
+                for col, mask in enumerate[int](col_masks)
                 if 2 <= bit_count(mask) <= self.size + 2
             ]
-            for combo in combinations(col_patterns, self.size):
+            for combo in sized_combinations(col_patterns, self.size):
                 cols = [col for col, _ in combo]
                 cols_mask = sum(1 << col for col in cols)
                 union_row_mask = 0
@@ -443,10 +449,12 @@ class FinnedSwordfish(Technique):
                         key = (
                             "col",
                             digit,
-                            tuple(cols),
-                            tuple(fish_rows),
-                            tuple(sorted(fins)),
-                            tuple(sorted((elimination.cell, elimination.digit) for elimination in eliminations)),
+                            tuple[int, ...](cols),
+                            tuple[int, ...](fish_rows),
+                            tuple[int, ...](sorted(fins)),
+                            tuple[tuple[int, int], ...](
+                                sorted((elimination.cell, elimination.digit) for elimination in eliminations)
+                            ),
                         )
                         if key in seen:
                             continue

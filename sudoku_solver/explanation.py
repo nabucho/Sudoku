@@ -18,6 +18,7 @@ from .techniques.common import (
     is_single,
     placement_text,
     single_digit,
+    zip_pairs,
 )
 
 
@@ -45,7 +46,9 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
     """Return a compact explanation step plus implied solved singles."""
     changed_cells = {
         cell
-        for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates))
+        for cell, (before_mask, after_mask) in enumerate[tuple[int, int]](
+            zip_pairs(before.candidates, after.candidates)
+        )
         if before_mask != after_mask
     }
 
@@ -60,7 +63,9 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
     full_move.timing_ms = move.timing_ms
 
     known_eliminations = {(elimination.cell, elimination.digit) for elimination in full_move.eliminations}
-    for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates)):
+    for cell, (before_mask, after_mask) in enumerate[tuple[int, int]](
+        zip_pairs(before.candidates, after.candidates)
+    ):
         removed_mask = before_mask & ~after_mask
         for digit in digits_from_mask(removed_mask):
             key = (cell, digit)
@@ -71,7 +76,9 @@ def coarse_expanded_steps(before: SudokuState, after: SudokuState, move: Move) -
     steps = [ExplanationStep(full_move, after.candidates[:], sorted(changed_cells))]
     placed_cells = {placement.cell for placement in full_move.placements}
 
-    for cell, (before_mask, after_mask) in enumerate(zip(before.candidates, after.candidates)):
+    for cell, (before_mask, after_mask) in enumerate[tuple[int, int]](
+        zip_pairs(before.candidates, after.candidates)
+    ):
         if cell in placed_cells:
             continue
         if not is_single(before_mask) and is_single(after_mask):
@@ -105,7 +112,7 @@ class StepExpander:
         self.replay = before.clone()
         self.steps: list[ExplanationStep] = []
         self.forced_queue = deque[tuple[int, int]]()
-        self.queued_forced: set[int] = set()
+        self.queued_forced: set[int] = set[int]()
 
     def expanded_steps(self) -> list[ExplanationStep]:
         """Replay the move and return detailed explanation steps."""
@@ -142,7 +149,7 @@ class StepExpander:
 
     def append_step(self, move: Move, changed_cells: Iterable[int]) -> None:
         """Append one display step using the replay state's current snapshot."""
-        self.steps.append(ExplanationStep(move, self.replay.candidates[:], sorted(set(changed_cells))))
+        self.steps.append(ExplanationStep(move, self.replay.candidates[:], sorted(set[int](changed_cells))))
 
     def queue_forced_single(self, cell: int, difficulty: int) -> None:
         """Queue an unsolved singleton cell for forced placement explanation."""
@@ -261,7 +268,7 @@ class StepExpander:
                 reason=reason,
                 eliminations=applied,
             )
-            step.cause_cells = sorted(set(cause_cells or []))
+            step.cause_cells = sorted(set[int](cause_cells or []))
             step.timing_ms = self.move.timing_ms if technique == self.move.technique else 0.0
             self.append_step(step, changed_cells)
 

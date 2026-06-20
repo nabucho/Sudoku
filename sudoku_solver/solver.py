@@ -218,7 +218,7 @@ class SudokuSolver:
             return False
 
         for unit in ALL_UNITS:
-            seen_fixed: set[int] = set()
+            seen_fixed: set[int] = set[int]()
             for cell in unit:
                 mask = candidates[cell]
                 if is_single(mask):

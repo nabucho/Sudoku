@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from itertools import combinations
 from typing import List
 
 from .common import (
@@ -15,6 +14,8 @@ from .common import (
     bits,
     cell_text,
     is_single,
+    pair_combinations,
+    sized_combinations,
     unit_text,
 )
 
@@ -49,17 +50,21 @@ class ALSXZ(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen = set()
+        seen: set[
+            tuple[tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]
+        ] = set[
+            tuple[tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]
+        ]()
         als_groups = self._als_groups(state)
 
-        for left_index, left in enumerate(als_groups):
-            for right_index, right in enumerate(als_groups[left_index + 1:], start=left_index + 1):
+        for left_index, left in enumerate[ALSGroup](als_groups):
+            for right_index, right in enumerate[ALSGroup](als_groups[left_index + 1:], start=left_index + 1):
                 if left.cell_mask & right.cell_mask:
                     continue
 
                 common_mask = left.mask & right.mask
                 for restricted_digit in self._restricted_common_digits(left, right, common_mask):
-                    for eliminated_digit in sorted(set(bits(common_mask)) - {restricted_digit}):
+                    for eliminated_digit in sorted(set[int](bits(common_mask)) - {restricted_digit}):
                         eliminations = self._eliminations_for_digit(
                             state,
                             left,
@@ -74,14 +79,18 @@ class ALSXZ(Technique):
                             right.cells,
                             restricted_digit,
                             eliminated_digit,
-                            tuple((elimination.cell, elimination.digit) for elimination in eliminations),
+                            tuple[tuple[int, int], ...](
+                                (elimination.cell, elimination.digit) for elimination in eliminations
+                            ),
                         )
                         reverse_key = (
                             right.cells,
                             left.cells,
                             restricted_digit,
                             eliminated_digit,
-                            tuple((elimination.cell, elimination.digit) for elimination in eliminations),
+                            tuple[tuple[int, int], ...](
+                                (elimination.cell, elimination.digit) for elimination in eliminations
+                            ),
                         )
                         if key in seen or reverse_key in seen:
                             continue
@@ -105,16 +114,16 @@ class ALSXZ(Technique):
 
     def _als_groups(self, state: SudokuState) -> List[ALSGroup]:
         groups: List[ALSGroup] = []
-        seen = set()
+        seen: set[tuple[tuple[int, ...], int]] = set[tuple[tuple[int, ...], int]]()
 
-        for unit_index, unit in enumerate(ALL_UNITS):
+        for unit_index, unit in enumerate[list[int]](ALL_UNITS):
             masks_by_cell = {cell: state.candidate_mask(cell) for cell in unit}
             unsolved = [
                 cell for cell in unit
                 if not is_single(masks_by_cell[cell])
             ]
             for size in range(1, min(self.max_size, len(unsolved)) + 1):
-                for cells in combinations(unsolved, size):
+                for cells in sized_combinations(unsolved, size):
                     union_mask = 0
                     for cell in cells:
                         union_mask |= masks_by_cell[cell]
@@ -126,7 +135,9 @@ class ALSXZ(Technique):
                         continue
                     seen.add(key)
                     digit_cells = {
-                        digit: tuple(cell for cell in cells if masks_by_cell[cell] & (1 << (digit - 1)))
+                        digit: tuple[int, ...](
+                            cell for cell in cells if masks_by_cell[cell] & (1 << (digit - 1))
+                        )
                         for digit in bits(union_mask)
                     }
                     digit_cell_masks = {
@@ -220,13 +231,31 @@ class ALSWing(ALSXZ):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen = set()
+        seen: set[
+            tuple[
+                tuple[int, ...],
+                tuple[int, ...],
+                tuple[int, ...],
+                int,
+                int,
+                int,
+                tuple[tuple[int, int], ...],
+            ]
+        ] = set[tuple[
+            tuple[int, ...],
+            tuple[int, ...],
+            tuple[int, ...],
+            int,
+            int,
+            int,
+            tuple[tuple[int, int], ...],
+        ]]()
         als_groups = self._als_groups(state)
         restricted_links = self._restricted_links(als_groups)
 
-        for pivot_index, pivot in enumerate(als_groups):
+        for pivot_index, pivot in enumerate[ALSGroup](als_groups):
             links = restricted_links.get(pivot_index, [])
-            for left_link, right_link in combinations(links, 2):
+            for left_link, right_link in pair_combinations(links):
                 left_index, left_digit = left_link
                 right_index, right_digit = right_link
                 if left_index == right_index or left_digit == right_digit:
@@ -237,7 +266,7 @@ class ALSWing(ALSXZ):
                 if left.cell_mask & right.cell_mask:
                     continue
 
-                endpoint_digits = set(bits(left.mask & right.mask)) - {left_digit, right_digit}
+                endpoint_digits = set[int](bits(left.mask & right.mask)) - {left_digit, right_digit}
                 for eliminated_digit in sorted(endpoint_digits):
                     eliminations = self._eliminations_for_digit(
                         state,
@@ -255,7 +284,9 @@ class ALSWing(ALSXZ):
                         left_digit,
                         right_digit,
                         eliminated_digit,
-                        tuple((elimination.cell, elimination.digit) for elimination in eliminations),
+                        tuple[tuple[int, int], ...](
+                            (elimination.cell, elimination.digit) for elimination in eliminations
+                        ),
                     )
                     reverse_key = (
                         pivot.cells,
@@ -264,7 +295,9 @@ class ALSWing(ALSXZ):
                         right_digit,
                         left_digit,
                         eliminated_digit,
-                        tuple((elimination.cell, elimination.digit) for elimination in eliminations),
+                        tuple[tuple[int, int], ...](
+                            (elimination.cell, elimination.digit) for elimination in eliminations
+                        ),
                     )
                     if key in seen or reverse_key in seen:
                         continue
@@ -294,8 +327,8 @@ class ALSWing(ALSXZ):
     ) -> dict[int, List[tuple[int, int]]]:
         links: dict[int, List[tuple[int, int]]] = {}
 
-        for left_index, left in enumerate(als_groups):
-            for right_index, right in enumerate(als_groups[left_index + 1:], start=left_index + 1):
+        for left_index, left in enumerate[ALSGroup](als_groups):
+            for right_index, right in enumerate[ALSGroup](als_groups[left_index + 1:], start=left_index + 1):
                 if left.cell_mask & right.cell_mask:
                     continue
 

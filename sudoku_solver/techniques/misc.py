@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import combinations
 from typing import List, Sequence
 
 from .common import (
@@ -15,6 +14,7 @@ from .common import (
     cells_text,
     digits_from_mask,
     is_single,
+    sized_combinations,
 )
 
 
@@ -29,9 +29,13 @@ class SueDeCoq(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen = set()
+        seen: set[
+            tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[tuple[int, int], ...]]
+        ] = set[
+            tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[tuple[int, int], ...]]
+        ]()
 
-        for box_index, box in enumerate(BOX_UNITS):
+        for box_index, box in enumerate[list[int]](BOX_UNITS):
             for line_name, line_index, line in self._intersecting_lines(box_index):
                 intersection = [
                     cell
@@ -92,10 +96,12 @@ class SueDeCoq(Technique):
                             continue
 
                         key = (
-                            tuple(intersection),
-                            tuple(line_companions),
-                            tuple(box_companions),
-                            tuple((elimination.cell, elimination.digit) for elimination in eliminations),
+                            tuple[int, ...](intersection),
+                            tuple[int, ...](line_companions),
+                            tuple[int, ...](box_companions),
+                            tuple[tuple[int, int], ...](
+                                (elimination.cell, elimination.digit) for elimination in eliminations
+                            ),
                         )
                         if key in seen:
                             continue
@@ -139,7 +145,7 @@ class SueDeCoq(Technique):
     ) -> list[tuple[int, ...]]:
         return [
             combo
-            for combo in combinations(cells, 1)
+            for combo in sized_combinations(cells, 1)
             if bit_count(state.candidate_mask(combo[0])) == 2
             and (state.candidate_mask(combo[0]) & ~intersection_mask) == 0
         ]

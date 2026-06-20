@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import combinations
 from typing import List, Tuple
 
 from .common import (
@@ -14,6 +13,7 @@ from .common import (
     Technique,
     UnitCandidateCache,
     cell_text,
+    pair_combinations,
 )
 
 
@@ -24,7 +24,7 @@ def strong_links_for_digit(
 ) -> List[Tuple[int, int]]:
     """Return conjugate-pair strong links for one candidate digit."""
     cache = candidate_cache or UnitCandidateCache(state)
-    links: set[tuple[int, int]] = set()
+    links: set[tuple[int, int]] = set[tuple[int, int]]()
     for unit in ALL_UNITS:
         cells = cache.unsolved_cells_with_candidate(unit, digit)
         if len(cells) == 2:
@@ -48,15 +48,15 @@ class SimpleColoring(Technique):
         for digit in DIGIT_VALUES:
             graph: dict[int, set[int]] = {}
             for a, b in strong_links_for_digit(state, digit, candidate_cache):
-                graph.setdefault(a, set()).add(b)
-                graph.setdefault(b, set()).add(a)
+                graph.setdefault(a, set[int]()).add(b)
+                graph.setdefault(b, set[int]()).add(a)
 
-            color = {}
+            color: dict[int, int] = {}
             for start in sorted(graph):
                 if start in color:
                     continue
 
-                component = []
+                component: list[int] = []
                 queue = [start]
                 color[start] = 0
                 valid = True
@@ -76,10 +76,10 @@ class SimpleColoring(Technique):
                 if not valid or len(component) < 4:
                     continue
 
-                component_set = set(component)
+                component_set = set[int](component)
                 for bad_color in (0, 1):
                     same_color_cells = [cell for cell in component if color[cell] == bad_color]
-                    if any(b in PEERS[a] for a, b in combinations(same_color_cells, 2)):
+                    if any(b in PEERS[a] for a, b in pair_combinations(same_color_cells)):
                         eliminations = [
                             Elimination(cell, digit)
                             for cell in same_color_cells
@@ -136,22 +136,26 @@ class MultiColoring(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen = set()
+        seen: set[
+            tuple[int, tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]
+        ] = set[
+            tuple[int, tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]
+        ]()
         candidate_cache = UnitCandidateCache(state)
 
         for digit in DIGIT_VALUES:
             graph: dict[int, set[int]] = {}
             for a, b in strong_links_for_digit(state, digit, candidate_cache):
-                graph.setdefault(a, set()).add(b)
-                graph.setdefault(b, set()).add(a)
+                graph.setdefault(a, set[int]()).add(b)
+                graph.setdefault(b, set[int]()).add(a)
 
-            components = []
-            global_color = {}
+            components: list[list[int]] = []
+            global_color: dict[int, int] = {}
             for start in sorted(graph):
                 if start in global_color:
                     continue
 
-                component = []
+                component: list[int] = []
                 queue = [start]
                 global_color[start] = 0
                 valid = True
@@ -170,10 +174,10 @@ class MultiColoring(Technique):
                 if valid and len(component) >= 4:
                     components.append(component)
 
-            for left_index, left_component in enumerate(components):
-                left_set = set(left_component)
+            for left_index, left_component in enumerate[list[int]](components):
+                left_set = set[int](left_component)
                 for right_component in components[left_index + 1:]:
-                    right_set = set(right_component)
+                    right_set = set[int](right_component)
                     for left_color in (0, 1):
                         left_link_cells = [cell for cell in left_component if global_color[cell] == left_color]
                         left_opposite = {cell for cell in left_component if global_color[cell] != left_color}
@@ -190,7 +194,7 @@ class MultiColoring(Technique):
                             if not weak_links:
                                 continue
 
-                            eliminations = []
+                            eliminations: list[Elimination] = []
                             for cell in CELL_INDICES:
                                 if cell in left_set or cell in right_set or not state.can_place(cell, digit):
                                     continue
@@ -202,11 +206,13 @@ class MultiColoring(Technique):
 
                             key = (
                                 digit,
-                                tuple(sorted(left_component)),
-                                tuple(sorted(right_component)),
+                                tuple[int, ...](sorted(left_component)),
+                                tuple[int, ...](sorted(right_component)),
                                 left_color,
                                 right_color,
-                                tuple((elimination.cell, elimination.digit) for elimination in eliminations),
+                                tuple[tuple[int, int], ...](
+                                    (elimination.cell, elimination.digit) for elimination in eliminations
+                                ),
                             )
                             if key in seen:
                                 continue

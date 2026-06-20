@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import combinations
 from typing import List
 
 from .common import (
@@ -26,12 +25,15 @@ from .common import (
     cell_text,
     digits_from_mask,
     is_single,
+    pair_combinations,
     placement_text,
     rc_to_i,
     shared_peer_eliminations,
     single_digit,
+    sized_combinations,
     unit_text,
     unsolved_cells,
+    zip_pairs,
 )
 
 RECTANGLES = [
@@ -47,8 +49,8 @@ RECTANGLES = [
         c1,
         c2,
     )
-    for r1, r2 in combinations(range(9), 2)
-    for c1, c2 in combinations(range(9), 2)
+    for r1, r2 in pair_combinations(range(9))
+    for c1, c2 in pair_combinations(range(9))
     if len(
         {
             BOX_OF[rc_to_i(r1, c1)],
@@ -92,7 +94,7 @@ class UniqueRectangleType1(Technique):
             if pair_mask is None:
                 continue
 
-            pair_cells = [cells[idx] for idx, m in enumerate(masks) if m == pair_mask]
+            pair_cells = [cells[idx] for idx, m in enumerate[int](masks) if m == pair_mask]
             if len(pair_cells) != 3:
                 continue
 
@@ -195,7 +197,9 @@ class UniqueRectangleType3(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen = set()
+        seen: set[tuple[tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]] = set[
+            tuple[tuple[int, ...], tuple[int, ...], int, int, tuple[tuple[int, int], ...]]
+        ]()
 
         for cells, _, _, _, _ in RECTANGLES:
             masks = {cell: state.candidate_mask(cell) for cell in cells}
@@ -211,7 +215,7 @@ class UniqueRectangleType3(Technique):
 
                 shared_units = [
                     (unit_index, unit)
-                    for unit_index, unit in enumerate(ALL_UNITS)
+                    for unit_index, unit in enumerate[list[int]](ALL_UNITS)
                     if floor_cells[0] in unit and floor_cells[1] in unit
                 ]
                 extra_mask = (masks[floor_cells[0]] | masks[floor_cells[1]]) & ~pair_mask
@@ -228,14 +232,14 @@ class UniqueRectangleType3(Technique):
                         and state.candidate_mask(cell) & extra_mask
                         and (state.candidate_mask(cell) & ~extra_mask) == 0
                     ]
-                    for helpers in combinations(subset_candidates, subset_size - 1):
+                    for helpers in sized_combinations(subset_candidates, subset_size - 1):
                         union_mask = extra_mask
                         for helper in helpers:
                             union_mask |= state.candidate_mask(helper)
                         if union_mask != extra_mask:
                             continue
 
-                        subset_cells = set(floor_cells) | set(helpers)
+                        subset_cells = set[int](floor_cells) | set[int](helpers)
                         eliminations = [
                             Elimination(cell, digit)
                             for cell in unit
@@ -247,11 +251,13 @@ class UniqueRectangleType3(Technique):
                             continue
 
                         key = (
-                            tuple(cells),
-                            tuple(sorted(helpers)),
+                            tuple[int, ...](cells),
+                            tuple[int, ...](sorted(helpers)),
                             unit_index,
                             extra_mask,
-                            tuple((elimination.cell, elimination.digit) for elimination in eliminations),
+                            tuple[tuple[int, int], ...](
+                                (elimination.cell, elimination.digit) for elimination in eliminations
+                            ),
                         )
                         if key in seen:
                             continue
@@ -348,13 +354,13 @@ class AvoidableRectangle(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen = set()
+        seen: set[tuple[tuple[int, ...], int, int]] = set[tuple[tuple[int, ...], int, int]]()
 
         for cells, _, _, _, _ in RECTANGLES:
             if any(cell in state.given_cells for cell in cells):
                 continue
 
-            for digit_a, digit_b in combinations(DIGIT_VALUES, 2):
+            for digit_a, digit_b in pair_combinations(DIGIT_VALUES):
                 patterns = (
                     (digit_a, digit_b, digit_b, digit_a),
                     (digit_b, digit_a, digit_a, digit_b),
@@ -362,7 +368,7 @@ class AvoidableRectangle(Technique):
                 for pattern in patterns:
                     solved_corners = [
                         cell
-                        for cell, expected_digit in zip(cells, pattern)
+                        for cell, expected_digit in zip_pairs(cells, pattern)
                         if is_single(state.candidate_mask(cell))
                         and single_digit(state.candidate_mask(cell)) == expected_digit
                     ]
@@ -371,7 +377,7 @@ class AvoidableRectangle(Technique):
 
                     target_index = next(
                         index
-                        for index, cell in enumerate(cells)
+                        for index, cell in enumerate[int](cells)
                         if cell not in solved_corners
                     )
                     target = cells[target_index]
@@ -381,7 +387,7 @@ class AvoidableRectangle(Technique):
                     if not state.can_place(target, target_digit):
                         continue
 
-                    key = (tuple(cells), target, target_digit)
+                    key = (tuple[int, ...](cells), target, target_digit)
                     if key in seen:
                         continue
                     seen.add(key)
@@ -530,7 +536,7 @@ class Nishio(Technique):
             return False
 
         for unit in ALL_UNITS:
-            seen_fixed: set[int] = set()
+            seen_fixed: set[int] = set[int]()
             for cell in unit:
                 mask = candidates[cell]
                 if is_single(mask):

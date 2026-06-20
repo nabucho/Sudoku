@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import combinations
 from typing import List
 
 from .coloring import strong_links_for_digit
@@ -19,6 +18,7 @@ from .common import (
     Technique,
     UnitCandidateCache,
     cell_text,
+    pair_combinations,
     rc_to_i,
     shared_peer_eliminations,
 )
@@ -35,13 +35,15 @@ class TurbotFish(Technique):
 
     def find_moves(self, state: SudokuState) -> List[Move]:
         moves: List[Move] = []
-        seen = set()
+        seen: set[tuple[int, tuple[int, ...], tuple[tuple[int, int], ...]]] = set[
+            tuple[int, tuple[int, ...], tuple[tuple[int, int], ...]]
+        ]()
         candidate_cache = UnitCandidateCache(state)
 
         for digit in DIGIT_VALUES:
             strong_links = strong_links_for_digit(state, digit, candidate_cache)
-            for link1, link2 in combinations(strong_links, 2):
-                if set(link1) & set(link2):
+            for link1, link2 in pair_combinations(strong_links):
+                if set[int](link1) & set[int](link2):
                     continue
 
                 for weak1 in link1:
@@ -60,8 +62,10 @@ class TurbotFish(Technique):
 
                         key = (
                             digit,
-                            tuple(cause_cells),
-                            tuple(sorted((elimination.cell, elimination.digit) for elimination in eliminations)),
+                            tuple[int, ...](cause_cells),
+                            tuple[tuple[int, int], ...](
+                                sorted((elimination.cell, elimination.digit) for elimination in eliminations)
+                            ),
                         )
                         if key in seen:
                             continue
@@ -102,13 +106,13 @@ class Skyscraper(Technique):
 
         for digit in DIGIT_VALUES:
             # Row-based skyscraper
-            row_pairs = []
+            row_pairs: list[tuple[int, int, int]] = []
             for r in range(9):
                 cols = [c for c in range(9) if state.can_place(rc_to_i(r, c), digit)]
                 if len(cols) == 2:
                     row_pairs.append((r, cols[0], cols[1]))
 
-            for (r1, a1, a2), (r2, b1, b2) in combinations(row_pairs, 2):
+            for (r1, a1, a2), (r2, b1, b2) in pair_combinations(row_pairs):
                 s1 = {a1, a2}
                 s2 = {b1, b2}
                 common = s1 & s2
@@ -143,13 +147,13 @@ class Skyscraper(Technique):
                     )
 
             # Column-based skyscraper
-            col_pairs = []
+            col_pairs: list[tuple[int, int, int]] = []
             for c in range(9):
                 rows = [r for r in range(9) if state.can_place(rc_to_i(r, c), digit)]
                 if len(rows) == 2:
                     col_pairs.append((c, rows[0], rows[1]))
 
-            for (c1, a1, a2), (c2, b1, b2) in combinations(col_pairs, 2):
+            for (c1, a1, a2), (c2, b1, b2) in pair_combinations(col_pairs):
                 s1 = {a1, a2}
                 s2 = {b1, b2}
                 common = s1 & s2
@@ -199,8 +203,8 @@ class TwoStringKite(Technique):
         moves: List[Move] = []
 
         for digit in DIGIT_VALUES:
-            row_twos = []
-            col_twos = []
+            row_twos: list[tuple[int, list[int]]] = []
+            col_twos: list[tuple[int, list[int]]] = []
 
             for r in range(9):
                 cells = [rc_to_i(r, c) for c in range(9) if state.can_place(rc_to_i(r, c), digit)]
@@ -261,7 +265,7 @@ class EmptyRectangle(Technique):
         candidate_cache = UnitCandidateCache(state)
 
         for digit in DIGIT_VALUES:
-            for box_index, box in enumerate(BOX_UNITS):
+            for box_index, box in enumerate[list[int]](BOX_UNITS):
                 box_candidates = candidate_cache.unsolved_cells_with_candidate(box, digit)
                 if len(box_candidates) < 2:
                     continue

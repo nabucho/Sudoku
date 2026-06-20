@@ -17,6 +17,7 @@ from .techniques.common import (
     placement_text,
     rc_to_i,
     single_digit,
+    zip_pairs,
 )
 
 
@@ -102,7 +103,7 @@ def combine_step_group(technique: str, moves: Sequence[ExplanationStep]) -> Expl
 def steps_for_style(steps: Sequence[ExplanationStep], style: str) -> List[ExplanationStep]:
     """Return steps transformed according to a CLI step style."""
     if style == "detailed":
-        return list(steps)
+        return list[ExplanationStep](steps)
 
     formatted: List[ExplanationStep] = []
     i = 0
@@ -175,7 +176,7 @@ def ansi_text(text: str, *, fg: Optional[int] = None, bg: Optional[int] = None, 
     if not enabled:
         return text
 
-    codes = []
+    codes: list[str] = []
     if bold:
         codes.append("1")
     if fg is not None:
@@ -198,7 +199,7 @@ def styled_cell(
     left = max((width - visible_width) // 2, 0)
     right = max(width - visible_width - left, 0)
 
-    parts = []
+    parts: list[str] = []
     if left:
         parts.append(ansi_text(" " * left, bg=bg, enabled=use_color))
     for text, fg, segment_bg, bold in segments:
@@ -218,11 +219,11 @@ def candidate_cell_lines(
     *,
     bg: Optional[int] = None,
 ) -> List[str]:
-    digits = set(digits_from_mask(mask)) | eliminated_digits
-    lines = []
+    digits = set[int](digits_from_mask(mask)) | eliminated_digits
+    lines: list[str] = []
 
     for start in (1, 4, 7):
-        segments = []
+        segments: list[tuple[str, int, Optional[int], bool]] = []
         for digit in range(start, start + 3):
             if digit != start:
                 segments.append((" ", fg, bg, bold))
@@ -308,7 +309,7 @@ def render_progress_cell(
     display_as_solved = is_single(mask) and (cell in given_cells or cell in solved_cells or cell in selected)
     base_style = base_cell_style(cell, given_cells, solved_cells, display_as_solved)
     style = highlighted_cell_style(cell, base_style, candidate_changed, selected, causes)
-    eliminated_digits = candidate_eliminated_digits.get(cell, set())
+    eliminated_digits = candidate_eliminated_digits.get(cell, set[int]())
 
     if display_as_solved:
         return solved_cell_lines(
@@ -345,13 +346,13 @@ def render_progress_grid(
     The color roles match README.md: clues, solved values, selected cells,
     changed candidates, elimination sources, and eliminated candidates.
     """
-    selected = set(selected_cells)
+    selected = set[int](selected_cells)
     candidate_eliminated_digits: dict[int, set[int]] = {}
     for elimination in candidate_eliminations:
-        candidate_eliminated_digits.setdefault(elimination.cell, set()).add(elimination.digit)
-    candidate_changed = set(candidate_eliminated_digits)
-    causes = set(cause_cells)
-    lines = []
+        candidate_eliminated_digits.setdefault(elimination.cell, set[int]()).add(elimination.digit)
+    candidate_changed = set[int](candidate_eliminated_digits)
+    causes = set[int](cause_cells)
+    lines: list[str] = []
     cell_width = 9
 
     for r in range(9):
@@ -379,7 +380,7 @@ def render_progress_grid(
                 use_color,
             )
 
-            for subline, rendered_cell in zip(row_lines, cell_lines):
+            for subline, rendered_cell in zip_pairs(row_lines, cell_lines):
                 subline.append(rendered_cell)
 
         lines.extend(" ".join(row_line) for row_line in row_lines)
@@ -446,11 +447,11 @@ def print_progress_steps(
     print()
 
     print("Before step 1: candidates")
-    solved_cells = set(given_cells)
+    solved_cells = set[int](given_cells)
     print(render_progress_grid(initial_candidates, given_cells, solved_cells, [], [], [], use_color))
     print()
 
-    for i, step in enumerate(steps_for_progress(steps, style), start=1):
+    for i, step in enumerate[ExplanationStep](steps_for_progress(steps, style), start=1):
         print(f"{i:02d}. {step.summary()} [{timing_text(step)}]")
         details = move_change_details(step)
         if details:

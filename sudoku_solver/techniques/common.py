@@ -8,7 +8,11 @@ bitmasks where bit 0 represents digit 1 and bit 8 represents digit 9.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Sequence, Tuple
+from itertools import combinations
+from typing import Iterable, Iterator, List, Optional, Sequence, Tuple, TypeVar, cast
+
+T = TypeVar("T")
+U = TypeVar("U")
 
 # ============================================================
 # Bitmask helpers
@@ -54,7 +58,27 @@ def single_digit(mask: int) -> int:
 
 def digits_from_mask(mask: int) -> List[int]:
     """Return all digits present in a candidate bitmask as a list."""
-    return list(bits(mask))
+    return list[int](bits(mask))
+
+
+def pair_combinations(items: Iterable[T]) -> Iterator[tuple[T, T]]:
+    """Return typed 2-item combinations from an iterable."""
+    return cast(Iterator[tuple[T, T]], combinations(items, 2))
+
+
+def triple_combinations(items: Iterable[T]) -> Iterator[tuple[T, T, T]]:
+    """Return typed 3-item combinations from an iterable."""
+    return cast(Iterator[tuple[T, T, T]], combinations(items, 3))
+
+
+def sized_combinations(items: Iterable[T], size: int) -> Iterator[tuple[T, ...]]:
+    """Return typed combinations for a runtime-selected combination size."""
+    return cast(Iterator[tuple[T, ...]], combinations(items, size))
+
+
+def zip_pairs(left: Iterable[T], right: Iterable[U]) -> Iterator[tuple[T, U]]:
+    """Return typed pairs from two iterables."""
+    return zip(left, right)
 
 
 # ============================================================
@@ -121,7 +145,7 @@ for unit in ALL_UNITS:
 
 PEERS: List[set[int]] = []
 for cell in CELL_INDICES:
-    peers = set()
+    peers: set[int] = set[int]()
     for unit in CELL_UNITS[cell]:
         peers.update(unit)
     peers.discard(cell)
@@ -150,7 +174,7 @@ class UnitCandidateCache:
 
     def candidate_positions(self, unit: Sequence[int], *, include_solved: bool = True) -> dict[int, List[int]]:
         """Return candidate cells by digit for one unit."""
-        key = (tuple(unit), include_solved)
+        key = (tuple[int, ...](unit), include_solved)
         if key not in self._positions:
             positions: dict[int, List[int]] = {digit: [] for digit in DIGIT_VALUES}
             for cell in unit:
@@ -188,9 +212,9 @@ def unsolved_cells(state: "SudokuState") -> List[int]:
 
 def shared_peers(cells: Iterable[int]) -> set[int]:
     """Return cells that see every cell in the given collection."""
-    cells = list(cells)
+    cells = list[int](cells)
     if not cells:
-        return set()
+        return set[int]()
     peers = PEERS[cells[0]].copy()
     for cell in cells[1:]:
         peers &= PEERS[cell]
@@ -214,7 +238,7 @@ def shared_peer_eliminations(
     Returns:
         Eliminations for shared peers that still contain the candidate digit.
     """
-    blocked_cells = set(blocked)
+    blocked_cells = set[int](blocked)
     return [
         Elimination(cell, digit)
         for cell in sorted(shared_peers(cells) - blocked_cells)
@@ -367,8 +391,8 @@ class SudokuState:
         given_cells: Optional[Iterable[int]] = None,
     ):
         self.candidates = candidates[:] if candidates else [ALL_DIGITS_MASK] * 81
-        self.fixed_cells = set(fixed_cells or [])
-        self.given_cells = set(given_cells or [])
+        self.fixed_cells = set[int](fixed_cells or [])
+        self.given_cells = set[int](given_cells or [])
 
     @classmethod
     def from_board(cls, board: Sequence[Sequence[int]] | str) -> "SudokuState":
@@ -388,7 +412,7 @@ class SudokuState:
             chars = [ch for ch in board if ch in "1234567890."]
             if len(chars) != 81:
                 raise ValueError("String puzzle must contain exactly 81 digits / dots / zeros.")
-            for cell, ch in enumerate(chars):
+            for cell, ch in enumerate[str](chars):
                 if ch in "123456789":
                     givens.append((cell, int(ch)))
         else:
@@ -434,7 +458,7 @@ class SudokuState:
     def board(self) -> List[List[int]]:
         """Return the current solved digits as a 9x9 integer grid."""
         out = [[0] * 9 for _ in range(9)]
-        for cell, mask in enumerate(self.candidates):
+        for cell, mask in enumerate[int](self.candidates):
             if is_single(mask):
                 row, col = i_to_rc(cell)
                 out[row][col] = single_digit(mask)
@@ -442,11 +466,11 @@ class SudokuState:
 
     def pretty(self) -> str:
         """Return a simple text rendering of solved digits and empty cells."""
-        lines = []
+        lines: list[str] = []
         for row in range(9):
             if row and row % 3 == 0:
                 lines.append("-" * 21)
-            row_parts = []
+            row_parts: list[str] = []
             for col in range(9):
                 if col and col % 3 == 0:
                     row_parts.append("|")
@@ -481,7 +505,7 @@ class SudokuState:
 
         # each digit must have at least one possible place in each unit
         for unit in ALL_UNITS:
-            seen_fixed = set()
+            seen_fixed: set[int] = set[int]()
             for cell in unit:
                 mask = self.candidates[cell]
                 if is_single(mask):
