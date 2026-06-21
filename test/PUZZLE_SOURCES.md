@@ -6,4 +6,6 @@ The additional hard and diabolical fixtures under `test/puzzles` are sourced fro
 - Hard source file: https://github.com/grantm/sudoku-exchange-puzzle-bank/raw/master/hard.txt
 - Diabolical source file: https://github.com/grantm/sudoku-exchange-puzzle-bank/raw/master/diabolical.txt
 
+The full upstream repository is also included as the `sudoku-exchange-puzzle-bank/` Git submodule so its history, README, and license stay linked to the original source.
+
 The source repository states that the dataset is dedicated to the public domain. The fixtures here preserve the puzzle givens, convert `0` blanks to `.`, and format each puzzle as a 9x9 grid.

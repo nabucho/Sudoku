@@ -3,26 +3,112 @@
 from __future__ import annotations
 
 import argparse
+import random
 import sys
 from collections.abc import Sequence
+from pathlib import Path
+from typing import Protocol
 
 from sudoku_solver.solver import SudokuSolver
 from sudoku_solver.techniques.common import SudokuState, rc_to_i
 from sudoku_solver.visualization import format_steps, print_progress_steps, print_timing_summary
 
-DEFAULT_PUZZLE = "...8....3..8.61...14.37..2...4.8...7...7...4.9.6.5..1.2......9..1.......5......3."
+PUZZLE_BANK_DIR = Path(__file__).resolve().parent / "sudoku-exchange-puzzle-bank"
+DEFAULT_DIFFICULTIES = ("easy", "medium", "hard", "diabolical")
+PUZZLE_BANK_METADATA_FILES = {"license"}
 
 
-def read_puzzle_argument(puzzle: str | None, puzzle_file: str | None) -> str:
-    """Return puzzle text from either an inline argument, file, or default."""
-    if puzzle and puzzle_file:
-        raise ValueError("Use either a puzzle argument or --file, not both.")
+class RandomSource(Protocol):
+    """Minimal random interface needed for puzzle-bank sampling."""
+
+    def randrange(self, stop: int) -> int:
+        """Return a random integer in `range(stop)`."""
+        ...
+
+
+def difficulty_choices(puzzle_bank_dir: Path = PUZZLE_BANK_DIR) -> tuple[str, ...]:
+    """Return available difficulty names from puzzle-bank text files."""
+    difficulties = tuple(
+        sorted(
+            path.stem for path in puzzle_bank_dir.glob("*.txt") if path.stem.lower() not in PUZZLE_BANK_METADATA_FILES
+        )
+    )
+    return difficulties or DEFAULT_DIFFICULTIES
+
+
+def random_puzzle_from_difficulty(
+    difficulty: str,
+    puzzle_bank_dir: Path = PUZZLE_BANK_DIR,
+    rng: RandomSource | None = None,
+) -> str:
+    """Return a random puzzle from one Sudoku Exchange difficulty file."""
+    if difficulty not in DEFAULT_DIFFICULTIES:
+        raise ValueError(f"Unknown difficulty {difficulty!r}. Choose one of: {', '.join(DEFAULT_DIFFICULTIES)}.")
+
+    path = puzzle_bank_dir / f"{difficulty}.txt"
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Puzzle bank difficulty file not found: {path}. "
+            "Clone submodules with `git submodule update --init --recursive`."
+        )
+
+    return random_puzzle_from_bank_file(path, rng)
+
+
+def random_puzzle_from_bank_file(path: Path, rng: RandomSource | None = None) -> str:
+    """Return a random puzzle from one Sudoku Exchange puzzle-bank file."""
+    if not path.is_file():
+        raise FileNotFoundError(f"Puzzle bank file not found: {path}.")
+
+    selected: str | None = None
+    seen = 0
+
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            puzzle = next(
+                (field for field in line.split() if len(field) == 81 and all(char in "0123456789." for char in field)),
+                None,
+            )
+            if puzzle is None:
+                continue
+
+            seen += 1
+            random_index = rng.randrange(seen) if rng is not None else random.randrange(seen)
+            if random_index == 0:
+                selected = puzzle
+
+    if selected is None:
+        raise ValueError(f"No valid Sudoku puzzles found in {path}.")
+
+    return selected
+
+
+def read_puzzle_argument(
+    puzzle: str | None,
+    puzzle_file: str | None,
+    difficulty: str | None = None,
+    puzzle_bank_dir: Path = PUZZLE_BANK_DIR,
+    puzzle_bank_file: Path | None = None,
+) -> str:
+    """Return puzzle text from one explicit input source."""
+    source_count = sum(source is not None for source in (puzzle, puzzle_file, difficulty, puzzle_bank_file))
+    if source_count > 1:
+        raise ValueError("Use only one of a puzzle argument, --file, --difficulty, or --puzzle-bank-file.")
 
     if puzzle_file:
         with open(puzzle_file, "r", encoding="utf-8") as handle:
             return handle.read()
 
-    return puzzle or DEFAULT_PUZZLE
+    if difficulty:
+        return random_puzzle_from_difficulty(difficulty, puzzle_bank_dir)
+
+    if puzzle_bank_file:
+        return random_puzzle_from_bank_file(puzzle_bank_file)
+
+    if puzzle:
+        return puzzle
+
+    raise ValueError("Provide a puzzle argument, --file, --difficulty, or --puzzle-bank-file.")
 
 
 def pretty_puzzle(puzzle: str) -> str:
@@ -65,6 +151,27 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--logic-only",
         action="store_true",
         help="Use logical techniques only; do not fall back to search.",
+    )
+    parser.add_argument(
+        "--difficulty",
+        choices=difficulty_choices(),
+        help=(
+            "When no puzzle or --file is provided, choose a random puzzle from the matching "
+            "Sudoku Exchange Puzzle Bank difficulty file."
+        ),
+    )
+    parser.add_argument(
+        "--puzzle-bank-dir",
+        type=Path,
+        default=PUZZLE_BANK_DIR,
+        help=(
+            f"Directory containing Sudoku Exchange Puzzle Bank difficulty .txt files. Defaults to {PUZZLE_BANK_DIR}."
+        ),
+    )
+    parser.add_argument(
+        "--puzzle-bank-file",
+        type=Path,
+        help="Choose a random puzzle from one concrete Sudoku Exchange Puzzle Bank .txt file.",
     )
     parser.add_argument(
         "--no-steps",
@@ -126,7 +233,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        puzzle = read_puzzle_argument(args.puzzle, args.puzzle_file)
+        puzzle = read_puzzle_argument(
+            args.puzzle,
+            args.puzzle_file,
+            args.difficulty,
+            args.puzzle_bank_dir,
+            args.puzzle_bank_file,
+        )
         original_puzzle = pretty_puzzle(puzzle)
         state = SudokuState.from_board(puzzle)
     except OSError as exc:

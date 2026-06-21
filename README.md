@@ -16,14 +16,27 @@ Install from a local checkout:
 python3 -m pip install .
 ```
 
+When cloning the repository, include submodules if you want the full upstream
+Sudoku Exchange Puzzle Bank checkout:
+
+```sh
+git clone --recurse-submodules https://github.com/nabucho/Sudoku
+```
+
+For an existing clone, initialize it with:
+
+```sh
+git submodule update --init --recursive
+```
+
 The project is not currently published on PyPI. The distribution metadata uses
 the name `nabucho-sudoku` so a future package release does not conflict with the
 existing unrelated `sudoku-solver` package name.
 
-Run the default puzzle with the `sudoku-solver` command:
+Choose a random puzzle from the Sudoku Exchange Puzzle Bank submodule:
 
 ```sh
-sudoku-solver
+sudoku-solver --difficulty hard
 ```
 
 Solve a puzzle from a file:
@@ -96,7 +109,9 @@ This project is released under the [MIT License](LICENSE).
 
 ```text
 sudoku-solver [PUZZLE] [--file PATH] [--strategy STRATEGY] [--step-style STYLE]
-              [--logic-only] [--no-steps] [--no-progress] [--no-color] [--no-pause]
+              [--difficulty DIFFICULTY] [--puzzle-bank-dir PATH]
+              [--puzzle-bank-file PATH] [--logic-only] [--no-steps]
+              [--no-progress] [--no-color] [--no-pause]
 ```
 
 Running `python3 sudoku.py` is still supported as a compatibility entry point.
@@ -125,6 +140,15 @@ The compatibility wrapper also keeps `from sudoku import SudokuSolver` working f
 
 `-f, --file PATH`
 : Read the puzzle from a text file. Use either `PUZZLE` or `--file`, not both.
+
+`--difficulty {easy,medium,hard,diabolical}`
+: When no `PUZZLE` or `--file` is provided, choose a random puzzle from the matching `sudoku-exchange-puzzle-bank/*.txt` file. Initialize submodules first with `git submodule update --init --recursive`.
+
+`--puzzle-bank-dir PATH`
+: Directory containing Sudoku Exchange Puzzle Bank difficulty `.txt` files. Defaults to `sudoku-exchange-puzzle-bank/`.
+
+`--puzzle-bank-file PATH`
+: Choose a random puzzle from one concrete Sudoku Exchange Puzzle Bank `.txt` file. This does not require `--difficulty`. The parser scans each line for any 81-character field made of `0`-`9` or `.`, so it works with both `hash puzzle rating` records and one-puzzle-per-line files.
 
 `--strategy {human,human-fast,fewest-steps,fastest,balanced,search-first}`
 : Select how moves are chosen. Defaults to `human-fast`.
@@ -343,3 +367,6 @@ Benchmark options:
 
 `test/benchmark.py`
 : Timing and profiling script.
+
+`sudoku-exchange-puzzle-bank/`
+: Git submodule for the upstream [Sudoku Exchange Puzzle Bank](https://github.com/grantm/sudoku-exchange-puzzle-bank), which is dedicated to the public domain and credited in `test/PUZZLE_SOURCES.md`.

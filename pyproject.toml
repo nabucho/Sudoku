@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nabucho-sudoku"
-version = "1.0.0"
+version = "1.1.0"
 description = "A command-line Sudoku solver with human-style techniques, explanations, and timing."
 readme = "README.md"
 requires-python = ">=3.9"

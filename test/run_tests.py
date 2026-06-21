@@ -12,7 +12,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from cli import main as cli_main, pretty_puzzle, read_puzzle_argument
+from cli import (
+    main as cli_main,
+    pretty_puzzle,
+    random_puzzle_from_bank_file,
+    random_puzzle_from_difficulty,
+    read_puzzle_argument,
+)
 from sudoku_solver.solver import SudokuSolver
 from sudoku_solver.strategies import default_techniques
 from sudoku_solver.techniques.basic import HiddenSingle, LockedCandidates, NakedSingle
@@ -365,6 +371,7 @@ def test_step_styles() -> None:
 
 
 def test_cli_validation() -> None:
+    assert_failure_contains([], "Provide a puzzle argument, --file, --difficulty, or --puzzle-bank-file")
     assert_failure_contains(
         ["--file", fixture_arg(puzzle_fixtures()[0]), "--logic-only", "--strategy", "search-first", "--no-steps"],
         "--logic-only cannot be used with --strategy search-first",
@@ -377,12 +384,28 @@ def test_cli_helpers_in_process() -> None:
         raise AssertionError("Expected inline puzzle argument to be returned")
 
     try:
+        read_puzzle_argument(None, None)
+    except ValueError as exc:
+        if "Provide a puzzle argument" not in str(exc):
+            raise AssertionError(f"Unexpected read_puzzle_argument missing-input error: {exc}")
+    else:
+        raise AssertionError("Expected read_puzzle_argument to reject missing input")
+
+    try:
         read_puzzle_argument("0" * 81, str(puzzle_fixtures()[0]))
     except ValueError as exc:
-        if "Use either" not in str(exc):
+        if "Use only one" not in str(exc):
             raise AssertionError(f"Unexpected read_puzzle_argument error: {exc}")
     else:
         raise AssertionError("Expected read_puzzle_argument to reject puzzle plus file")
+
+    try:
+        read_puzzle_argument("0" * 81, None, "easy")
+    except ValueError as exc:
+        if "Use only one" not in str(exc):
+            raise AssertionError(f"Unexpected read_puzzle_argument difficulty error: {exc}")
+    else:
+        raise AssertionError("Expected read_puzzle_argument to reject puzzle plus difficulty")
 
     pretty = pretty_puzzle("." * 81)
     if pretty.count(".") != 81 or "---------------------" not in pretty:
@@ -415,6 +438,68 @@ def test_cli_helpers_in_process() -> None:
         )
     if exit_code != 1 or "No solution found." not in stderr.getvalue():
         raise AssertionError(f"Expected logic-only failure, got {exit_code}: {stderr.getvalue()}")
+
+
+def test_difficulty_puzzle_selection(tmp_path: Path) -> None:
+    bank_dir = tmp_path / "bank"
+    bank_dir.mkdir()
+    easy_puzzle = "".join(ch for ch in puzzle_fixture("easy_01").read_text(encoding="utf-8") if ch in ".0123456789")
+    medium_puzzle = "".join(ch for ch in puzzle_fixture("medium_01").read_text(encoding="utf-8") if ch in ".0123456789")
+    hard_puzzle = "".join(ch for ch in puzzle_fixture("hard_01").read_text(encoding="utf-8") if ch in ".0123456789")
+    easy_file = bank_dir / "easy.txt"
+    easy_file.write_text(f"abc123 {easy_puzzle} 1.0\n", encoding="utf-8")
+    tolerant_file = bank_dir / "tolerant.txt"
+    tolerant_file.write_text(
+        f"{medium_puzzle}\nmetadata before {hard_puzzle} after\nignored short-field\n",
+        encoding="utf-8",
+    )
+
+    class PickLatest:
+        def randrange(self, stop: int) -> int:
+            return 0
+
+    if random_puzzle_from_difficulty("easy", bank_dir) != easy_puzzle:
+        raise AssertionError("Expected random difficulty selection to read the easy puzzle")
+
+    if random_puzzle_from_bank_file(easy_file) != easy_puzzle:
+        raise AssertionError("Expected concrete bank file selection to read the easy puzzle")
+
+    if random_puzzle_from_bank_file(tolerant_file, PickLatest()) != hard_puzzle:
+        raise AssertionError("Expected bank parser to pick 81-character fields regardless of position")
+
+    if read_puzzle_argument(None, None, "easy", bank_dir) != easy_puzzle:
+        raise AssertionError("Expected read_puzzle_argument to select a difficulty puzzle")
+
+    if read_puzzle_argument(None, None, puzzle_bank_file=easy_file) != easy_puzzle:
+        raise AssertionError("Expected read_puzzle_argument to select a concrete bank file puzzle")
+
+    try:
+        random_puzzle_from_difficulty("medium", bank_dir)
+    except FileNotFoundError as exc:
+        if "git submodule update --init --recursive" not in str(exc):
+            raise AssertionError(f"Unexpected missing difficulty error: {exc}")
+    else:
+        raise AssertionError("Expected missing difficulty file to fail")
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    progress("running in-process CLI difficulty solve")
+    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        exit_code = cli_main(["--difficulty", "easy", "--puzzle-bank-dir", str(bank_dir), "--no-steps"])
+    if exit_code != 0:
+        raise AssertionError(f"Expected difficulty CLI success, got {exit_code}: {stderr.getvalue()}")
+    if "Original puzzle:" not in stdout.getvalue() or "Solved board:" not in stdout.getvalue():
+        raise AssertionError(f"Unexpected difficulty CLI output: {stdout.getvalue()}")
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    progress("running in-process CLI bank-file solve")
+    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        exit_code = cli_main(["--puzzle-bank-file", str(easy_file), "--no-steps"])
+    if exit_code != 0:
+        raise AssertionError(f"Expected bank-file CLI success, got {exit_code}: {stderr.getvalue()}")
+    if "Original puzzle:" not in stdout.getvalue() or "Solved board:" not in stdout.getvalue():
+        raise AssertionError(f"Unexpected bank-file CLI output: {stdout.getvalue()}")
 
 
 def test_basic_techniques_directly() -> None:

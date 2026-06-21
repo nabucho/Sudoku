@@ -8,6 +8,13 @@ Dates use `YYYY-MM-DD`.
 
 No changes yet.
 
+## 1.1.0 - 2026-06-21
+
+### Added
+
+- CLI puzzle-bank sampling from difficulty files or a concrete puzzle-bank file, with configurable puzzle-bank directory support.
+- Sudoku Exchange Puzzle Bank submodule documentation and contributor setup notes.
+
 ## 1.0.0 - 2026-06-20
 
 ### Added

@@ -7,6 +7,7 @@ Thanks for helping improve the Sudoku solver. Contributions are welcome when the
 Use Python 3.9 or newer.
 
 ```sh
+git submodule update --init --recursive
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 ```
@@ -14,6 +15,7 @@ python3 -m venv .venv
 Run the solver from the installed console script or compatibility wrapper:
 
 ```sh
+.venv/bin/sudoku-solver --difficulty hard --no-steps
 .venv/bin/sudoku-solver --file test/puzzles/hard_01 --no-progress --no-pause
 python3 sudoku.py --file test/puzzles/hard_01 --no-progress --no-pause
 ```
@@ -54,7 +56,7 @@ Use `doc/developer-notes.md` for the full technique contract, shared-helper guid
 
 ## Fixtures
 
-Synthetic fixtures under `test/synthetic/` should target one technique directly and state the expected placements or eliminations. Online fixtures under `test/online/` should preserve source references where possible. Full puzzle fixtures under `test/puzzles/` should include provenance in `test/PUZZLE_SOURCES.md`.
+Synthetic fixtures under `test/synthetic/` should target one technique directly and state the expected placements or eliminations. Online fixtures under `test/online/` should preserve source references where possible. Full puzzle fixtures under `test/puzzles` should include provenance in `test/PUZZLE_SOURCES.md`. The full Sudoku Exchange Puzzle Bank is linked as the `sudoku-exchange-puzzle-bank/` submodule for random CLI sampling and source attribution.
 
 ## Performance Changes
 

@@ -14,7 +14,7 @@ The code is organized to keep the command-line interface thin, the library API i
 : Compatibility entry point that delegates to the CLI module.
 
 `cli.py`
-: Argument parsing, file/string puzzle loading, output selection, and process-level error handling.
+: Argument parsing, puzzle input loading, output selection, and process-level error handling.
 
 `sudoku_solver/solver.py`
 : Solver orchestration. It selects techniques, records timing, scores moves, applies logical solving, and falls back to MRV search when enabled.
@@ -79,6 +79,19 @@ The code is organized to keep the command-line interface thin, the library API i
 The solver keeps timing in `TechniqueTiming`. A technique run is counted when `find_moves()` is called; a technique use is counted only when one of its moves is selected. The summary's `Found` percentage means runs that returned at least one candidate move, which can be higher than `Used` under strategies such as `fewest-steps` that scan many techniques and select only one move. Propagation and implied naked singles are also recorded when they appear in detailed replay.
 
 `solve_logic()`, `solve_with_search()`, and `solve_search_first()` mutate the `SudokuState` passed to them. Callers that need to preserve the original candidate grid should pass a clone. Search uses MRV backtracking as a pragmatic completeness fallback; search steps are reported as `Guess` rather than as human techniques.
+
+## CLI Input Sources
+
+The CLI accepts exactly one puzzle source:
+
+- an inline 81-cell `PUZZLE` argument;
+- `--file PATH` for a normal puzzle text file;
+- `--difficulty {easy,medium,hard,diabolical}` to sample a random puzzle from a matching Sudoku Exchange Puzzle Bank difficulty file;
+- `--puzzle-bank-file PATH` to sample a random puzzle from one concrete puzzle-bank file.
+
+`--puzzle-bank-dir PATH` changes where `--difficulty` looks for the difficulty files and defaults to the `sudoku-exchange-puzzle-bank/` submodule. Keep this option separate from the source-selection checks: it configures `--difficulty` but is not itself a puzzle source.
+
+Puzzle-bank parsing is intentionally tolerant. `random_puzzle_from_bank_file()` scans each whitespace-separated field on a line and uses the first field that is exactly 81 characters of `0`-`9` or `.`. This supports the current Sudoku Exchange format (`hash puzzle rating`) and simpler one-field-per-line files.
 
 ## Technique Contract
 
